@@ -1,0 +1,122 @@
+// 1 cell solver, simulator: solve eq.(1) paper intra2, SEMI-IMPLICIT:IMPLICIT in TIME, EXPLICIT in the NL term
+// still having problems reinstalling freefem, sorry havn't tried it yet
+
+/// Parameters:
+int Nx = 60, Ny = 60; //number of nodes
+real t = 0.0;
+real dt = 0.01; // dal paper
+real Tmax = 2; // dal paper 50000
+
+//Table1, set1
+real Lx = 50, Ly = 20; //dimension rectangular domain (micro m) */mu m
+real D1 = 0.1, D2 = 10; //diffusion constants, D1 << D2
+real k1 = 0.01; //activation of auxin
+real b = 0.01; //rate of production of inactive ROP
+real c = 0.1;
+real r = 0.01; //rate usage active ROPs
+real k2 = 0.1; //overall auxin level - needs to belong to the stable-stripe branch
+
+real s = (Lx/Ly)^2; //aspect ratio
+real epsi2 = D1/(Lx^2*(c+r));
+real D = D2/(Lx^2*k1);
+real tau = (c+r)/k1;
+real beta = r/k1;
+real gamma = (c+r)*k1^2/(k2*b^2);
+
+//auxin
+real nu = 1.5;
+func alpha = exp(-nu*x); //function of x and y eventually
+
+/// Mesh
+mesh Th = square(Nx, Ny, [x, y]);
+
+/// macros:  attention rescaled derivatives
+macro gradS(f) [dx(f) , sqrt(s)*dy(f)] //
+
+/// Finite element spaces
+fespace Xh(Th, P2); //a caso ...
+
+Xh U, V, // U_n+1, V_n+1 and new sol at each time step
+   U0, V0; // U_n, V_n (previous time step sol)
+int dimXh =Xh.ndof;
+
+/// Linearized problem: matrices and vectors
+varf au(u,phi) = int2d(Th) (u*phi / dt + epsi2 * gradS(u)*gradS(phi) + u*phi)
+               + int2d(Th) (U0*phi / dt); //F1
+varf bu(v,phi) = int2d(Th) (-v*phi / (gamma*tau));
+varf cu(v,phi) = int2d(Th) (-alpha* U0 * U0 * v * phi);
+
+varf av(v,phi) = int2d(Th) (v*phi / dt + D/tau * gradS(v)*gradS(phi) + v*phi / tau)
+               + int2d(Th) (V0*phi / dt + phi / tau); //F2
+varf bv(u,phi) = int2d(Th) (beta*gamma/tau * u*phi - gamma * u*phi);
+varf cv(v,phi) = int2d(Th) (gamma*alpha* U0 * U0 * v * phi);
+
+matrix Au = au(Xh,Xh);
+matrix Av = av(Xh,Xh);
+matrix Bu = bu(Xh,Xh);
+matrix Bv = bv(Xh,Xh);
+matrix Cu, Cv; // nedd to be updated at every time step
+real[int] rhs1(dimXh),
+          rhs2(dimXh); //need to be updated both at evry time step and Newton it
+
+matrix A;
+real[int] F(2*dimXh);
+
+// set solver ... da qualche parte
+
+//step of the Newton method: from Uold,Vold (u_k,V_k) -> find U,V (U_k+1, V_k+1))
+func int step()
+{
+  // update time-dep matrices and vectors
+  Cu = cu(Xh,Xh);
+  Cv = cv(Xh,Xh);
+  rhs1 = au(0,Xh);
+  rhs2 = av(0,Xh);
+
+  A = [[Au, Bu+Cu],
+       [Bv+Cv, Av]];
+  //set solver for matrices
+  set(A, solver = UMFPACK);
+
+  F = [rh1,rh2];
+
+  [U, V] = A^-1 * F;
+}
+
+//Initialization
+real t = 0.0;
+U = 1./(gamma*beta);
+V = tau*beta*gamma/(tau + beta^2*gamma);
+U0 = U;
+V0 = V;
+plot(U, value =1, wait=1, cmm="Concentration of ACTIVE ROPs at time "+ t);
+plot(V, value =1, wait=1, cmm="Concentration of INACTIVE ROPs at time "+ t);
+
+/// Main
+while(t < Tmax)
+{
+  t += dt;
+
+  // perform an iteration of the linerized solver
+  int errc = step(); // -> find U,V
+  if (errc != 0)
+  {
+    cout << "ERROR" << endl;
+    break;
+  }
+
+    // update old solution
+    Uold = U;
+    Vold = V;
+
+  }
+  cout << "#time " << t << endl;
+
+  plot(U, value =1, wait=1, cmm="Concentration of ACTIVE ROPs at time "+ t);
+  plot(V, value =1, wait=1, cmm="Concentration of INACTIVE ROPs at time "+ t);
+}
+
+
+/// Postprocessing
+plot(U, value =1, wait=1, cmm="Concentration of ACTIVE ROPs");
+plot(V, value =1, wait=1, cmm="Concentration of INACTIVE ROPs");
