@@ -41,12 +41,12 @@ Xh U, V, // U_n+1, V_n+1 and new sol at each time step
 int dimXh =Xh.ndof;
 
 /// Linearized problem: matrices and vectors
-varf au(u,phi) = int2d(Th) (u*phi / dt + epsi2 * gradS(u)*gradS(phi) + u*phi)
+varf au(u,phi) = int2d(Th) (u*phi / dt + epsi2 * gradS(u)'*gradS(phi) + u*phi)
                + int2d(Th) (U0*phi / dt); //F1
 varf bu(v,phi) = int2d(Th) (-v*phi / (gamma*tau));
 varf cu(v,phi) = int2d(Th) (-alpha* U0 * U0 * v * phi);
 
-varf av(v,phi) = int2d(Th) (v*phi / dt + D/tau * gradS(v)*gradS(phi) + v*phi / tau)
+varf av(v,phi) = int2d(Th) (v*phi / dt + D/tau * gradS(v)'*gradS(phi) + v*phi / tau)
                + int2d(Th) (V0*phi / dt + phi / tau); //F2
 varf bv(u,phi) = int2d(Th) (beta*gamma/tau * u*phi - gamma * u*phi);
 varf cv(v,phi) = int2d(Th) (gamma*alpha* U0 * U0 * v * phi);
