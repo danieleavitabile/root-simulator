@@ -35,6 +35,7 @@ macro gradS(f) [dx(f) , sqrt(s)*dy(f)] //
 
 /// Finite element spaces
 fespace Xh(Th, P2); //a caso ...
+fespace Vh(Th,[P2,P2]);
 
 Xh U, V, // U_n+1, V_n+1 and new sol at each time step
    U0, V0; // U_n, V_n (previous time step sol)
@@ -55,9 +56,13 @@ matrix Au = au(Xh,Xh);
 matrix Av = av(Xh,Xh);
 matrix Bu = bu(Xh,Xh);
 matrix Bv = bv(Xh,Xh);
+matrix tmpu, tmpv;
 matrix Cu, Cv; // nedd to be updated at every time step
 real[int] rhs1(dimXh),
-          rhs2(dimXh); //need to be updated both at evry time step and Newton it
+          rhs2(dimXh),
+          tmp1(2*dimXh); //need to be updated both at evry time step and Newton it
+//try so solve pb with solution vd pag 79 DOC
+Vh [wU, wV];
 
 matrix A;
 real[int] F(2*dimXh);
@@ -73,18 +78,31 @@ func int step()
   rhs1 = au(0,Xh);
   rhs2 = av(0,Xh);
 
-  A = [[Au, Bu+Cu],
-       [Bv+Cv, Av]];
+  tmpu = Bu+Cu;
+  tmpv = Bv+Cv;
+  A = [[Au, tmpu],
+       [tmpv, Av]];
   //set solver for matrices
   set(A, solver = UMFPACK);
 
-  F = [rh1,rh2];
+  F = [rhs1,rhs2];
 
-  [U, V] = A^-1 * F;
+  //try1
+  // [U[], V[]] = A^-1 * F;
+
+  //try2
+  // tmp1 = A^-1 * F;
+  // U[] = tmp1[0:(dimXh-1)];
+  // V[] = tmp1[dimXh:(2*dimXh-1)];
+
+  //try3
+  tmp1 = A^-1 * F;
+  wU[] = tmp1;
+  U = wU;
+  V = wV;
 }
 
 //Initialization
-real t = 0.0;
 U = 1./(gamma*beta);
 V = tau*beta*gamma/(tau + beta^2*gamma);
 U0 = U;
@@ -106,10 +124,9 @@ while(t < Tmax)
   }
 
     // update old solution
-    Uold = U;
-    Vold = V;
+    U0 = U;
+    V0 = V;
 
-  }
   cout << "#time " << t << endl;
 
   plot(U, value =1, wait=1, cmm="Concentration of ACTIVE ROPs at time "+ t);
