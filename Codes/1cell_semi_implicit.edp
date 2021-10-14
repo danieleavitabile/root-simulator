@@ -1,12 +1,17 @@
 // 1 cell solver, simulator: solve eq.(1) paper intra2, SEMI-IMPLICIT:IMPLICIT in TIME, EXPLICIT in the NL term
 // still having problems reinstalling freefem, sorry havn't tried it yet
 
+load "iovtk";
+int[int] ffordervel = [1]; // to save images in .vtk format
+
 /// Parameters:
 int Nx = 60, Ny = 60; //number of nodes
 real t = 0.0;
 real dt = 0.01; // dal paper
-real Tmax = 2; // dal paper 50000
-
+real Tmax = 6500; // dal paper 50000
+int iter = 0;
+int OUTPUTit = 100 ;
+int it = 0;
 //Table1, set1
 real Lx = 50, Ly = 20; //dimension rectangular domain (micro m) */mu m
 real D1 = 0.1, D2 = 10; //diffusion constants, D1 << D2
@@ -100,20 +105,31 @@ func int step()
   wU[] = tmp1;
   U = wU;
   V = wV;
+
+  return 0;
 }
 
 //Initialization
-U = 1./(gamma*beta);
-V = tau*beta*gamma/(tau + beta^2*gamma);
+real u0 = 1./(gamma*beta);
+real v0 = tau*beta*gamma/(tau + beta^2*gamma);
+cout << "u0 " << u0 << endl;
+cout << "v0 " << v0 << endl;
+
+// U = (u0+1) * exp(-x/Lx) -1;
+// V = (v0+1) * exp(-x/Lx) -1;
+U = (-(x-0.05) + u0) *(x<0.05);
+V = (-(x-0.05) + v0) *(x<0.05); //??
+
 U0 = U;
 V0 = V;
-plot(U, value =1, wait=1, cmm="Concentration of ACTIVE ROPs at time "+ t);
-plot(V, value =1, wait=1, cmm="Concentration of INACTIVE ROPs at time "+ t);
+plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U" + t + ".ps");
+plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t, ps = "results/V" + t + ".ps");
 
 /// Main
 while(t < Tmax)
 {
   t += dt;
+  it ++;
 
   // perform an iteration of the linerized solver
   int errc = step(); // -> find U,V
@@ -129,11 +145,17 @@ while(t < Tmax)
 
   cout << "#time " << t << endl;
 
-  plot(U, value =1, wait=1, cmm="Concentration of ACTIVE ROPs at time "+ t);
-  plot(V, value =1, wait=1, cmm="Concentration of INACTIVE ROPs at time "+ t);
+  if((it % OUTPUTit == 0.0))
+  {
+    plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U" + t + ".ps");
+    plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t, ps = "results/V" + t + ".ps");
+  	savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active ROPs", order = ffordervel);
+  	savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive ROPs", order = ffordervel);
+  }
+
 }
 
 
 /// Postprocessing
-plot(U, value =1, wait=1, cmm="Concentration of ACTIVE ROPs");
-plot(V, value =1, wait=1, cmm="Concentration of INACTIVE ROPs");
+plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs");
+plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs");
