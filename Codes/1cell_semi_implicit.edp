@@ -1,8 +1,12 @@
 // 1 cell solver, simulator: solve eq.(1) paper intra2, SEMI-IMPLICIT:IMPLICIT in TIME, EXPLICIT in the NL term
 // still having problems reinstalling freefem, sorry havn't tried it yet
 
+load "ffrandom";
 load "iovtk";
 int[int] ffordervel = [1]; // to save images in .vtk format
+int seed = 10;
+int ld = 0;
+string path = "";  // path of the previously computed U, V
 
 /// Parameters:
 int Nx = 60, Ny = 60; //number of nodes
@@ -40,7 +44,7 @@ macro gradS(f) [dx(f) , sqrt(s)*dy(f)] //
 
 /// Finite element spaces
 fespace Xh(Th, P2); //a caso ...
-fespace Vh(Th,[P2,P2]);
+fespace Vh(Th,[P2,P2]); //not used
 
 Xh U, V, // U_n+1, V_n+1 and new sol at each time step
    U0, V0; // U_n, V_n (previous time step sol)
@@ -92,39 +96,65 @@ func int step()
 
   F = [rhs1,rhs2];
 
-  //try1
+  //try1: not working
   // [U[], V[]] = A^-1 * F;
 
   //try2
-  // tmp1 = A^-1 * F;
+  tmp1 = A^-1 * F;
+  for(int ii = 0; ii < Xh.ndof; ii++)
+  {
+    U[][ii] = tmp1[ii];
+    V[][ii] = tmp1[ii + Xh.ndof];
+  }
   // U[] = tmp1[0:(dimXh-1)];
   // V[] = tmp1[dimXh:(2*dimXh-1)];
 
-  //try3
-  tmp1 = A^-1 * F;
-  wU[] = tmp1;
-  U = wU;
-  V = wV;
+  // //try3: not sure, probably wrong
+  // tmp1 = A^-1 * F;
+  // wU[] = tmp1;
+  // U = wU;
+  // V = wV;
 
   return 0;
 }
 
-//Initialization
+//Initialization: random perturbation or prev res
 real u0 = 1./(gamma*beta);
 real v0 = tau*beta*gamma/(tau + beta^2*gamma);
-cout << "u0 " << u0 << endl;
-cout << "v0 " << v0 << endl;
 
-// U = (u0+1) * exp(-x/Lx) -1;
-// V = (v0+1) * exp(-x/Lx) -1;
-U = (-(x-0.05) + u0) *(x<0.05);
-V = (-(x-0.05) + v0) *(x<0.05); //??
+if (ld) {
+  ifstream fU(path + "lastU.txt");
+  ifstream fV(path + "lastV.txt");
+  fU >> U[];
+  fV >> V[];
+  plot(U, fill = 1, value = 1, cmm = "Loaded Active ROPS", wait = 1);
+  plot(V, fill = 1, value = 1, cmm = "Loaded Inactive ROPS", wait = 1);
 
+} else
+{
+  U = u0;
+  V = v0;
+  srandom(seed);
+  // ranreal 1 generates a random number in [0,1]
+    for(int ii = 0; ii < Xh.ndof; ii++)
+    {
+      U[][ii] += randreal1() / 3e5;
+      V[][ii] += randreal1() / 3e5;
+    }
+}
+
+plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t + "perturbed", ps = "results/U" + t + ".ps");
+plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t + "perturbed", ps = "results/V" + t + ".ps");
 U0 = U;
 V0 = V;
-plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U" + t + ".ps");
-plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t, ps = "results/V" + t + ".ps");
 
+cout << "num" << randreal1() / 3e5 << endl;
+cout << " u0 " << u0;
+cout << " v0 " << v0;
+
+// Output file for last results -> to be loaded in case of interuption
+ofstream foutU("results/lastU.txt");
+ofstream foutV("results/lastV.txt");
 /// Main
 while(t < Tmax)
 {
@@ -151,7 +181,14 @@ while(t < Tmax)
     plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t, ps = "results/V" + t + ".ps");
   	savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active ROPs", order = ffordervel);
   	savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive ROPs", order = ffordervel);
+    foutU << U[];
+    foutV << V[];
   }
+  // if(t<1)
+  // {
+  //   plot(U, value =1, fill =1, wait=1, cmm="Concentration of ACTIVE ROPs at time "+ t);
+  //   plot(V, value =1, fill =1, wait=1, cmm="Concentration of INACTIVE ROPs at time "+ t);
+  // }
 
 }
 
