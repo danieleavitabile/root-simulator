@@ -11,7 +11,7 @@ string path = "";  // path of the previously computed U, V
 /// Parameters:
 int Nx = 60, Ny = 60; //number of nodes
 real t = 0.0;
-real dt = 0.01; // dal paper
+real dt = 1; // dal paper
 real Tmax = 6500; // dal paper 50000
 int iter = 0;
 int OUTPUTit = 100 ;

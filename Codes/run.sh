@@ -15,13 +15,13 @@ mkdir results/$STR/V;
 
 FreeFem++ 1cell_semi_implicit.edp 2>&1 | tee results/$STR/output.txt;
 wait;
-# cp *.edp results/$STR/code/;
+# estensione .vtk per gif paraview
 mv results/U*.vtk results/$STR/U;
 mv results/U*.ps results/$STR/U;
 
 mv results/V*.vtk results/$STR/V;
 mv results/V*.ps results/$STR/V;
 
-find . -name "*.ps" -exec rename 's/\.ps$/.eps/' '{}' + #qst forse cambia file estensione ps in eps, non so se serva
+find . -name "*.ps" -exec rename 's/\.ps$/.eps/' '{}' + # cambia estensione .ps in .eps, per latex
 
 echo "--- Script ended ---";
