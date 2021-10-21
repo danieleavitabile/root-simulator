@@ -1,12 +1,14 @@
 // 1 cell solver, simulator: solve eq.(1) paper intra2, SEMI-IMPLICIT:IMPLICIT in TIME, EXPLICIT in the NL term
 // still having problems reinstalling freefem, sorry havn't tried it yet
 
+//MAI USATO, FORSE INTUILE vd. sect 1.2.2
+
 load "ffrandom";
 load "iovtk";
 int[int] ffordervel = [1]; // to save images in .vtk format
 int seed = 10;
 int ld = 0;
-string path = "results/2021-10-20_10-56-37/";  // path of the previously computed U, V
+string path = "/results/2021-10-20_10-56-37/";  // path of the previously computed U, V
 
 /// Parameters:
 int Nx = 60, Ny = 60; //number of nodes
@@ -36,6 +38,21 @@ real gamma = (c+r)*k1^2/(k2*b^2);
 real nu = 1.5;
 func alpha = exp(-nu*x); //function of x and y eventually
 
+//CHARACTERISTIC VARIABLES
+real u0 = 1./(gamma*beta);
+real v0 = tau*beta*gamma/(tau + beta^2*gamma);
+real T; //Lx Ly already given
+
+//ADIMENTIONALIZATION COEFFICIENTS
+real tildeD1 = epsi2 * T;
+real tildeD2 = D * T / tau;
+real tildea1 = - T;
+real tildea2 = - T / tau;
+real tildeb1 = v0*T/(u0*tau*gamma);
+real tildeb2 = T*gamma*u0/(v0)*(1 - beta/tau);
+real tildec1 = alpha*u0*v0*T;
+real tildec2 = - gamma*T*alpha*u0^2;
+
 /// Mesh
 mesh Th = square(Nx, Ny, [x, y]);
 
@@ -44,21 +61,20 @@ macro gradS(f) [dx(f) , sqrt(s)*dy(f)] //
 
 /// Finite element spaces
 fespace Xh(Th, P2); //a caso ...
-
 Xh U, V, // U_n+1, V_n+1 and new sol at each time step
    U0, V0; // U_n, V_n (previous time step sol)
 int dimXh =Xh.ndof;
 
 /// Linearized problem: matrices and vectors
-varf au(u,phi) = int2d(Th) (u*phi / dt + epsi2 * gradS(u)'*gradS(phi) + u*phi)
+varf au(u,phi) = int2d(Th) (u*phi / dt + tildeD1 * gradS(u)'*gradS(phi) - tildea1 u*phi)
                + int2d(Th) (U0*phi / dt); //F1
-varf bu(v,phi) = int2d(Th) (-v*phi / (gamma*tau));
-varf cu(v,phi) = int2d(Th) (-alpha* U0 * U0 * v * phi);
+varf bu(v,phi) = int2d(Th) (- tildeb1 * v*phi );
+varf cu(v,phi) = int2d(Th) (- tildec1 * U0 * U0 * v * phi);
 
-varf av(v,phi) = int2d(Th) (v*phi / dt + D/tau * gradS(v)'*gradS(phi) + v*phi / tau)
+varf av(v,phi) = int2d(Th) (v*phi / dt + tildeD2 * gradS(v)'*gradS(phi) - tildea2 v*phi )
                + int2d(Th) (V0*phi / dt + phi / tau); //F2
-varf bv(u,phi) = int2d(Th) (beta*gamma/tau * u*phi - gamma * u*phi);
-varf cv(v,phi) = int2d(Th) (gamma*alpha* U0 * U0 * v * phi);
+varf bv(u,phi) = int2d(Th) (- tildeb2 * u*phi);
+varf cv(v,phi) = int2d(Th) (- tildec2 * U0 * U0 * v * phi);
 
 matrix Au = au(Xh,Xh);
 matrix Av = av(Xh,Xh);
@@ -68,13 +84,14 @@ matrix tmpu, tmpv;
 matrix Cu, Cv; // nedd to be updated at every time step
 real[int] rhs1(dimXh),
           rhs2(dimXh),
-          tmp1(2*dimXh); //need to be updated both at evry time step
+          tmp1(2*dimXh); //need to be updated both at evry time step and Newton it
 
 matrix A;
 real[int] F(2*dimXh);
 
 // set solver ... da qualche parte
 
+//step of the Newton method: from Uold,Vold (u_k,V_k) -> find U,V (U_k+1, V_k+1))
 func int step()
 {
   // update time-dep matrices and vectors
@@ -92,6 +109,9 @@ func int step()
 
   F = [rhs1,rhs2];
 
+  //try1: not working
+  // [U[], V[]] = A^-1 * F;
+
   //try2
   tmp1 = A^-1 * F;
   for(int ii = 0; ii < Xh.ndof; ii++)
@@ -104,23 +124,19 @@ func int step()
 }
 
 //Initialization: random perturbation or prev res
-real u0 = 1./(gamma*beta);
-real v0 = tau*beta*gamma/(tau + beta^2*gamma);
-
 if (ld) {
   ifstream fU(path + "lastU.txt");
   ifstream fV(path + "lastV.txt");
 
   fU >> U[];
   fV >> V[];
-
-  plot(U, fill = 1, value = 1, cmm = "Loaded Active ROPS"/*, wait = 1*/);
-  plot(V, fill = 1, value = 1, cmm = "Loaded Inactive ROPS"/*, wait = 1*/);
+  plot(U, fill = 1, value = 1, cmm = "Loaded Active ROPS", wait = 1);
+  plot(V, fill = 1, value = 1, cmm = "Loaded Inactive ROPS", wait = 1);
 }
 else
 {
-  U = u0;
-  V = v0;
+  U = 1.0;
+  V = 1.0;
   srandom(seed);
   // ranreal 1 generates a random number in [0,1]
     for(int ii = 0; ii < Xh.ndof; ii++)
@@ -132,8 +148,6 @@ else
 
 plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t + "perturbed", ps = "results/U" + t + ".ps");
 plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t + "perturbed", ps = "results/V" + t + ".ps");
-savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
-savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
 U0 = U;
 V0 = V;
 
@@ -162,18 +176,8 @@ while(t < Tmax)
   {
     plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U" + t + ".ps");
     plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t, ps = "results/V" + t + ".ps");
-  	savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
-  	savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
-    foutU << U[];
-    foutV << V[];
-    cout << "#time " << t << endl;
-  }
-  else if ((t<100 & it%10==0))
-  {
-    plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U" + t + ".ps");
-    plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t, ps = "results/V" + t + ".ps");
-    savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
-    savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+  	savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active ROPs", order = ffordervel);
+  	savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive ROPs", order = ffordervel);
     foutU << U[];
     foutV << V[];
     cout << "#time " << t << endl;

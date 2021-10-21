@@ -1,0 +1,218 @@
+// 1 cell solver, simulator: solve eq.(1) paper intra2, NEWTON + IMPL EULER
+// problems with Freefem https://github.com/tsduck/tsduck/issues/827
+
+
+load "ffrandom";
+load "iovtk";
+int[int] ffordervel = [1]; // to save images in .vtk format
+int seed = 10;
+int ld = 0;
+string path = "results/2021-10-20_10-56-37/";  // path of the previously computed U, V
+/// Parameters:
+int Nx = 60, Ny = 60; //number of nodes
+
+//Newton's method prms
+int MAXiter = 20;
+real tol = 1e-3, err;
+int iter = 0;
+
+//Table1, set1
+real Lx = 50, Ly = 20; //dimension rectangular domain (micro m) */mu m
+real D1 = 0.1, D2 = 10; //diffusion constants, D1 << D2
+real k1 = 0.01; //activation of auxin
+real b = 0.01; //rate of production of inactive ROP
+real c = 0.1;
+real r = 0.01; //rate usage active ROPs
+real k2 = 0.1; //overall auxin level - needs to belong to the stable-stripe branch
+
+real s = (Lx/Ly)^2; //aspect ratio
+real epsi2 = D1/(Lx^2*(c+r));
+real D = D2/(Lx^2*k1);
+real tau = (c+r)/k1;
+real beta = r/k1;
+real gamma = (c+r)*k1^2/(k2*b^2);
+
+//auxin
+real nu = 1.5;
+func alpha = exp(-nu*x); //function of x and y eventually
+
+//CHARACTERISTIC VARIABLES
+real u0 = 1./(gamma*beta);
+real v0 = tau*beta*gamma/(tau + beta^2*gamma);
+
+//ADIMENTIONALIZATION COEFFICIENTS
+real tildeD1 = epsi2;
+real tildeD2 = D / tau;
+real tildea1 = - 1;
+real tildea2 = - 1 / tau;
+real tildeb1 = 1/(tau*gamma);
+real tildeb2 = gamma*(1 - beta/tau);
+real tildec1 = alpha;
+real tildec2 = - gamma*alpha;
+
+/// Mesh
+mesh Th = square(Nx, Ny, [x, y]);
+
+/// macros:  attention rescaled derivatives
+macro gradS(f) [dx(f) , sqrt(s)*dy(f)] //
+
+/// Finite element spaces
+fespace Xh(Th, P2);
+
+Xh U, V, // U_k+1, V_k+1
+   U0, V0, // U_k, V_k
+   incrU, incrV;
+int dimXh =Xh.ndof;
+
+// Linearized problem: matrices and vectors
+varf au(u,phi) = int2d(Th) (tildeD1 * gradS(u)'*gradS(phi) + tildea1 * u*phi);
+varf bu(v,phi) = int2d(Th) (tildeb1 * v*phi);
+varf cuu(u,phi) = int2d(Th) (2 * tildec1 * U0 * V0 * u * phi) +
+                  int2d(Th) (2 * tildec1 * U0 * V0 * U0 * phi); //rhs1
+varf cuv(v,phi) = int2d(Th) (tildec1 * U0 * U0 * v * phi);
+
+varf av(v,phi) = int2d(Th) (tildeD2 * gradS(v)'*gradS(phi) + tildea2 * v*phi);
+varf bv(u,phi) = int2d(Th) (tildeb2 * u*phi);
+varf cvu(u,phi) = int2d(Th) (2 * tildec2 * U0 * V0 * u * phi) +
+                  int2d(Th) (2 * tildec2 * U0 * V0 * U0 * phi); //rhs2
+varf cvv(v,phi) = int2d(Th)  (tildec1 * U0 * U0 * v * phi);
+
+matrix Au = au(Xh,Xh);
+matrix Av = av(Xh,Xh);
+matrix Bu = bu(Xh,Xh);
+matrix Bv = bv(Xh,Xh);
+matrix tmpu1, tmpu2, tmpv1, tmpv2;
+matrix Cuu, Cuv, Cvu, Cvv; // nedd to be updated at every Newton it
+real[int] rhs1(dimXh),
+          rhs2(dimXh),
+          tmp1(2*dimXh);
+
+matrix A;
+real[int] F(2*dimXh);
+
+//step of the Newton method: from Uold,Vold (u_k,V_k) -> find U,V (U_k+1, V_k+1))
+func int step()
+{
+  // update time-dep matrices and vectors
+  Cuu = cuu(Xh,Xh);
+  Cuv = cuv(Xh,Xh);
+  Cvu = cvu(Xh,Xh);
+  Cvv = cvv(Xh,Xh);
+  rhs1 = cuu(0,Xh);
+  rhs2 = cvu(0,Xh);
+
+  tmpu1 = Au + Cuu;
+  tmpu2 = Bu + Cuv;
+  tmpv1 = Bv + Cvu;
+  tmpv2 = Av + Cvv;
+cout << "# qua ci arrivo" << endl;
+  A = [[tmpu1, tmpu2],
+       [tmpv1, tmpv2]];
+  cout << "# matrice" << endl;
+  //set solver for matrices
+  set(A, solver = UMFPACK);
+cout << "# solver" << endl;
+  F = [rhs1,rhs2];
+
+  //try2
+  tmp1 = A^-1 * F;
+  cout << "# risolta" << endl;
+  for(int ii = 0; ii < Xh.ndof; ii++)
+  {
+    U[][ii] = tmp1[ii];
+    V[][ii] = tmp1[ii + Xh.ndof];
+  }
+
+  return 0;
+}
+
+//return error estimate: hyp. residual(normalized) with L2 norm
+func real residual()
+{
+  // compute the increment between (U,V) and (U0,V0)
+  incrU[] = U[];
+  incrU[] -= U0[];
+
+  incrV[] = V[];
+  incrV[] -= V0[];
+
+  //calcolo residuo normalizzato con norma L2
+  real errU = int2d(Th) ((incrU)^2);
+  real errV = int2d(Th) ((incrV)^2);
+  real normU = int2d(Th) ((U0)^2);
+  real normV = int2d(Th) ((V0)^2);
+
+  return sqrt(errU/normU) + sqrt(errV/normV);
+}
+
+//Initialization: eh qua parte critica
+if (ld) {
+  ifstream fU(path + "lastU.txt");
+  ifstream fV(path + "lastV.txt");
+
+  fU >> U[];
+  fV >> V[];
+
+  plot(U, fill = 1, value = 1, cmm = "Loaded Active ROPS", wait = 1);
+  plot(V, fill = 1, value = 1, cmm = "Loaded Inactive ROPS", wait = 1);
+}
+else
+{
+  U = u0;
+  V = v0;
+  srandom(seed);
+  // ranreal 1 generates a random number in [0,1]
+    for(int ii = 0; ii < Xh.ndof; ii++)
+    {
+      U[][ii] += randreal1();
+      V[][ii] += randreal1();
+    }
+}
+
+plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs perturbed", ps = "results/U" + iter + ".ps");
+plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs perturbed", ps = "results/V" + iter + ".ps");
+savevtk("results/U" + iter + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+savevtk("results/V" + iter + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+U0 = U;
+V0 = V;
+
+// Output file for last results -> to be loaded in case of interuption
+ofstream foutU("results/lastU.txt");
+ofstream foutV("results/lastV.txt");
+
+/// Main: Newton loop
+err = tol + 1; // at least one iteration has to be performed
+for(iter = 1; iter < MAXiter && err > tol; ++iter)
+{
+  //perform an iteration of the linerized solver
+  int errc = step(); // -> find U,V
+  if (errc != 0)
+  {
+    cout << "ERROR" << endl;
+    break;
+  }
+
+  //update err for the stp criterion
+  err = residual(); //-> compute the residual between U,V and U0, V0
+  cout << "#err: " << err << endl;
+
+  /// update old solution
+  U0 = U;
+  V0 = V;
+
+  plot(U, value =1, fill =1, wait=1, cmm="Concentration of ACTIVE ROPs at ITERATION "+ iter, ps = "results/U" + iter + ".ps");
+  plot(V, value =1, fill =1, wait=1, cmm="Concentration of INACTIVE ROPs at ITERATION"+ iter, ps = "results/V" + iter + ".ps");
+  savevtk("results/U" + iter + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+  savevtk("results/V" + iter + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+  foutU << U[];
+  foutV << V[];
+
+}
+
+
+/// Postprocessing
+cout << "# nonlinear iter: " << iter << endl;
+cout << "# residual: " << err << endl;
+
+plot(U, value =1, fill =1, wait=1, cmm="Concentration of ACTIVE ROPs");
+plot(V, value =1, fill =1, wait=1, cmm="Concentration of INACTIVE ROPs");
