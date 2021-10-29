@@ -1,6 +1,4 @@
-// 1 cell solver, simulator: solve eq.(1) paper intra2, NEWTON + IMPL EULER
-// problems with Freefem https://github.com/tsduck/tsduck/issues/827
-
+// Look for stationary solution of 1cell eq (1.1)
 
 load "ffrandom";
 load "iovtk";
@@ -12,18 +10,18 @@ string path = "results/2021-10-20_10-56-37/";  // path of the previously compute
 int Nx = 60, Ny = 60; //number of nodes
 
 //Newton's method prms
-int MAXiter = 20;
+int MAXiter = 100;
 real tol = 1e-3, err;
 int iter = 0;
 
 //Table1, set1
 real Lx = 50, Ly = 20; //dimension rectangular domain (micro m) */mu m
-real D1 = 0.1, D2 = 10; //diffusion constants, D1 << D2
+real D1 = 0.1, D2 = 10; //diffusion constants, D1 << D2 - D1 from Fig.4
 real k1 = 0.01; //activation of auxin
 real b = 0.01; //rate of production of inactive ROP
 real c = 0.1;
 real r = 0.01; //rate usage active ROPs
-real k2 = 0.1; //overall auxin level - needs to belong to the stable-stripe branch
+real k2 = 0.1; //overall auxin level - from Fig.4
 
 real s = (Lx/Ly)^2; //aspect ratio
 real epsi2 = D1/(Lx^2*(c+r));
@@ -47,8 +45,8 @@ real tildea1 = - 1;
 real tildea2 = - 1 / tau;
 real tildeb1 = 1/(tau*gamma);
 real tildeb2 = gamma*(1 - beta/tau);
-real tildec1 = alpha;
-real tildec2 = - gamma*alpha;
+func tildec1 = alpha;
+func tildec2 = - gamma*alpha;
 
 /// Mesh
 mesh Th = square(Nx, Ny, [x, y]);
@@ -65,13 +63,13 @@ Xh U, V, // U_k+1, V_k+1
 int dimXh =Xh.ndof;
 
 // Linearized problem: matrices and vectors
-varf au(u,phi) = int2d(Th) (tildeD1 * gradS(u)'*gradS(phi) + tildea1 * u*phi);
+varf au(u,phi) = int2d(Th) (-tildeD1 * gradS(u)'*gradS(phi) + tildea1 * u*phi);
 varf bu(v,phi) = int2d(Th) (tildeb1 * v*phi);
 varf cuu(u,phi) = int2d(Th) (2 * tildec1 * U0 * V0 * u * phi) +
                   int2d(Th) (2 * tildec1 * U0 * V0 * U0 * phi); //rhs1
 varf cuv(v,phi) = int2d(Th) (tildec1 * U0 * U0 * v * phi);
 
-varf av(v,phi) = int2d(Th) (tildeD2 * gradS(v)'*gradS(phi) + tildea2 * v*phi);
+varf av(v,phi) = int2d(Th) (-tildeD2 * gradS(v)'*gradS(phi) + tildea2 * v*phi);
 varf bv(u,phi) = int2d(Th) (tildeb2 * u*phi);
 varf cvu(u,phi) = int2d(Th) (2 * tildec2 * U0 * V0 * u * phi) +
                   int2d(Th) (2 * tildec2 * U0 * V0 * U0 * phi); //rhs2
@@ -105,18 +103,14 @@ func int step()
   tmpu2 = Bu + Cuv;
   tmpv1 = Bv + Cvu;
   tmpv2 = Av + Cvv;
-cout << "# qua ci arrivo" << endl;
   A = [[tmpu1, tmpu2],
        [tmpv1, tmpv2]];
-  cout << "# matrice" << endl;
   //set solver for matrices
   set(A, solver = UMFPACK);
-cout << "# solver" << endl;
   F = [rhs1,rhs2];
 
   //try2
   tmp1 = A^-1 * F;
-  cout << "# risolta" << endl;
   for(int ii = 0; ii < Xh.ndof; ii++)
   {
     U[][ii] = tmp1[ii];
@@ -176,10 +170,6 @@ savevtk("results/V" + iter + ".vtk", Th, V, dataname = "Inactive_ROPs", order = 
 U0 = U;
 V0 = V;
 
-// Output file for last results -> to be loaded in case of interuption
-ofstream foutU("results/lastU.txt");
-ofstream foutV("results/lastV.txt");
-
 /// Main: Newton loop
 err = tol + 1; // at least one iteration has to be performed
 for(iter = 1; iter < MAXiter && err > tol; ++iter)
@@ -200,10 +190,14 @@ for(iter = 1; iter < MAXiter && err > tol; ++iter)
   U0 = U;
   V0 = V;
 
-  plot(U, value =1, fill =1, wait=1, cmm="Concentration of ACTIVE ROPs at ITERATION "+ iter, ps = "results/U" + iter + ".ps");
-  plot(V, value =1, fill =1, wait=1, cmm="Concentration of INACTIVE ROPs at ITERATION"+ iter, ps = "results/V" + iter + ".ps");
+  plot(U, value =1, fill =1, cmm="Concentration of ACTIVE ROPs at ITERATION "+ iter, ps = "results/U" + iter + ".ps");
+  plot(V, value =1, fill =1, cmm="Concentration of INACTIVE ROPs at ITERATION"+ iter, ps = "results/V" + iter + ".ps");
   savevtk("results/U" + iter + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
   savevtk("results/V" + iter + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+
+  // Output file for last results -> to be loaded in case of interuption
+  ofstream foutU("results/U" + iter + ".txt");
+  ofstream foutV("results/V" + iter + ".txt");
   foutU << U[];
   foutV << V[];
 
