@@ -1,0 +1,126 @@
+// Check for the Jacobian used in 1cell_stationaryTest
+
+/// Parameters:
+int Nx = 60, Ny = 60; //number of nodes
+
+//Table1, set1
+real Lx = 50, Ly = 20; //dimension rectangular domain (micro m) */mu m
+real D1 = 0.1, D2 = 10; //diffusion constants, D1 << D2 - D1 from Fig.4
+real k1 = 0.01; //activation of auxin
+real b = 0.01; //rate of production of inactive ROP
+real c = 0.1;
+real r = 0.01; //rate usage active ROPs
+real k2 = 0.1; //overall auxin level - from Fig.4
+
+real s = (Lx/Ly)^2; //aspect ratio
+real epsi2 = D1/(Lx^2*(c+r));
+real D = D2/(Lx^2*k1);
+real tau = (c+r)/k1;
+real beta = r/k1;
+real gamma = (c+r)*k1^2/(k2*b^2);
+
+//auxin
+real nu = 1.5;
+func alpha = exp(-nu*x); //function of x and y eventually
+
+//CHARACTERISTIC VARIABLES
+real u0 = 1./(gamma*beta);
+real v0 = tau*beta*gamma/(tau + beta^2*gamma);
+
+//ADIMENTIONALIZATION COEFFICIENTS
+real tildeD1 = epsi2;
+real tildeD2 = D / tau;
+real tildea1 = - 1;
+real tildea2 = - 1 / tau;
+real tildeb1 = 1/(tau*gamma);
+real tildeb2 = gamma*(1 - beta/tau);
+func tildec1 = alpha;
+func tildec2 = - gamma*alpha;
+
+/// macros:  attention rescaled derivatives
+macro gradS(f) [dx(f) , sqrt(s)*dy(f)] //
+
+/// Mesh
+mesh Th = square(Nx, Ny, [x, y]);
+/// Finite element spaces
+fespace Xh(Th, P2);
+int dimXh =Xh.ndof;
+
+Xh U0,V0,du,dv;
+// U* = [u*, v*], V = [du, dv]
+U0 = u0 ; // u*
+V0 = v0; // v*
+// U0 = x;
+// V0 = x;
+du = sin(2 * pi * x) * sin(2 * pi * y);
+dv = sin(2 * pi * x) * sin(2 * pi * y);   // trial V
+real normu = sqrt(int2d(Th) (du^2));
+du = du / normu;
+real normv = sqrt(int2d(Th) (dv^2));
+dv = dv / normv;
+
+real eps = 1e-4;
+Xh upos = U0 + eps * du,
+   vpos = V0 + eps * dv;
+Xh uneg = U0 - eps * du,
+   vneg = V0 - eps * dv;
+
+// Jacobian
+varf au(dummyu,phi) = int2d(Th) (-tildeD1 * gradS(du)'*gradS(phi) + tildea1 * du*phi);
+varf bu(dummyv,phi) = int2d(Th) (tildeb1 * dv*phi);
+varf cu(dummyu,phi) = int2d(Th) (2 * tildec1 * U0 * V0 * du * phi) +
+                       int2d(Th) (tildec1 * U0 * U0 * dv * phi);
+
+varf av(dummyv,phi) = int2d(Th) (-tildeD2 * gradS(dv)'*gradS(phi) + tildea2 * dv*phi);
+varf bv(dummyu,phi) = int2d(Th) (tildeb2 * du*phi);
+varf cv(dummyu,phi) = int2d(Th) (2 * tildec2 * U0 * V0 * du * phi) +
+                      int2d(Th)  (tildec2 * U0 * U0 * dv * phi);
+
+real[int] Au = au(0,Xh);
+real[int] Av = av(0,Xh);
+real[int] Bu = bu(0,Xh);
+real[int] Bv = bv(0,Xh);
+real[int] Cu = cu(0,Xh);
+real[int] Cv = cv(0,Xh);
+
+real[int] JacU = Au + Bu;
+JacU = JacU + Cu; // questa dovrebbe essere la parte critica, non lineare
+
+real[int] JacV = Av + Bv;
+JacV = JacV + Cv; // questa dovrebbe essere la parte critica, non lineare
+real[int] Jac =[JacU, JacV];
+
+//G(U*+ eps*du)
+varf Gupos(dummyu,phi) = int2d(Th) (-tildeD1 * gradS(upos)'*gradS(phi) + tildea1 * upos*phi)
+                       + int2d(Th) (tildeb1 * vpos*phi)
+                       + int2d(Th) (tildec1 * upos*upos*vpos *phi)
+                       ;
+
+varf Gvpos(dummyv,phi) = int2d(Th) (-tildeD2 * gradS(vpos)'*gradS(phi) + tildea2 * vpos*phi)
+                       + int2d(Th) (tildeb2 * upos*phi)
+                       + int2d(Th) (tildec2 * upos*upos* vpos * phi)
+                       ;
+
+//G(U*- eps*du)
+varf Guneg(dummyu,phi) = int2d(Th) (-tildeD1 * gradS(uneg)'*gradS(phi) + tildea1 * uneg*phi)
+                       + int2d(Th) (tildeb1 * vneg*phi)
+                       + int2d(Th) (tildec1 * uneg*uneg*vneg *phi)
+                       ;
+
+varf Gvneg(dummyv,phi) = int2d(Th) (-tildeD2 * gradS(vneg)'*gradS(phi) + tildea2 * vneg*phi)
+                       + int2d(Th) (tildeb2 * uneg*phi)
+                       + int2d(Th) (tildec2 * uneg*uneg*vneg *phi)
+                       ;
+
+real[int] G2u = Gupos(0,Xh);
+real[int] G1u = Guneg(0,Xh);
+G2u = G2u - G1u;
+real[int] G2v = Gvpos(0,Xh);
+real[int] G1v = Gvneg(0,Xh);
+G2v = G2v - G1v;
+real[int] Rhs = [G2u, G2v];
+Rhs = (2*eps)^(-1) * Rhs;
+
+for (int i=Jac.n-5; i < Jac.n; i++) cout << "Rhs(i) = " << Rhs[i] << " " << "Jac(i) = " << Jac[i] << endl;
+real[int] res = Rhs - Jac;
+cout << "||RHS - JAC||_inf = " << res.linfty << endl << endl;

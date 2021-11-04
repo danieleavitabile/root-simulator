@@ -41,10 +41,10 @@ real v0 = tau*beta*gamma/(tau + beta^2*gamma);
 //ADIMENTIONALIZATION COEFFICIENTS
 real tildeD1 = epsi2;
 real tildeD2 = D / tau;
-real tildea1 = - 1;
-real tildea2 = - 1 / tau;
-real tildeb1 = 1/(tau*gamma);
-real tildeb2 = gamma*(1 - beta/tau);
+real tildea1 = - 1.;
+real tildea2 = - 1. / tau;
+real tildeb1 = 1./(tau*gamma);
+real tildeb2 = gamma*(1. - beta/tau);
 func tildec1 = alpha;
 func tildec2 = - gamma*alpha;
 
@@ -62,33 +62,43 @@ Xh U, V, // U_k+1, V_k+1
    incrU, incrV;
 int dimXh =Xh.ndof;
 
-// Linearized problem: matrices and vectors
-varf au(u,phi) = int2d(Th) (-tildeD1 * gradS(u)'*gradS(phi) + tildea1 * u*phi);
-varf bu(v,phi) = int2d(Th) (tildeb1 * v*phi);
-varf cuu(u,phi) = int2d(Th) (2 * tildec1 * U0 * V0 * u * phi) +
-                  int2d(Th) (2 * tildec1 * U0 * V0 * U0 * phi); //rhs1
-varf cuv(v,phi) = int2d(Th) (tildec1 * U0 * U0 * v * phi);
+// Jacobian
+varf au(du,phi) = int2d(Th) (-tildeD1 * gradS(du)'*gradS(phi) + tildea1 * du*phi);
+varf bu(dv,phi) = int2d(Th) (tildeb1 * dv*phi);
+varf cuu(du,phi) = int2d(Th) (2 * tildec1 * U0 * V0 * du * phi);
+varf cuv(dv,phi) = int2d(Th) (tildec1 * U0 * U0 * dv * phi);
 
-varf av(v,phi) = int2d(Th) (-tildeD2 * gradS(v)'*gradS(phi) + tildea2 * v*phi);
-varf bv(u,phi) = int2d(Th) (tildeb2 * u*phi);
-varf cvu(u,phi) = int2d(Th) (2 * tildec2 * U0 * V0 * u * phi) +
-                  int2d(Th) (2 * tildec2 * U0 * V0 * U0 * phi); //rhs2
-varf cvv(v,phi) = int2d(Th) (tildec2 * U0 * U0 * v * phi);
+varf av(dv,phi) = int2d(Th) (-tildeD2 * gradS(dv)'*gradS(phi) + tildea2 * dv*phi);
+varf bv(du,phi) = int2d(Th) (tildeb2 * du*phi);
+varf cvu(du,phi) = int2d(Th) (2 * tildec2 * U0 * V0 * du * phi);
+varf cvv(dv,phi) = int2d(Th) (tildec2 * U0 * U0 * dv * phi);
 
 matrix Au = au(Xh,Xh);
 matrix Av = av(Xh,Xh);
 matrix Bu = bu(Xh,Xh);
 matrix Bv = bv(Xh,Xh);
+
+// G(U)
+varf gu(dummy,phi) = int2d(Th) (-tildeD1 * gradS(U0)'*gradS(phi) + tildea1 * U0*phi)
+                       + int2d(Th) (tildeb1 * V0*phi)
+                       + int2d(Th) (tildec1 * U0*U0*V0 *phi)
+                       ;
+
+varf gv(dummy,phi) = int2d(Th) (-tildeD2 * gradS(V0)'*gradS(phi) + tildea2 * V0*phi)
+                       + int2d(Th) (tildeb2 * U0*phi)
+                       + int2d(Th) (tildec2 * U0*U0* V0 * phi)
+                       ;
+
 matrix tmpu1, tmpu2, tmpv1, tmpv2;
 matrix Cuu, Cuv, Cvu, Cvv; // nedd to be updated at every Newton it
-real[int] rhs1(dimXh),
-          rhs2(dimXh),
+real[int] Gu(dimXh),
+          Gv(dimXh),
           tmp1(2*dimXh);
 
-matrix A;
-real[int] F(2*dimXh);
+matrix Jac;
+real[int] G(2*dimXh);
 
-//step of the Newton method: from Uold,Vold (u_k,V_k) -> find U,V (U_k+1, V_k+1))
+//step of the Newton method: from U0,V0 (u_k,V_k) -> find U,V (U_k+1, V_k+1))
 func int step()
 {
   // update time-dep matrices and vectors
@@ -96,25 +106,27 @@ func int step()
   Cuv = cuv(Xh,Xh);
   Cvu = cvu(Xh,Xh);
   Cvv = cvv(Xh,Xh);
-  rhs1 = cuu(0,Xh);
-  rhs2 = cvu(0,Xh);
+  Gu = gu(0,Xh);
+  Gv = gv(0,Xh);
+  Gu = -Gu;
+  Gv = -Gv;
 
   tmpu1 = Au + Cuu;
   tmpu2 = Bu + Cuv;
   tmpv1 = Bv + Cvu;
   tmpv2 = Av + Cvv;
-  A = [[tmpu1, tmpu2],
+  Jac = [[tmpu1, tmpu2],
        [tmpv1, tmpv2]];
   //set solver for matrices
-  set(A, solver = UMFPACK);
-  F = [rhs1,rhs2];
+  set(Jac, solver = UMFPACK);
+  G = [Gu,Gv];
 
   //try2
-  tmp1 = A^-1 * F;
+  tmp1 = Jac^-1 * G; //tmp1 = [du, dv]
   for(int ii = 0; ii < Xh.ndof; ii++)
   {
-    U[][ii] = tmp1[ii];
-    V[][ii] = tmp1[ii + Xh.ndof];
+    U[][ii] += tmp1[ii];
+    V[][ii] += tmp1[ii + Xh.ndof];
   }
 
   return 0;
@@ -158,8 +170,8 @@ else
   // ranreal 1 generates a random number in [0,1]
     for(int ii = 0; ii < Xh.ndof; ii++)
     {
-      U[][ii] += randreal1()*1e-8;
-      V[][ii] += randreal1()*1e-8;
+      U[][ii] += randreal1();
+      V[][ii] += randreal1();
     }
 }
 

@@ -12,7 +12,7 @@ mkdir results/$STR;
 mkdir results/$STR/U;
 mkdir results/$STR/V;
 
-EXEC=1cell_stationaryTest.edp;
+EXEC=1cell_stationaryTest_2.edp;
 
 FreeFem++ $EXEC 2>&1 | tee results/$STR/output.txt;
 wait;
