@@ -1,101 +1,53 @@
 // 1 cell solver, simulator: solve eq.(1) paper intra2, NEWTON + IMPL EULER
-// problems with Freefem https://github.com/tsduck/tsduck/issues/827
+// FULLY IMPLICIT
+
+load "ffrandom";
+load "iovtk";
+int[int] ffordervel = [1]; // to save images in .vtk format
+int seed = 10;
+int ld = 0;
+string path = "results/";  // path of the previously computed U, V
 
 /// Parameters:
-int Nx = 60, Ny = 60; //number of nodes
-real t = 0.0;
-real dt = 0.01; /// a caso
-real Tmax = 2; //a caso ...
+include "params.edp";
+include "Jac.edp";
+include "G.edp";
 
-//Newton's method prms
-int MAXiter = 20;
-real tol = 1e-3;
+Xh U, V, // U_n+1, V_n+1 and new sol at each time step
+   Uold, Vold, // U_k, V_k previuos iteration of Newton
+   incrU, incrV,
+   U0, V0; // U_n, V_n (previous time-step sol)
+Xh pert = eps * cos(2*pi *x)*cos(2*pi*y);
+real[int] tmp1(2*dimXh), tmp2(2*dimXh),  tmp3(2*dimXh);
 
-//Table1, set1
-real Lx = 50, Ly = 20; //dimension rectangular domain (micro m) */mu m
-real D1 = 0.1, D2 = 10; //diffusion constants, D1 << D2
-real k1 = 0.01; //activation of auxin
-real b = 0.01; //rate of production of inactive ROP
-real c = 0.1;
-real r = 0.01; //rate usage active ROPs
-real k2 = 0.1; //overall auxin level - needs to belong to the stable-stripe branch
-
-real s = (Lx/Ly)^2; //aspect ratio
-real epsi2 = D1/(Lx^2*(c+r));
-real D = D2/(Lx^2*k1);
-real tau = (c+r)/k1;
-real beta = r/k1;
-real gamma = (c+r)*k1^2/(k2*b^2);
-
-//auxin
-real nu = 1.5;
-func alpha = exp(-nu*x); //function of x and y eventually
-
-/// Mesh
-mesh Th = square(Nx, Ny, [x, y]);
-
-/// macros:  attention rescaled derivatives
-macro gradS(f) [dx(f) , sqrt(s)*dy(f)] //
-
-/// Finite element spaces
-fespace Xh(Th, P2); //a caso ...
-
-Xh U, V, // U_k+1, V_k+1 and new sol at each time step
-   U0, V0, // U_n, V_n (previous time step sol)
-   Uold, Vold, // U_k, V_k
-   incrU, incrV;
-int dimXh =Xh.ndof;
-
-/// Linearized problem: matrices and vectors
-varf au(u,phi) = int2d(Th) (u*phi / dt + epsi2 * gradS(u)'*gradS(phi) + u*phi)
-               + int2d(Th) (U0*phi / dt - 2*alpha * Uold * Uold * Vold * phi); //F1
-varf bu(v,phi) = int2d(Th) (-v*phi / (gamma*tau));
-varf cuu(u,phi) = int2d(Th) (-2*alpha* Uold * Vold * u * phi);
-varf cuv(v,phi) = int2d(Th) (-alpha* Uold * Uold * v * phi);
-
-varf av(v,phi) = int2d(Th) (v*phi / dt + D/tau * gradS(v)'*gradS(phi) + v*phi / tau)
-               + int2d(Th) (V0*phi / dt + phi / tau + 2*gamma*alpha * Uold*Uold*Vold * phi ); //F2
-varf bv(u,phi) = int2d(Th) (beta*gamma/tau * u*phi - gamma * u*phi);
-varf cvu(u,phi) = int2d(Th) (2*gamma*alpha* Uold * Vold * u * phi);
-varf cvv(v,phi) = int2d(Th) (gamma*alpha* Uold * Uold * v * phi);
-
-matrix Au = au(Xh,Xh);
-matrix Av = av(Xh,Xh);
-matrix Bu = bu(Xh,Xh);
-matrix Bv = bv(Xh,Xh);
-matrix Cuu, Cuv, Cvu, Cvv; // nedd to be updated at every Newton iteration
-real[int] rhs1(dimXh),
-          rhs2(dimXh); //need to be updated both at evry time step and Newton it
-matrix Ku, Kv,
-       SU, Sv;
-matrix A;
-real[int] F(2*dimXh);
-
-// set solver ... da qualche parte
-
+varf a(du,phi) = int2d(Th) (1/dt * du * phi);
+matrix A1 = a(Xh,Xh);
+matrix A = [[A1, 0],
+            [0, A1]];
 //step of the Newton method: from Uold,Vold (u_k,V_k) -> find U,V (U_k+1, V_k+1))
 func int step()
 {
-  // update its-dep matrices and vectors
-  Cuu = cuu(Xh,Xh);
-  Cuv = cuv(Xh,Xh);
-  Cvu = cvu(Xh,Xh);
-  Cvv = cvv(Xh,Xh);
-  rhs1 = au(0,Xh);
-  rhs2 = av(0,Xh);
-  Ku = Au + Cuu;
-  Kv = Av + Cvv;
-  Su = Bu + Cuv;
-  Sv = Bv + Cvu;
-//su questo dubbi: https://doc.freefem.org/references/types.html
-  A = [[Ku, Su],
-       [Sv, Kv]];
-  //set solver for matrices ... adesso provo tutto insieme, da migliorare
+  real[int] UU = [Uold[], Vold[]];
+  matrix Jac = Jac3(UU);
+
+  real[int] Rhs = G(UU);
+  tmp2 = [U0[], V0[]];
+  tmp2 = - tmp2;
+  tmp2 = tmp2 + UU;
+  tmp3 = A * tmp2;
+  Rhs = Rhs - tmp3;
+
+  A = A - Jac;
+  //set solver for matrices
   set(A, solver = UMFPACK);
+  tmp1 = A^-1 * Rhs; //tmp1 = [du, dv]
+  for(int ii = 0; ii < Xh.ndof; ii++)
+  {
+    U[][ii] += tmp1[ii];
+    V[][ii] += tmp1[ii + Xh.ndof];
+  }
 
-  F = [rh1,rh2];
-
-  [U, V] = A^-1 * F;
+  return 0;
 }
 
 //return error estimate: hyp. residual(normalized) with L2 norm
@@ -113,16 +65,52 @@ func real residual()
   real errV = int2d(Th) ((incrV)^2);
   real normU = int2d(Th) ((Uold)^2);
   real normV = int2d(Th) ((Vold)^2);
+  // potrebbero essere nulle
+  // cout << "#check norma U" << normU << endl;
+  // cout << "#check norma V" << normV << endl;
+  // cout << "#check norma U INF" << U0[].linfty << endl;
+  // cout << "#check norma V INF" << V0[].linfty << endl;
 
-  return sqrt(errU/normU) + sqrt(errV/normV);
+  return sqrt(errU/(normU+1e-12)) + sqrt(errV/(normV+1e-12));
 }
 
 //Initialization
-real t = 0.0;
-int iter;
-real err;
-U = 1./(gamma*beta);
-V = tau*beta*gamma/(tau + beta^2*gamma);
+if (ld) {
+  ifstream fU(path + "lastU.txt");
+  ifstream fV(path + "lastV.txt");
+
+  fU >> U[];
+  fV >> V[];
+
+  plot(U, fill = 1, value = 1, cmm = "Loaded Active ROPS", wait = 1);
+  plot(V, fill = 1, value = 1, cmm = "Loaded Inactive ROPS", wait = 1);
+}
+else
+{
+  U = u0;
+  V = v0;
+  // srandom(seed);
+  // // ranreal 1 generates a random number in [0,1]
+  //   for(int ii = 0; ii < Xh.ndof; ii++)
+  //   {
+  //     U[][ii] += randreal1();
+  //     V[][ii] += randreal1();
+  //   }
+  U[] += pert[];
+  V[] += pert[];
+}
+plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs perturbed", ps = "results/U" + iter + ".ps");
+plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs perturbed", ps = "results/V" + iter + ".ps");
+plot(U, dim = 3, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs perturbed");
+plot(V, dim = 3, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs perturbed");
+savevtk("results/U" + iter + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+savevtk("results/V" + iter + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+ofstream foutU("results/U" + iter + ".txt");
+ofstream foutV("results/V" + iter + ".txt");
+foutU << U[];
+foutV << V[];
+U0 = U;
+V0 = V;
 Uold = U;
 Vold = V;
 
@@ -130,8 +118,6 @@ Vold = V;
 while(t < Tmax)
 {
   t += dt;
-  U0 = U;
-  V0 = V;
 
   /// Newton loop
   err = tol + 1; // at least one iteration has to be performed
@@ -152,20 +138,28 @@ while(t < Tmax)
     /// update old solution
     Uold = U;
     Vold = V;
-
   }
   //exit or with tol reache or with maxits reached
   //Uold,Vold are equal to U,V new solution
   cout << "#time " << t << endl;
+  //update previous time-step sol.
+  U0 = U;
+  V0 = V;
 
-  plot(U, value =1, wait=1, cmm="Concentration of ACTIVE ROPs at time "+ t);
-  plot(V, value =1, wait=1, cmm="Concentration of INACTIVE ROPs at time "+ t);
+  if((it % OUTPUTit == 0.0))
+  {
+    plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U" + t + ".ps");
+    plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t, ps = "results/V" + t + ".ps");
+  	savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+  	savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+    // Output file for last results -> to be loaded in case of interuption
+    ofstream foutU("results/U" + t + ".txt");
+    ofstream foutV("results/V" + t + ".txt");
+    foutU << U[];
+    foutV << V[];
+    cout << "#time " << t << endl;
+  }
 }
-
-
-/// Postprocessing
-cout << "# nonlinear iter: " << iter << endl;
-cout << "# residual: " << err << endl;
 
 plot(U, value =1, wait=1, cmm="Concentration of ACTIVE ROPs");
 plot(V, value =1, wait=1, cmm="Concentration of INACTIVE ROPs");

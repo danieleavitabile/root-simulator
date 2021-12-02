@@ -1,0 +1,134 @@
+// (input): SET U = [U0, V0], dU = [du, dv] of norm 1 with
+//              Xh U0, V0, du, dv;
+// (output): return
+// Jac1, Jac2 -> J(U*)dU:   real[int] Jac
+// Jac3 -> Jacobian Matrix: matrix J(U*)
+
+
+//1: directly computes the vector
+func real[int] Jac1(real[int] & U, real[int] & dU)
+{
+  Xh U0,V0,du,dv;
+  for(int ii = 0; ii < Xh.ndof; ii++)
+  {
+    U0[][ii] = U[ii];
+    V0[][ii] = U[ii + Xh.ndof];
+    du[][ii] = dU[ii];
+    dv[][ii] = dU[ii + Xh.ndof];
+  }
+
+  // Jacobian
+  varf au(dummyu,phi) = int2d(Th) (-tildeD1 * gradS(du)'*gradS(phi) + tildea1 * du*phi);
+  varf bu(dummyv,phi) = int2d(Th) (tildeb1 * dv*phi);
+  varf cu(dummyu,phi) = int2d(Th) (2 * tildec1 * U0 * V0 * du * phi) +
+                         int2d(Th) (tildec1 * U0 * U0 * dv * phi);
+
+  varf av(dummyv,phi) = int2d(Th) (-tildeD2 * gradS(dv)'*gradS(phi) + tildea2 * dv*phi);
+  varf bv(dummyu,phi) = int2d(Th) (tildeb2 * du*phi);
+  varf cv(dummyu,phi) = int2d(Th) (2 * tildec2 * U0 * V0 * du * phi) +
+                        int2d(Th)  (tildec2 * U0 * U0 * dv * phi);
+
+  real[int] Au = au(0,Xh);
+  real[int] Av = av(0,Xh);
+  real[int] Bu = bu(0,Xh);
+  real[int] Bv = bv(0,Xh);
+  real[int] Cu = cu(0,Xh);
+  real[int] Cv = cv(0,Xh);
+
+  real[int] JacU = Au + Bu;
+  JacU = JacU + Cu;
+
+  real[int] JacV = Av + Bv;
+  JacV = JacV + Cv;
+  real[int] Jac = [JacU, JacV];
+
+  return Jac;
+}
+
+//2: return J(U*)dU computed as matrix * vector
+func real[int] Jac2(real[int] & U, real[int] & dU)
+{
+  Xh U0,V0;
+  for(int ii = 0; ii < Xh.ndof; ii++)
+  {
+    U0[][ii] = U[ii];
+    V0[][ii] = U[ii + Xh.ndof];
+  }
+
+  // Jacobian
+  varf au(du,phi) = int2d(Th) (-tildeD1 * gradS(du)'*gradS(phi) + tildea1 * du*phi);
+  varf bu(dv,phi) = int2d(Th) (tildeb1 * dv*phi);
+  varf cuu(du,phi) = int2d(Th) (2 * tildec1 * U0 * V0 * du * phi);
+  varf cuv(dv,phi) = int2d(Th) (tildec1 * U0 * U0 * dv * phi);
+
+  varf av(dv,phi) = int2d(Th) (-tildeD2 * gradS(dv)'*gradS(phi) + tildea2 * dv*phi);
+  varf bv(du,phi) = int2d(Th) (tildeb2 * du*phi);
+  varf cvu(du,phi) = int2d(Th) (2 * tildec2 * U0 * V0 * du * phi);
+  varf cvv(dv,phi) = int2d(Th)  (tildec2 * U0 * U0 * dv * phi);
+
+  matrix Au = au(Xh,Xh);
+  matrix Av = av(Xh,Xh);
+  matrix Bu = bu(Xh,Xh);
+  matrix Bv = bv(Xh,Xh);
+  matrix Cuu = cuu(Xh,Xh);
+  matrix Cuv = cuv(Xh,Xh);
+  matrix Cvu = cvu(Xh,Xh);
+  matrix Cvv = cvv(Xh,Xh);
+
+  matrix tmpu1, tmpu2, tmpv1, tmpv2;
+
+  tmpu1 = Au + Cuu;
+  tmpu2 = Bu + Cuv;
+  tmpv1 = Bv + Cvu;
+  tmpv2 = Av + Cvv;
+
+  matrix Jac = [[tmpu1, tmpu2],
+       [tmpv1, tmpv2]];
+
+  real[int] JacdU = Jac * dU;
+
+  return JacdU;
+}
+
+//3: computes only the Jacobian matrix: output matrix J(U*)
+func matrix Jac3(real[int] & U)
+{
+  Xh U0,V0;
+  for(int ii = 0; ii < Xh.ndof; ii++)
+  {
+    U0[][ii] = U[ii];
+    V0[][ii] = U[ii + Xh.ndof];
+  }
+
+  // Jacobian
+  varf au(du,phi) = int2d(Th) (-tildeD1 * gradS(du)'*gradS(phi) + tildea1 * du*phi);
+  varf bu(dv,phi) = int2d(Th) (tildeb1 * dv*phi);
+  varf cuu(du,phi) = int2d(Th) (2 * tildec1 * U0 * V0 * du * phi);
+  varf cuv(dv,phi) = int2d(Th) (tildec1 * U0 * U0 * dv * phi);
+
+  varf av(dv,phi) = int2d(Th) (-tildeD2 * gradS(dv)'*gradS(phi) + tildea2 * dv*phi);
+  varf bv(du,phi) = int2d(Th) (tildeb2 * du*phi);
+  varf cvu(du,phi) = int2d(Th) (2 * tildec2 * U0 * V0 * du * phi);
+  varf cvv(dv,phi) = int2d(Th)  (tildec2 * U0 * U0 * dv * phi);
+
+  matrix Au = au(Xh,Xh);
+  matrix Av = av(Xh,Xh);
+  matrix Bu = bu(Xh,Xh);
+  matrix Bv = bv(Xh,Xh);
+  matrix Cuu = cuu(Xh,Xh);
+  matrix Cuv = cuv(Xh,Xh);
+  matrix Cvu = cvu(Xh,Xh);
+  matrix Cvv = cvv(Xh,Xh);
+
+  matrix tmpu1, tmpu2, tmpv1, tmpv2;
+
+  tmpu1 = Au + Cuu;
+  tmpu2 = Bu + Cuv;
+  tmpv1 = Bv + Cvu;
+  tmpv2 = Av + Cvv;
+
+  matrix Jac = [[tmpu1, tmpu2],
+       [tmpv1, tmpv2]];
+
+  return Jac;
+}

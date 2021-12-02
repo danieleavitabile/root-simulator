@@ -1,4 +1,9 @@
-// Look for stationary solution of 1cell eq (1.1)
+// Look for stationary solution of 1cell eq (1.1)- explicit
+// Newton's method
+
+/// Parameters:
+string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
+include "PRM.edp";
 
 load "ffrandom";
 load "iovtk";
@@ -6,99 +11,38 @@ int[int] ffordervel = [1]; // to save images in .vtk format
 int seed = 10;
 int ld = 0;
 string path = "results/2021-10-20_10-56-37/";  // path of the previously computed U, V
-/// Parameters:
-int Nx = 60, Ny = 60; //number of nodes
-
-//Newton's method prms
-int MAXiter = 20;
-real tol = 1e-3, err;
-int iter = 0;
-
-//Table1, set1
-real Lx = 50, Ly = 20; //dimension rectangular domain (micro m) */mu m
-real D1 = 0.1, D2 = 10; //diffusion constants, D1 << D2 - D1 from Fig.4
-real k1 = 0.01; //activation of auxin
-real b = 0.01; //rate of production of inactive ROP
-real c = 0.1;
-real r = 0.01; //rate usage active ROPs
-real k2 = 0.1; //overall auxin level - from Fig.4
-
-real s = (Lx/Ly)^2; //aspect ratio
-real epsi2 = D1/(Lx^2*(c+r));
-real D = D2/(Lx^2*k1);
-real tau = (c+r)/k1;
-real beta = r/k1;
-real gamma = (c+r)*k1^2/(k2*b^2);
-
-//auxin
-real nu = 1.5;
-func alpha = exp(-nu*x); //function of x and y eventually
-
-//CHARACTERISTIC VARIABLES
-real u0 = 1./(gamma*beta);
-real v0 = tau*beta*gamma/(tau + beta^2*gamma);
-
-//ADIMENTIONALIZATION COEFFICIENTS
-real tildeD1 = epsi2;
-real tildeD2 = D / tau;
-real tildea1 = - 1.;
-real tildea2 = - 1. / tau;
-real tildeb1 = 1./(tau*gamma);
-real tildeb2 = gamma*(1. - beta/tau);
-func tildec1 = alpha;
-func tildec2 = - gamma*alpha;
-
-/// Mesh
-mesh Th = square(Nx, Ny, [x, y]);
-
-/// macros:  attention rescaled derivatives
-macro gradS(f) [dx(f) , sqrt(s)*dy(f)] //
-
-/// Finite element spaces
-fespace Xh(Th, P2);
 
 Xh U, V, // U_k+1, V_k+1
    U0, V0, // U_k, V_k
    incrU, incrV;
-int dimXh =Xh.ndof;
 
-// Jacobian
-varf au(du,phi) = int2d(Th) (-tildeD1 * gradS(du)'*gradS(phi) + tildea1 * du*phi);
-varf bu(dv,phi) = int2d(Th) (tildeb1 * dv*phi);
-varf cuu(du,phi) = int2d(Th) (2 * tildec1 * U0 * V0 * du * phi);
-varf cuv(dv,phi) = int2d(Th) (tildec1 * U0 * U0 * dv * phi);
+// Linearized problem: matrices and vectors
+varf au(u,phi) = int2d(Th) (-tildeD1 * gradS(u)'*gradS(phi) + tildea1 * u*phi);
+varf bu(v,phi) = int2d(Th) (tildeb1 * v*phi);
+varf cuu(u,phi) = int2d(Th) (2 * tildec1 * U0 * V0 * u * phi) +
+                  int2d(Th) (2 * tildec1 * U0 * V0 * U0 * phi); //rhs1
+varf cuv(v,phi) = int2d(Th) (tildec1 * U0 * U0 * v * phi);
 
-varf av(dv,phi) = int2d(Th) (-tildeD2 * gradS(dv)'*gradS(phi) + tildea2 * dv*phi);
-varf bv(du,phi) = int2d(Th) (tildeb2 * du*phi);
-varf cvu(du,phi) = int2d(Th) (2 * tildec2 * U0 * V0 * du * phi);
-varf cvv(dv,phi) = int2d(Th) (tildec2 * U0 * U0 * dv * phi);
+varf av(v,phi) = int2d(Th) (-tildeD2 * gradS(v)'*gradS(phi) + tildea2 * v*phi);
+varf bv(u,phi) = int2d(Th) (tildeb2 * u*phi);
+varf cvu(u,phi) = int2d(Th) (2 * tildec2 * U0 * V0 * u * phi) +
+                  int2d(Th) (2 * tildec2 * U0 * V0 * U0 * phi) - int2d(Th) (1/tau * phi); //rhs2
+varf cvv(v,phi) = int2d(Th) (tildec2 * U0 * U0 * v * phi);
 
 matrix Au = au(Xh,Xh);
 matrix Av = av(Xh,Xh);
 matrix Bu = bu(Xh,Xh);
 matrix Bv = bv(Xh,Xh);
-
-// G(U)
-varf gu(dummy,phi) = int2d(Th) (-tildeD1 * gradS(U0)'*gradS(phi) + tildea1 * U0*phi)
-                       + int2d(Th) (tildeb1 * V0*phi)
-                       + int2d(Th) (tildec1 * U0*U0*V0 *phi)
-                       ;
-
-varf gv(dummy,phi) = int2d(Th) (-tildeD2 * gradS(V0)'*gradS(phi) + tildea2 * V0*phi)
-                       + int2d(Th) (tildeb2 * U0*phi)
-                       + int2d(Th) (tildec2 * U0*U0* V0 * phi)
-                       ;
-
 matrix tmpu1, tmpu2, tmpv1, tmpv2;
 matrix Cuu, Cuv, Cvu, Cvv; // nedd to be updated at every Newton it
-real[int] Gu(dimXh),
-          Gv(dimXh),
+real[int] rhs1(dimXh),
+          rhs2(dimXh),
           tmp1(2*dimXh);
 
-matrix Jac;
-real[int] G(2*dimXh);
+matrix A;
+real[int] F(2*dimXh);
 
-//step of the Newton method: from U0,V0 (u_k,V_k) -> find U,V (U_k+1, V_k+1))
+//step of the Newton method: from Uold,Vold (u_k,V_k) -> find U,V (U_k+1, V_k+1))
 func int step()
 {
   // update time-dep matrices and vectors
@@ -106,27 +50,25 @@ func int step()
   Cuv = cuv(Xh,Xh);
   Cvu = cvu(Xh,Xh);
   Cvv = cvv(Xh,Xh);
-  Gu = gu(0,Xh);
-  Gv = gv(0,Xh);
-  Gu = -Gu;
-  Gv = -Gv;
+  rhs1 = cuu(0,Xh);
+  rhs2 = cvu(0,Xh);
 
   tmpu1 = Au + Cuu;
   tmpu2 = Bu + Cuv;
   tmpv1 = Bv + Cvu;
   tmpv2 = Av + Cvv;
-  Jac = [[tmpu1, tmpu2],
+  A = [[tmpu1, tmpu2],
        [tmpv1, tmpv2]];
   //set solver for matrices
-  set(Jac, solver = UMFPACK);
-  G = [Gu,Gv];
+  set(A, solver = UMFPACK);
+  F = [rhs1,rhs2];
 
   //try2
-  tmp1 = Jac^-1 * G; //tmp1 = [du, dv]
+  tmp1 = A^-1 * F;
   for(int ii = 0; ii < Xh.ndof; ii++)
   {
-    U[][ii] += tmp1[ii];
-    V[][ii] += tmp1[ii + Xh.ndof];
+    U[][ii] = tmp1[ii];
+    V[][ii] = tmp1[ii + Xh.ndof];
   }
 
   return 0;
@@ -147,8 +89,16 @@ func real residual()
   real errV = int2d(Th) ((incrV)^2);
   real normU = int2d(Th) ((U0)^2);
   real normV = int2d(Th) ((V0)^2);
+  // potrebbero essere nulle
+  cout << "#check norma U" << normU << endl;
+  cout << "#check norma V" << normV << endl;
+  cout << "#check norma U INF" << U0[].linfty << endl;
+  cout << "#check norma V INF" << V0[].linfty << endl;
 
-  return sqrt(errU/normU) + sqrt(errV/normV);
+  cout << "#check norma incrU INF " << incrU[].linfty << endl;
+  cout << "#check norma incrV INF " << incrV[].linfty << endl;
+
+  return sqrt(errU/(normU+1e-12)) + sqrt(errV/(normV+1e-12));
 }
 
 //Initialization: eh qua parte critica
@@ -166,25 +116,32 @@ else
 {
   U = u0;
   V = v0;
-  srandom(seed);
-  // ranreal 1 generates a random number in [0,1]
-    for(int ii = 0; ii < Xh.ndof; ii++)
-    {
-      U[][ii] += randreal1();
-      V[][ii] += randreal1();
-    }
+  // srandom(seed);
+  // // ranreal 1 generates a random number in [0,1]
+  //   for(int ii = 0; ii < Xh.ndof; ii++)
+  //   {
+  //     U[][ii] += randreal1();
+  //     V[][ii] += randreal1();
+  //   }
+
+  U[] += pert[];
+  V[] += pert[];
 }
 
 plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs perturbed", ps = "results/U" + iter + ".ps");
 plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs perturbed", ps = "results/V" + iter + ".ps");
 savevtk("results/U" + iter + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
 savevtk("results/V" + iter + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+ofstream foutU("results/U" + iter + ".txt");
+ofstream foutV("results/V" + iter + ".txt");
+foutU << U[];
+foutV << V[];
 U0 = U;
 V0 = V;
 
 /// Main: Newton loop
 err = tol + 1; // at least one iteration has to be performed
-for(iter = 1; iter < MAXiter && err > tol; ++iter)
+for(iter = 1; iter < MAXiter /*&& err > tol*/; ++iter)
 {
   //perform an iteration of the linerized solver
   int errc = step(); // -> find U,V

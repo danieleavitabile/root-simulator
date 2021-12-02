@@ -1,0 +1,169 @@
+/// Parameters:
+int Nx, Ny;
+real Lx, Ly, D1, D2,k1,b,c,r,k2,s,
+     epsi2,D,tau,beta,gamma,nu,
+     u0, v0,
+     tildeD1, tildeD2, tildea1, tildea2, tildeb1, tildeb2, f2;
+
+if(prm == "Set 1")
+{
+  //Table1, set1
+  Nx = 60;
+  Ny = 60; //number of nodes
+
+  Lx = 50; Ly = 20; //dimension rectangular domain (micro m) */mu m
+  D1 = 0.1; D2 = 10; //diffusion constants, D1 << D2 - D1 from Fig.4
+  k1 = 0.01; //activation of auxin
+  b = 0.01; //rate of production of inactive ROP
+  c = 0.1;
+  r = 0.01; //rate usage active ROPs
+  k2 = 0.1; //overall auxin level - from Fig.4
+  s = (Lx/Ly)^2; //aspect ratio 6.25
+
+  //Scaled prms
+  epsi2 = D1/(Lx^2*(c+r));
+  D = D2/(Lx^2*k1);
+  tau = (c+r)/k1;
+  beta = r/k1;
+  gamma = (c+r)*k1^2/(k2*b^2);
+
+  //auxin
+  nu = 1.5;
+
+  //stationary point or initialization
+  u0 = 1./(gamma*beta); //0.9
+  v0 = tau*beta*gamma/(tau + beta^2*gamma); //1
+  // real uu0 =1./(gamma*beta);
+  // real vv0 = tau*beta*gamma/(tau + beta^2*gamma);
+  // func u0 = uu0* exp(-10*x);
+  // func v0 = vv0 * exp(-10*x);
+
+  //F coefficients: PAPER
+  tildeD1 = epsi2;
+  tildeD2 = D / tau;
+  tildea1 = - 1;
+  tildea2 = - 1/ tau;
+  tildeb1 = 1/(gamma*tau);
+  tildeb2 = gamma*(1 - beta/tau);
+
+  f2 = 1/tau;
+}
+else if(prm == "V1 matlab")
+{
+  Nx = 100; Ny = 50; //number of nodes
+
+  Lx = 2; Ly = 1; //dimension rectangular domain (micro m) */mu m
+  D1 = 0.1; D2 = 10; //diffusion constants, D1 << D2 - D1 from Fig.4
+  k1 = 0.01; //activation of auxin
+  b = 0.01; //rate of production of inactive ROP
+  c = 0.1;
+  r = 0.01; //rate usage active ROPs
+  k2 = 0.1; //overall auxin level - from Fig.4
+  s = 1; //so that gradS not scaled
+
+  //Scaled prms
+  epsi2 = D1/(Lx^2*(c+r));
+  D = D2/(Lx^2*k1);
+  tau = (c+r)/k1;
+  beta = r/k1;
+  gamma = (c+r)*k1^2/(k2*b^2);
+
+  //auxin
+  nu = 1.5;
+
+  //stationary point or initialization
+  u0 = b/r;
+  v0 = (b*r*(c+r)) / (k1*r^2 + k2*b^2);
+
+  //F coefficients: MATLAB-Version1,2
+  tildeD1 = D1;
+  tildeD2 = D2;
+  tildea1 = -(c+r);
+  tildea2 = -k1;
+  tildeb1 = k1;
+  tildeb2 = c;
+
+  f2 = b;
+}
+else if(prm == "V2 matlab")
+{
+  Nx = 100; Ny = 30; //number of nodes
+
+  //MATLAB set version 2 - Table set 3?
+  s = 5.5;
+  Lx = 70; Ly = Lx/sqrt(s); //dimension rectangular domain (micro m) */mu m
+  D1 = 0.075; D2 = 20; //diffusion constants, D1 << D2 - D1
+  k1 = 0.008; //activation of auxin
+  b = 0.008; //rate of production of inactive ROP
+  c = 0.1;
+  r = 0.05; //rate usage active ROPs
+  k2 = 0.5; //overall auxin level, in matlab cambia
+
+  //auxin
+  nu = 1.5;
+
+  //Scaled prms
+  epsi2 = D1/(Lx^2*(c+r));
+  D = D2/(Lx^2*k1);
+  tau = (c+r)/k1;
+  beta = r/k1;
+  gamma = (c+r)*k1^2/(k2*b^2);
+
+  //stationary point or initialization
+  u0 = 0.9;
+  v0 = 1;
+
+  //F coefficients: MATLAB-Version1,2
+  tildeD1 = D1;
+  tildeD2 = D2;
+  tildea1 = -(c+r);
+  tildea2 = -k1;
+  tildeb1 = k1;
+  tildeb2 = c;
+
+  f2 = b;
+}
+
+cout << "u0: " << u0 << endl;
+cout << "v0: " << v0 << endl;
+
+/// Macros:  attention rescaled derivatives
+macro gradS(f) [dx(f) , sqrt(s)*dy(f)]
+
+/// Mesh
+// mesh Th = square(Nx, Ny, [x, y]); // set 1 paper
+mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); // v1,v2 matlab
+
+//auxin
+func alpha1 = exp(-nu*x); //set1
+func alpha2 = k2* exp(-nu*x/Lx)*sin(pi*y/Ly); //v1
+func alpha3 = k2* exp(-nu*x/Lx); //v2
+func alpha = alpha3; //change ...
+
+// PAPER
+// func tildec1 = alpha;
+// func tildec2 = - gamma*alpha;
+// MATLAB
+func tildec1 = alpha;
+func tildec2 = -alpha;
+
+/// Finite element spaces
+fespace Xh(Th, P1);
+int dimXh =Xh.ndof;
+
+// perturbation staff
+real eps = 0;
+Xh pert = eps * cos(2*pi*x)* cos(2*pi*y);
+
+// TIME dep interations prm
+real t = 0; //to be change if ld true
+real dt = 0.5; // dal paper
+real Tmax = 2; // dal paper 50000
+int OUTPUTit = 2 ; //save img every OUTPUTit
+int it = 0 * 1000;
+int tload = 0; //to be change if ld tru
+
+//NEWTON's method prms
+int MAXiter =200;
+real tol = 1e-12, err;
+int iter = 0;

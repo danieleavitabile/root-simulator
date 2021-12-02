@@ -1,0 +1,27 @@
+// Compute G(U)
+// (input) real[int] U: vector corresponding to [u,v], Xh u,v;
+// (output) real[int] Gu :G(U) vector corresponding to [Gu, Gv];
+func real[int] G(real[int] &U){
+  Xh u,v;
+  for(int ii = 0; ii < Xh.ndof; ii++)
+  {
+    u[][ii] = U[ii];
+    v[][ii] = U[ii + Xh.ndof];
+  }
+  varf gu(dummyu,phi) = int2d(Th) (-tildeD1 * gradS(u)'*gradS(phi) + tildea1 * u*phi)
+                         + int2d(Th) (tildeb1 * v*phi)
+                         + int2d(Th) (tildec1 * u*u*v *phi)
+                         ;
+
+  varf gv(dummyv,phi) = int2d(Th) (-tildeD2 * gradS(v)'*gradS(phi) + tildea2 * v*phi)
+                         + int2d(Th) (tildeb2 * u*phi)
+                         + int2d(Th) (tildec2 * u*u* v * phi)
+                         + int2d(Th) (f2 * phi)
+                         ;
+
+  real[int] Gu = gu(0,Xh);
+  real[int] Gv = gv(0,Xh);
+  real[int] G = [Gu, Gv];
+
+  return G;
+}

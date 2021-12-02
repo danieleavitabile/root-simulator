@@ -1,0 +1,164 @@
+// 1 cell solver, simulator:
+// SEMI-IMPLICIT:IMPLICIT in TIME, EXPLICIT in the NL term
+// solve eq.from MATLAB
+
+load "ffrandom";
+load "iovtk";
+int[int] ffordervel = [1]; // to save images in .vtk format
+int seed = 10;
+int ld = 0;
+string path = "results/";  // path of the previously computed U, V
+
+/// Parameters:
+string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
+include "PRM.edp";
+// include "params.edp"
+
+Xh U, V, // U_n+1, V_n+1 and new sol at each time step
+   U0, V0; // U_n, V_n (previous time step sol)
+
+//F MATLAB - version 1,2 
+varf au(u,phi) = int2d(Th) (u*phi / dt + D1 * gradS(u)'*gradS(phi) + (c+r)* u*phi)
+               + int2d(Th) (U0*phi / dt); //F1
+varf bu(v,phi) = int2d(Th) (- k1  * v*phi);
+varf cu(v,phi) = int2d(Th) (- alpha * U0 * U0 * v * phi);
+
+varf av(v,phi) = int2d(Th) (v*phi / dt + D2 * gradS(v)'*gradS(phi) + k1 * v*phi)
+               + int2d(Th) (V0*phi / dt + phi *b); //F2
+varf bv(u,phi) = int2d(Th) (-c * u*phi);
+varf cv(v,phi) = int2d(Th) (+ alpha * U0 * U0 * v * phi);
+
+matrix Au = au(Xh,Xh);
+matrix Av = av(Xh,Xh);
+matrix Bu = bu(Xh,Xh);
+matrix Bv = bv(Xh,Xh);
+matrix tmpu, tmpv;
+matrix Cu, Cv; // nedd to be updated at every time step
+real[int] rhs1(dimXh),
+          rhs2(dimXh),
+          tmp1(2*dimXh); //need to be updated both at evry time step
+
+matrix A;
+real[int] F(2*dimXh);
+
+func int step()
+{
+  // update time-dep matrices and vectors
+  Cu = cu(Xh,Xh);
+  Cv = cv(Xh,Xh);
+  rhs1 = au(0,Xh);
+  rhs2 = av(0,Xh);
+
+  tmpu = Bu+Cu;
+  tmpv = Av+Cv;
+  A = [[Au, tmpu],
+       [Bv, tmpv]];
+  //set solver for matrices
+  set(A, solver = UMFPACK);
+
+  F = [rhs1,rhs2];
+
+  //try2
+  tmp1 = A^-1 * F;
+  for(int ii = 0; ii < Xh.ndof; ii++)
+  {
+    U[][ii] = tmp1[ii];
+    V[][ii] = tmp1[ii + Xh.ndof];
+  }
+
+  return 0;
+}
+
+//Initialization: random perturbation or prev res
+if (ld) {
+  ifstream fU(path + "U" + tload + ".txt");
+  ifstream fV(path + "V" + tload + ".txt");
+
+  fU >> U[];
+  fV >> V[];
+
+  plot(U, fill = 1, value = 1, cmm = "Loaded Active ROPS"/*, wait = 1*/);
+  plot(V, fill = 1, value = 1, cmm = "Loaded Inactive ROPS"/*, wait = 1*/);
+}
+else
+{
+  U = u0;
+  V = v0;
+  // srandom(seed);
+  // // ranreal 1 generates a random number in [0,1]
+  //   for(int ii = 0; ii < Xh.ndof; ii++)
+  //   {
+  //     U[][ii] += randreal1() / 3e5;
+  //     V[][ii] += randreal1() / 3e5;
+  //   }
+  U[] += pert[];
+  V[] += pert[];
+}
+
+plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t + "perturbed", ps = "results/U" + t + ".ps");
+plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t + "perturbed", ps = "results/V" + t + ".ps");
+savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+ofstream foutU("results/U" + t + ".txt");
+ofstream foutV("results/V" + t + ".txt");
+foutU << U[];
+foutV << V[];
+U0 = U;
+V0 = V;
+
+/// Main
+while(t < Tmax)
+{
+  t += dt;
+  it ++;
+
+  // perform an iteration of the linerized solver
+  int errc = step(); // -> find U,V
+  if (errc != 0)
+  {
+    cout << "ERROR" << endl;
+    break;
+  }
+
+  // update old solution
+  U0 = U;
+  V0 = V;
+
+  if((it % OUTPUTit == 0.0))
+  {
+    plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U" + t + ".ps");
+    plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t, ps = "results/V" + t + ".ps");
+  	savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+  	savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+    // Output file for last results -> to be loaded in case of interuption
+    ofstream foutU("results/U" + t + ".txt");
+    ofstream foutV("results/V" + t + ".txt");
+    foutU << U[];
+    foutV << V[];
+    cout << "#time " << t << endl;
+  }
+  // else if ((t<100 & it%10==0))
+  // {
+  //   plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U" + t + ".ps");
+  //   plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t, ps = "results/V" + t + ".ps");
+  //   savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+  //   savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+  //
+  //   // Output file for last results -> to be loaded in case of interuption
+  //   ofstream foutU("results/U" + t + ".txt");
+  //   ofstream foutV("results/V" + t + ".txt");
+  //   foutU << U[];
+  //   foutV << V[];
+  //   cout << "#time " << t << endl;
+  // }
+  // if(it % 1000 == 0.0)
+  // {
+  //   plot(U, dim = 3, value =1, fill =1, wait=1, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U3d" + t + ".ps");
+  //   plot(V, dim = 3, value =1, fill =1, wait=1, cmm="Concentration of INACTIVE ROPs at time "+ t, ps = "results/V3d" + t + ".ps");
+  // }
+
+}
+
+/// Postprocessing
+plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs");
+plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs");
