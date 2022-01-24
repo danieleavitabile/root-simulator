@@ -132,36 +132,35 @@ macro gradS(f) [dx(f) , sqrt(s)*dy(f)]
 
 /// Mesh
 // mesh Th = square(Nx, Ny, [x, y]); // set 1 paper
-mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); // v1,v2 matlab
+// mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); // v1,v2 matlab
 
 //auxin
 func alpha1 = exp(-nu*x); //set1
 func alpha2 = k2* exp(-nu*x/Lx)*sin(pi*y/Ly); //v1
 func alpha3 = k2* exp(-nu*x/Lx); //v2
+func alpha4 = exp(-nu*x/Lx); //paper intra1_R alpha
+func alpha5 = k2* exp(-nu*(x-70)/Lx) * (x>=70) + k2* exp(nu*(x-70)/Lx) * (x<70); // for opposite gradient
 func alpha = alpha3; //change ...
+
+real t = 0.0;
+
+//alpha time dep.
+// real period = 100;
+// func alpha = 2 * alpha3 * sin(2*pi*t/period);
 
 // PAPER
 // func tildec1 = alpha;
 // func tildec2 = - gamma*alpha;
 // MATLAB
 func tildec1 = alpha;
-func tildec2 = -alpha;
-
-/// Finite element spaces
-fespace Xh(Th, P1);
-int dimXh =Xh.ndof;
-
-// perturbation staff
-real eps = 0;
-Xh pert = eps * cos(2*pi*x)* cos(2*pi*y);
+func tildec2 = - alpha;
 
 // TIME dep interations prm
-real t = 0; //to be change if ld true
 real dt = 0.5; // dal paper
-real Tmax = 2; // dal paper 50000
-int OUTPUTit = 2 ; //save img every OUTPUTit
+real Tmax = 1000;
+int OUTPUTit = 2; //save img every OUTPUTit
 int it = 0 * 1000;
-int tload = 0; //to be change if ld tru
+int tload = 499; //to be change if ld tru
 
 //NEWTON's method prms
 int MAXiter =200;

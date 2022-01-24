@@ -1,0 +1,51 @@
+//F MATLAB - version 1,2
+varf au(u,phi) = int2d(Th) (u*phi / dt + tildeD1 * gradS(u)'*gradS(phi) - tildea1 * u*phi)
+               + int2d(Th) (U0*phi / dt); //F1
+varf bu(v,phi) = int2d(Th) (- tildeb1  * v*phi);
+varf cu(v,phi) = int2d(Th) (- tildec1 * U0 * U0 * v * phi);
+
+varf av(v,phi) = int2d(Th) (v*phi / dt + tildeD2 * gradS(v)'*gradS(phi) - tildea2 * v*phi)
+               + int2d(Th) (V0*phi / dt + phi * f2); //F2
+varf bv(u,phi) = int2d(Th) (- tildeb2 * u*phi);
+varf cv(v,phi) = int2d(Th) (- tildec2 * U0 * U0 * v * phi);
+
+matrix Au = au(Xh,Xh);
+matrix Av = av(Xh,Xh);
+matrix Bu = bu(Xh,Xh);
+matrix Bv = bv(Xh,Xh);
+matrix tmpu, tmpv;
+matrix Cu, Cv; // nedd to be updated at every time step
+real[int] rhs1(dimXh),
+          rhs2(dimXh),
+          tmp1(2*dimXh); //need to be updated both at evry time step
+
+matrix A;
+real[int] F(2*dimXh);
+
+func int step()
+{
+  // update time-dep matrices and vectors
+  Cu = cu(Xh,Xh);
+  Cv = cv(Xh,Xh);
+  rhs1 = au(0,Xh);
+  rhs2 = av(0,Xh);
+
+  tmpu = Bu+Cu;
+  tmpv = Av+Cv;
+  A = [[Au, tmpu],
+       [Bv, tmpv]];
+  //set solver for matrices
+  set(A, solver = UMFPACK);
+
+  F = [rhs1,rhs2];
+
+  //try2
+  tmp1 = A^-1 * F;
+  for(int ii = 0; ii < Xh.ndof; ii++)
+  {
+    U[][ii] = tmp1[ii];
+    V[][ii] = tmp1[ii + Xh.ndof];
+  }
+
+  return 0;
+}
