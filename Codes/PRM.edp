@@ -91,7 +91,7 @@ else if(prm == "V2 matlab")
 
   //MATLAB set version 2 - Table set 3?
   s = 5.5;
-  Lx = 70; Ly = Lx/sqrt(s); //dimension rectangular domain (micro m) */mu m
+  Lx = 70.; Ly = Lx/sqrt(s); //dimension rectangular domain (micro m) */mu m
   D1 = 0.075; D2 = 20; //diffusion constants, D1 << D2 - D1
   k1 = 0.008; //activation of auxin
   b = 0.008; //rate of production of inactive ROP
@@ -128,36 +128,48 @@ cout << "u0: " << u0 << endl;
 cout << "v0: " << v0 << endl;
 
 /// Macros:  attention rescaled derivatives
-macro gradS(f) [dx(f) , sqrt(s)*dy(f)]
-
-/// Mesh
-// mesh Th = square(Nx, Ny, [x, y]); // set 1 paper
-// mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); // v1,v2 matlab
-
-//auxin
-func alpha1 = exp(-nu*x); //set1
-func alpha2 = k2* exp(-nu*x/Lx)*sin(pi*y/Ly); //v1
-func alpha3 = k2* exp(-nu*x/Lx); //v2
-func alpha4 = exp(-nu*x/Lx); //paper intra1_R alpha
-func alpha5 = k2* exp(-nu*(x-70)/Lx) * (x>=70) + k2* exp(nu*(x-70)/Lx) * (x<70); // for opposite gradient
-func alpha = alpha3; //change ...
+macro gradS(f) [dx(f) , sqrt(s)*dy(f)] //
 
 real t = 0.0;
+real Tmax = 100;
 
-//alpha time dep.
-// real period = 100;
-// func alpha = 2 * alpha3 * sin(2*pi*t/period);
+//auxin
+if(standalone)
+{
+  func alpha1 = exp(-nu*x); //set1
+  func alpha2 = k2* exp(-nu*x/Lx)*sin(pi*y/Ly); //v1
+  func alpha3 = k2* exp(-nu*x/Lx); //v2
+  func alpha4 = exp(-nu*x/Lx); //paper intra1_R alpha
+  func alpha5 = k2* exp(-nu*(x-70)/Lx) * (x>=70) + k2* exp(nu*(x-70)/Lx) * (x<70); // for opposite gradient
+  // func alpha = alpha3; //change ...
+  //alpha time dep.
+  // real period = 100;
+  // func alpha = alpha3 * sin(2*pi*t/period) + k2;
+  func x0 = 2*Lx/Tmax * t;
+  func alpha = k2* exp(-nu*(x-x0)/Lx) * (x>=x0) + k2* exp(nu*(x-x0)/Lx) * (x<x0);
 
-// PAPER
-// func tildec1 = alpha;
-// func tildec2 = - gamma*alpha;
-// MATLAB
-func tildec1 = alpha;
-func tildec2 = - alpha;
+  // PAPER
+  // func tildec1 = alpha;
+  // func tildec2 = - gamma*alpha;
+  // MATLAB
+  func tildec1 = alpha;
+  func tildec2 = - alpha;
+}
+// else // non funziona ... è necessario includere diretttamente il file edp in 2cell_auxina.edp
+// {
+//   include "PRMauxina.edp";
+//   // sarà poi un pb capire come gestire alpha e quindi i tildec vari dopo se con ROPS
+//
+//   // PAPER
+//   // func tildec1 = alpha;
+//   // func tildec2 = - gamma*alpha;
+//   // MATLAB
+//   // func tildec1 = alpha;
+//   // func tildec2 = - alpha;
+// }
 
 // TIME dep interations prm
-real dt = 0.5; // dal paper
-real Tmax = 1000;
+real dt = 0.001; // dal paper
 int OUTPUTit = 2; //save img every OUTPUTit
 int it = 0 * 1000;
 int tload = 499; //to be change if ld tru
