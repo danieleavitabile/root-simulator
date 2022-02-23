@@ -150,7 +150,7 @@ while(t < Tmax)
     // save imgs in .vtk format
     savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
   	savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
-    // Output file for last results -> to be loaded in case of interuption
+    // Output file for last results -> to be loaded in case of interruption
     ofstream foutU("results/U" + t + ".txt");
     ofstream foutV("results/V" + t + ".txt");
     foutU << U[];
@@ -158,6 +158,6 @@ while(t < Tmax)
     cout << "#time " << t << endl;
   }
 }
-
+/// Postprocessing
 plot(U, value =1, wait=1, cmm="Concentration of ACTIVE ROPs");
 plot(V, value =1, wait=1, cmm="Concentration of INACTIVE ROPs");

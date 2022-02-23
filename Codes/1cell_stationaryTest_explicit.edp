@@ -1,5 +1,6 @@
-// Look for stationary solution of 1cell eq (1.1)- explicit
+// Look for stationary solution of 1cell
 // Newton's method
+// assembling system explicitly from wf
 
 /// Parameters:
 string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
@@ -9,8 +10,9 @@ load "ffrandom";
 load "iovtk";
 int[int] ffordervel = [1]; // to save images in .vtk format
 int seed = 10;
-int ld = 0;
-string path = "results/2021-10-20_10-56-37/";  // path of the previously computed U, V
+int ld = 0; // 1: load prev. sol. as initial state
+            // 0: use custom initial state
+string path = "results/";  // path of the previously computed U, V
 
 Xh U, V, // U_k+1, V_k+1
    U0, V0, // U_k, V_k
@@ -63,7 +65,6 @@ func int step()
   set(A, solver = UMFPACK);
   F = [rhs1,rhs2];
 
-  //try2
   tmp1 = A^-1 * F;
   for(int ii = 0; ii < Xh.ndof; ii++)
   {
@@ -74,7 +75,7 @@ func int step()
   return 0;
 }
 
-//return error estimate: hyp. residual(normalized) with L2 norm
+//return residual estimate: (normalized) with L2 norm
 func real residual()
 {
   // compute the increment between (U,V) and (U0,V0)
@@ -84,24 +85,15 @@ func real residual()
   incrV[] = V[];
   incrV[] -= V0[];
 
-  //calcolo residuo normalizzato con norma L2
   real errU = int2d(Th) ((incrU)^2);
   real errV = int2d(Th) ((incrV)^2);
   real normU = int2d(Th) ((U0)^2);
   real normV = int2d(Th) ((V0)^2);
-  // potrebbero essere nulle
-  cout << "#check norma U" << normU << endl;
-  cout << "#check norma V" << normV << endl;
-  cout << "#check norma U INF" << U0[].linfty << endl;
-  cout << "#check norma V INF" << V0[].linfty << endl;
-
-  cout << "#check norma incrU INF " << incrU[].linfty << endl;
-  cout << "#check norma incrV INF " << incrV[].linfty << endl;
 
   return sqrt(errU/(normU+1e-12)) + sqrt(errV/(normV+1e-12));
 }
 
-//Initialization: eh qua parte critica
+//Initialization:
 if (ld) {
   ifstream fU(path + "lastU.txt");
   ifstream fV(path + "lastV.txt");
@@ -116,6 +108,8 @@ else
 {
   U = u0;
   V = v0;
+  U[] += pert[];
+  V[] += pert[];
   // srandom(seed);
   // // ranreal 1 generates a random number in [0,1]
   //   for(int ii = 0; ii < Xh.ndof; ii++)
@@ -123,9 +117,6 @@ else
   //     U[][ii] += randreal1();
   //     V[][ii] += randreal1();
   //   }
-
-  U[] += pert[];
-  V[] += pert[];
 }
 
 plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs perturbed", ps = "results/U" + iter + ".ps");
@@ -151,7 +142,7 @@ for(iter = 1; iter < MAXiter /*&& err > tol*/; ++iter)
     break;
   }
 
-  //update err for the stp criterion
+  //update err for the stopping criterion
   err = residual(); //-> compute the residual between U,V and U0, V0
   cout << "#err: " << err << endl;
 
@@ -164,7 +155,7 @@ for(iter = 1; iter < MAXiter /*&& err > tol*/; ++iter)
   savevtk("results/U" + iter + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
   savevtk("results/V" + iter + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
 
-  // Output file for last results -> to be loaded in case of interuption
+  // Output file for last results -> to be loaded in case of interruption
   ofstream foutU("results/U" + iter + ".txt");
   ofstream foutV("results/V" + iter + ".txt");
   foutU << U[];
@@ -179,3 +170,5 @@ cout << "# residual: " << err << endl;
 
 plot(U, value =1, fill =1, wait=1, cmm="Concentration of ACTIVE ROPs");
 plot(V, value =1, fill =1, wait=1, cmm="Concentration of INACTIVE ROPs");
+plot(U, dim = 3, value =1, fill =1, wait=1, cmm="Concentration of ACTIVE ROPs");
+plot(V, dim = 3, value =1, fill =1, wait=1, cmm="Concentration of INACTIVE ROPs");

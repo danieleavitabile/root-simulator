@@ -1,7 +1,7 @@
-// 1 cell solver, simulator: solve eq.(1) paper intra2, SEMI-IMPLICIT:IMPLICIT in TIME, EXPLICIT in the NL term
-// still having problems reinstalling freefem, sorry havn't tried it yet
+// 1 cell solver
+// SEMI-IMPLICIT:IMPLICIT in TIME, EXPLICIT in the NL term
 
-//MAI USATO, FORSE INTUILE vd. sect 1.2.2
+//MAI USATO, FORSE INTUILE
 
 load "ffrandom";
 load "iovtk";
