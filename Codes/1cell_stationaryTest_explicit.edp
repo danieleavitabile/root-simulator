@@ -4,7 +4,6 @@
 
 /// Parameters:
 string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
-bool standalone = true;
 include "PRM.edp";
 
 load "ffrandom";

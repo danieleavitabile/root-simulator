@@ -1,0 +1,225 @@
+-- FreeFem++ v4.9 (Mon Oct  4 22:12:06 CEST 2021 - git v4.9)
+ Load: lg_fem lg_mesh lg_mesh3 eigenvalue 
+    1 : // 1 cell solver
+    2 : // SEMI-IMPLICIT: Implicit in Time + diffusion, explicit in the reaction term
+    3 : 
+    4 : load "ffrandom";
+    5 : load "iovtk" load: iovtk 
+;
+    6 : int[int] ffordervel = [1]; // to save images in .vtk format
+    7 : int seed = 10;
+    8 : int ld = 0; // 1: load prev. sol. as initial state
+    9 :             // 0: use custom initial state
+   10 : string path = "results/stationaryNEW";  // path of the previously computed U, V
+   11 : 
+   12 : /// Parameters:
+   13 : string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
+   14 : bool standalone = true;
+   15 : include "PRM.edp"/// Parameters:
+    2 : // ROPs dynamics prms
+    3 : int Nx, Ny; //number of nodes
+    4 : real Lx, Ly, //dimension 2D domain [micro m]
+    5 :      D1, D2, //diffusion constants, D1 << D2 [micro m /s^2]
+    6 :      k1, //activation rate of auxin [1/s]
+    7 :      k2, // k20 actually, overall auxin level [con^2/s]
+    8 :      b, //rate of production of inactive ROP [con/s]
+    9 :      c,r, //rate usage active ROPs [1/s]
+   10 :      s, //aspect ratio
+   11 :      epsi2,D,tau,beta,gamma,nu, //Rescaled prms
+   12 :      u0, v0, //initial states
+   13 :      tildeD1, tildeD2, tildea1, tildea2, tildeb1, tildeb2, f2; // synthetic coefficients
+   14 : 
+   15 : real eps = 0; // pertubation of initial state
+   16 : 
+   17 : if(prm == "Set 1")
+   18 : {
+   19 :   //Table1, set1 from ref.[10]
+   20 :   Nx = 60;
+   21 :   Ny = 60;
+   22 : 
+   23 :   Lx = 50; Ly = 20;
+   24 :   D1 = 0.1; D2 = 10;
+   25 :   k1 = 0.01;
+   26 :   b = 0.01;
+   27 :   c = 0.1;
+   28 :   r = 0.01;
+   29 :   k2 = 0.1;
+   30 :   s = (Lx/Ly)^2;
+   31 : 
+   32 :   //Rescaled prms
+   33 :   epsi2 = D1/(Lx^2*(c+r));
+   34 :   D = D2/(Lx^2*k1);
+   35 :   tau = (c+r)/k1;
+   36 :   beta = r/k1;
+   37 :   gamma = (c+r)*k1^2/(k2*b^2);
+   38 : 
+   39 :   //prm for auxin
+   40 :   nu = 1.5;
+   41 : 
+   42 :   //stationary point or initialization
+   43 :   u0 = 1./(gamma*beta);
+   44 :   v0 = tau*beta*gamma/(tau + beta^2*gamma);
+   45 :   // real uu0 =1./(gamma*beta);
+   46 :   // real vv0 = tau*beta*gamma/(tau + beta^2*gamma);
+   47 :   // func u0 = uu0* exp(-10*x);
+   48 :   // func v0 = vv0 * exp(-10*x);
+   49 : 
+   50 :   //F coefficients:
+   51 :   tildeD1 = epsi2;
+   52 :   tildeD2 = D / tau;
+   53 :   tildea1 = - 1;
+   54 :   tildea2 = - 1/ tau;
+   55 :   tildeb1 = 1/(gamma*tau);
+   56 :   tildeb2 = gamma*(1 - beta/tau);
+   57 : 
+   58 :   f2 = 1/tau;
+   59 : }
+   60 : else if(prm == "V1 matlab")
+   61 : {
+   62 :   Nx = 100; Ny = 50;
+   63 : 
+   64 :   Lx = 2; Ly = 1;
+   65 :   D1 = 0.1; D2 = 10;
+   66 :   k1 = 0.01;
+   67 :   b = 0.01;
+   68 :   c = 0.1;
+   69 :   r = 0.01;
+   70 :   k2 = 0.1;
+   71 :   s = 1;
+   72 : 
+   73 :   //Rescaled prms
+   74 :   epsi2 = D1/(Lx^2*(c+r));
+   75 :   D = D2/(Lx^2*k1);
+   76 :   tau = (c+r)/k1;
+   77 :   beta = r/k1;
+   78 :   gamma = (c+r)*k1^2/(k2*b^2);
+   79 : 
+   80 :   //prm for auxin
+   81 :   nu = 1.5;
+   82 : 
+   83 :   //stationary point or initialization
+   84 :   u0 = b/r;
+   85 :   v0 = (b*r*(c+r)) / (k1*r^2 + k2*b^2);
+   86 : 
+   87 :   //F coefficients
+   88 :   tildeD1 = D1;
+   89 :   tildeD2 = D2;
+   90 :   tildea1 = -(c+r);
+   91 :   tildea2 = -k1;
+   92 :   tildeb1 = k1;
+   93 :   tildeb2 = c;
+   94 : 
+   95 :   f2 = b;
+   96 : }
+   97 : else if(prm == "V2 matlab")
+   98 : {
+   99 :   Nx = 100; Ny = 30;
+  100 : 
+  101 :   //Table1, set3 from ref.[10]
+  102 :   s = 5.5;
+  103 :   Lx = 70.; Ly = Lx/sqrt(s);
+  104 :   D1 = 0.075; D2 = 20;
+  105 :   k1 = 0.008;
+  106 :   b = 0.008;
+  107 :   c = 0.1;
+  108 :   r = 0.05;
+  109 :   k2 = 0.5;
+  110 : 
+  111 :   //prm for auxin
+  112 :   nu = 1.5;
+  113 : 
+  114 :   //Rescaled prms
+  115 :   epsi2 = D1/(Lx^2*(c+r));
+  116 :   D = D2/(Lx^2*k1);
+  117 :   tau = (c+r)/k1;
+  118 :   beta = r/k1;
+  119 :   gamma = (c+r)*k1^2/(k2*b^2);
+  120 : 
+  121 :   //stationary point or initialization
+  122 :   u0 = 0.9;
+  123 :   v0 = 1;
+  124 : 
+  125 :   //F coefficients:
+  126 :   tildeD1 = D1;
+  127 :   tildeD2 = D2;
+  128 :   tildea1 = -(c+r);
+  129 :   tildea2 = -k1;
+  130 :   tildeb1 = k1;
+  131 :   tildeb2 = c;
+  132 : 
+  133 :   f2 = b;
+  134 : }
+  135 : 
+  136 : cout << "u0: " << u0 << endl;
+  137 : cout << "v0: " << v0 << endl;
+  138 : 
+  139 : /// Macros:  attention to rescaled derivatives
+  140 : macro gradS(f) [dx(f) , sqrt(s)*dy(f)]  )  //
+  141 : 
+  142 : real t = 0.0;
+  143 : real Tmax = 5;
+  144 : 
+  145 : //auxin
+  146 : if(standalone)
+  147 : {
+  148 :   func alpha1 = exp(-nu*x); //set1
+  149 :   func alpha2 = k2* exp(-nu*x/Lx)*sin(pi*y/Ly); //v1
+  150 :   func alpha3 = k2* exp(-nu*x/Lx); //v2
+  151 :   func alpha4 = exp(-nu*x/Lx);
+  152 :   func alpha5 = k2* exp(-nu*(x-70)/Lx) * (x>=70) + k2* exp(nu*(x-70)/Lx) * (x<70); // for opposite gradient
+  153 : 
+  154 :   //alpha time dep.
+  155 :   // real period = 100;
+  156 :   // func alpha6 = alpha3 * sin(2*pi*t/period) + k2;
+  157 :   func x0 = 2*Lx/Tmax * t;
+  158 :   func alpha7 = k2* exp(-nu*(x-x0)/Lx) * (x>=x0) + k2* exp(nu*(x-x0)/Lx) * (x<x0);
+  159 : 
+  160 :   /// Change properly here
+  161 :   func alpha = alpha3;
+  162 : 
+  163 :   // "Set 1"
+  164 :   // func tildec1 = alpha;
+  165 :   // func tildec2 = - gamma*alpha;
+  166 :   // "V1 matlab", "V2 matlab"
+  167 :   func tildec1 = alpha;
+  168 :   func tildec2 = - alpha;
+  169 : }
+  170 : 
+  171 : // TIME dep interations prms
+  172 : real dt = 0.5; //delta t
+  173 : int OUTPUTit = 2; //save solution img every OUTPUTit
+  174 : int it = 0 * 1000; //counter for time-step solved
+  175 : int tload = 499; //time t to be loaded: to be change if ld true
+  176 : 
+  177 : //NEWTON's method prms
+  178 : int MAXiter =200; // maximum number of iterations
+  179 : real tol = 1e-12, err; // tolerance
+  180 : int iter = 0; //counter for Newton's iterations
+  181 : ;
+   16 : /// Mesh
+   17 : mesh Th = square(Nx, Ny, [Lx * x, Ly * y]);
+   18 : 
+   19 : /// Finite element spaces
+   20 : fespace Xh(Th, P1);
+   21 : int dimXh =Xh.ndof;
+   22 : 
+   23 : Xh pert = eps * cos(2*pi*x/Lx)* cos(2*pi*y/Ly); //custom perturbation of initial state
+   24 : 
+   25 : Xh U, V, // U_n+1, V_n+1 (new sol at each time step)
+   26 :    U0, V0; // U_n, V_n (previous time-step sol)
+   27 : 
+   28 : include "step_semi_implicit.edp"/// Semi-implicit method: functionals, matrices, rhs for 1 cell
+    2 : // varf
+    3 : varf au(u,phi) = int2d(Th) (u*phi / dt + tildeD1 * gradS(u)     [dx(u) , sqrt(s)*dy(u)] '*gradS(phi)     [dx(phi) , sqrt(s)*dy(phi)]  - tildea1 * u*phi)
+    4 :                + int2d(Th) (U0*phi / dt); //F1
+    5 : varf bu(v,phi) = int2d(Th) (- tildeb1  * v*phi);
+    6 : varf cu(v,phi) = int2d(Th) (- tildec1 The Identifier tildec1 does not exist 
+
+ Error line number 6, in file step_semi_implicit.edp, before  token tildec1
+
+  current line = 6
+Compile error : 
+	line number :6, tildec1
+error Compile error : 
+	line number :6, tildec1
+ code = 1 mpirank: 0

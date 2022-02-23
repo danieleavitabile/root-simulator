@@ -1,0 +1,35 @@
+/// Paramaters that characterizie the modelization of the comunication between cells
+
+// quantity of flux (~)
+real alphauRR = 1;
+real alphavRR = 1;
+// indicators for opened "channels"
+real epsx = 5;
+real ax = 30;
+real epsy = 1;
+real ay = 10;
+func betauRR =
+               (x >= (Lx/2 - ax - epsx)) * (x <= (Lx/2 - ax))
+               + (x >= (Lx/2 + ax)) * (x <= (Lx/2 + ax + epsx))
+               + (x >= (3*Lx/2 - ax - epsx)) * (x <= (3*Lx/2 - ax))
+               + (x >= (3*Lx/2 + ax)) * (x <= (3*Lx/2 + ax + epsx))
+               + (y >= (Ly/2 - ay - epsy)) * (y <= (Ly/2 - ay))
+               + (y >= (Ly/2 + ay)) * (y <= (Ly/2 + ay + epsy))
+               + (y >= (3*Ly/2 - ay - epsy)) * (y <= (3*Ly/2 - ay))
+               + (y >= (3*Ly/2 + ay)) * (x <= (3*Ly/2 + ay + epsy))
+               ;
+func betavRR =
+              (x >= (Lx/2 - ax - epsx)) * (x <= (Lx/2 - ax))
+              + (x >= (Lx/2 + ax)) * (x <= (Lx/2 + ax + epsx))
+              + (x >= (3*Lx/2 - ax - epsx)) * (x <= (3*Lx/2 - ax))
+              + (x >= (3*Lx/2 + ax)) * (x <= (3*Lx/2 + ax + epsx))
+              + (y >= (Ly/2 - ay - epsy)) * (y <= (Ly/2 - ay))
+              + (y >= (Ly/2 + ay)) * (y <= (Ly/2 + ay + epsy))
+              + (y >= (3*Ly/2 - ay - epsy)) * (y <= (3*Ly/2 - ay))
+              + (y >= (3*Ly/2 + ay)) * (x <= (3*Ly/2 + ay + epsy))
+              ;
+
+/// Iterative method prms
+int Niter = 50; // maximun number of iteration allowed
+bool checktol = false; //boolean true if tolerance reached
+real Ubar = 1.5 * u0, Vbar = 1.5 * v0 ;

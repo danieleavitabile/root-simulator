@@ -13,10 +13,11 @@ mkdir results/$STR/code/;
 mkdir results/$STR/U;
 mkdir results/$STR/V;
 
-EXEC=2cell_RRmod.edp;
+EXEC=1cell_semi_implicit.edp;
 
-/u/opt/bin/FreeFem++ $EXEC 2>&1 | tee results/$STR/output.txt;
+FreeFem++ $EXEC 2>&1 | tee results/$STR/output.txt;
 wait;
+
 cp *.edp results/$STR/code/;
 # cp varf_2cellRR.edp results/$STR/code/;
 # cp PRM.edp results/$STR/code/;

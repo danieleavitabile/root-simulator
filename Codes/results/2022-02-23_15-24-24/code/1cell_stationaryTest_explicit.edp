@@ -1,12 +1,11 @@
 // Look for stationary solution of 1cell
 // Newton's method
-// classic assembling with func Jac e G
+// assembling system explicitly from wf
 
-//Parameters
-string prm = "V1 matlab"; // "Set1", "V1 matlab", "V2 matlab"
+/// Parameters:
+string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
+bool standalone = true;
 include "PRM.edp";
-include "Jac.edp";
-include "G.edp";
 
 load "ffrandom";
 load "iovtk";
@@ -14,27 +13,64 @@ int[int] ffordervel = [1]; // to save images in .vtk format
 int seed = 10;
 int ld = 0; // 1: load prev. sol. as initial state
             // 0: use custom initial state
-string path = "results/2021-10-20_10-56-37/";  // path of the previously computed U, V
+string path = "results/";  // path of the previously computed U, V
 
 Xh U, V, // U_k+1, V_k+1
    U0, V0, // U_k, V_k
    incrU, incrV;
-real[int] tmp1(2*dimXh);
 
-//step of the Newton method: from U0,V0 (U_k,V_k) -> find U,V (U_k+1, V_k+1))
+// Linearized problem: matrices and vectors
+varf au(u,phi) = int2d(Th) (-tildeD1 * gradS(u)'*gradS(phi) + tildea1 * u*phi);
+varf bu(v,phi) = int2d(Th) (tildeb1 * v*phi);
+varf cuu(u,phi) = int2d(Th) (2 * tildec1 * U0 * V0 * u * phi) +
+                  int2d(Th) (2 * tildec1 * U0 * V0 * U0 * phi); //rhs1
+varf cuv(v,phi) = int2d(Th) (tildec1 * U0 * U0 * v * phi);
+
+varf av(v,phi) = int2d(Th) (-tildeD2 * gradS(v)'*gradS(phi) + tildea2 * v*phi);
+varf bv(u,phi) = int2d(Th) (tildeb2 * u*phi);
+varf cvu(u,phi) = int2d(Th) (2 * tildec2 * U0 * V0 * u * phi) +
+                  int2d(Th) (2 * tildec2 * U0 * V0 * U0 * phi) - int2d(Th) (1/tau * phi); //rhs2
+varf cvv(v,phi) = int2d(Th) (tildec2 * U0 * U0 * v * phi);
+
+matrix Au = au(Xh,Xh);
+matrix Av = av(Xh,Xh);
+matrix Bu = bu(Xh,Xh);
+matrix Bv = bv(Xh,Xh);
+matrix tmpu1, tmpu2, tmpv1, tmpv2;
+matrix Cuu, Cuv, Cvu, Cvv; // nedd to be updated at every Newton it
+real[int] rhs1(dimXh),
+          rhs2(dimXh),
+          tmp1(2*dimXh);
+
+matrix A;
+real[int] F(2*dimXh);
+
+//step of the Newton method: from Uold,Vold (u_k,V_k) -> find U,V (U_k+1, V_k+1))
 func int step()
 {
-  real[int] UU = [U0[], V0[]];
-  matrix Jac = Jac3(UU);
-  //set solver for matrices
-  set(Jac, solver = UMFPACK);
-  real[int] Rhs = - G(UU);
+  // update time-dep matrices and vectors
+  Cuu = cuu(Xh,Xh);
+  Cuv = cuv(Xh,Xh);
+  Cvu = cvu(Xh,Xh);
+  Cvv = cvv(Xh,Xh);
+  rhs1 = cuu(0,Xh);
+  rhs2 = cvu(0,Xh);
 
-  tmp1 = Jac^-1 * Rhs; //tmp1 = [du, dv]
+  tmpu1 = Au + Cuu;
+  tmpu2 = Bu + Cuv;
+  tmpv1 = Bv + Cvu;
+  tmpv2 = Av + Cvv;
+  A = [[tmpu1, tmpu2],
+       [tmpv1, tmpv2]];
+  //set solver for matrices
+  set(A, solver = UMFPACK);
+  F = [rhs1,rhs2];
+
+  tmp1 = A^-1 * F;
   for(int ii = 0; ii < Xh.ndof; ii++)
   {
-    U[][ii] += tmp1[ii];
-    V[][ii] += tmp1[ii + Xh.ndof];
+    U[][ii] = tmp1[ii];
+    V[][ii] = tmp1[ii + Xh.ndof];
   }
 
   return 0;
@@ -60,8 +96,8 @@ func real residual()
 
 //Initialization:
 if (ld) {
-  ifstream fU(path + "U/U" + t + ".txt");
-  ifstream fV(path + "V/V" + t + ".txt");
+  ifstream fU(path + "lastU.txt");
+  ifstream fV(path + "lastV.txt");
 
   fU >> U[];
   fV >> V[];
@@ -86,8 +122,6 @@ else
 
 plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs perturbed", ps = "results/U" + iter + ".ps");
 plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs perturbed", ps = "results/V" + iter + ".ps");
-plot(U, dim = 3, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs perturbed");
-plot(V, dim = 3, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs perturbed");
 savevtk("results/U" + iter + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
 savevtk("results/V" + iter + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
 ofstream foutU("results/U" + iter + ".txt");
@@ -99,7 +133,7 @@ V0 = V;
 
 /// Main: Newton loop
 err = tol + 1; // at least one iteration has to be performed
-for(iter = 1; iter < MAXiter && err > tol; ++iter)
+for(iter = 1; iter < MAXiter /*&& err > tol*/; ++iter)
 {
   //perform an iteration of the linerized solver
   int errc = step(); // -> find U,V
@@ -111,7 +145,7 @@ for(iter = 1; iter < MAXiter && err > tol; ++iter)
 
   //update err for the stopping criterion
   err = residual(); //-> compute the residual between U,V and U0, V0
-  cout << "#err at "<< iter << "iter: " << err << endl;
+  cout << "#err: " << err << endl;
 
   /// update old solution
   U0 = U;
@@ -119,8 +153,6 @@ for(iter = 1; iter < MAXiter && err > tol; ++iter)
 
   plot(U, value =1, fill =1, cmm="Concentration of ACTIVE ROPs at ITERATION "+ iter, ps = "results/U" + iter + ".ps");
   plot(V, value =1, fill =1, cmm="Concentration of INACTIVE ROPs at ITERATION"+ iter, ps = "results/V" + iter + ".ps");
-  plot(U, dim = 3, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs perturbed");
-  plot(V, dim = 3, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs perturbed");
   savevtk("results/U" + iter + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
   savevtk("results/V" + iter + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
 
@@ -131,6 +163,7 @@ for(iter = 1; iter < MAXiter && err > tol; ++iter)
   foutV << V[];
 
 }
+
 
 /// Postprocessing
 cout << "# nonlinear iter: " << iter << endl;

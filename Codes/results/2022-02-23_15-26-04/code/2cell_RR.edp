@@ -9,6 +9,7 @@ string path = "results/2021-11-28_10-19-46/";  // path of the previously compute
 
 /// Parameters:
 string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
+bool standalone = true;
 include "PRM.edp";
 
 real alphauRR = 1.; // MAYBE TO BE TUNED

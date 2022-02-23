@@ -142,28 +142,31 @@ macro gradS(f) [dx(f) , sqrt(s)*dy(f)] //
 real t = 0.0;
 real Tmax = 5;
 
+//auxin
+if(standalone)
+{
+  func alpha1 = exp(-nu*x); //set1
+  func alpha2 = k2* exp(-nu*x/Lx)*sin(pi*y/Ly); //v1
+  func alpha3 = k2* exp(-nu*x/Lx); //v2
+  func alpha4 = exp(-nu*x/Lx);
+  func alpha5 = k2* exp(-nu*(x-70)/Lx) * (x>=70) + k2* exp(nu*(x-70)/Lx) * (x<70); // for opposite gradient
 
-func alpha1 = exp(-nu*x); //set1
-func alpha2 = k2* exp(-nu*x/Lx)*sin(pi*y/Ly); //v1
-func alpha3 = k2* exp(-nu*x/Lx); //v2
-func alpha4 = exp(-nu*x/Lx);
-func alpha5 = k2* exp(-nu*(x-70)/Lx) * (x>=70) + k2* exp(nu*(x-70)/Lx) * (x<70); // for opposite gradient
+  //alpha time dep.
+  // real period = 100;
+  // func alpha6 = alpha3 * sin(2*pi*t/period) + k2;
+  func x0 = 2*Lx/Tmax * t;
+  func alpha7 = k2* exp(-nu*(x-x0)/Lx) * (x>=x0) + k2* exp(nu*(x-x0)/Lx) * (x<x0);
 
-//alpha time dep.
-// real period = 100;
-// func alpha6 = alpha3 * sin(2*pi*t/period) + k2;
-func x0 = 2*Lx/Tmax * t;
-func alpha7 = k2* exp(-nu*(x-x0)/Lx) * (x>=x0) + k2* exp(nu*(x-x0)/Lx) * (x<x0);
+  /// Change properly here
+  func alpha = alpha3;
 
-/// Change properly here
-func alpha = alpha3;
-
-// "Set 1"
-// func tildec1 = alpha;
-// func tildec2 = - gamma*alpha;
-// "V1 matlab", "V2 matlab"
-func tildec1 = alpha;
-func tildec2 = - alpha;
+  // "Set 1"
+  // func tildec1 = alpha;
+  // func tildec2 = - gamma*alpha;
+  // "V1 matlab", "V2 matlab"
+  func tildec1 = alpha;
+  func tildec2 = - alpha;
+}
 
 // TIME dep interations prms
 real dt = 0.5; //delta t
