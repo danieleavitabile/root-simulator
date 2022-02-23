@@ -1,14 +1,25 @@
 // Check for the Jacobian used in 1cell_stationaryTest
+// different check made
 
 /// Parameters:
 string prm = "V2 matlab"; // "Set 1", "V1 matlab", "V2 matlab"
 include "PRM.edp";
-// include "params.edp";
+
+/// Mesh
+mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); // v1,v2 matlab
+
+/// Finite element spaces
+fespace Xh(Th, P1);
+int dimXh =Xh.ndof;
+
+include "Jac.edp";
+include "G.edp";
+
 Xh U0,V0,du,dv,
 upos, vpos, uneg, vneg;
 
-// U* = [u*, v*], V = [du, dv]
-U0 = u0 ; // u*
+// U* = [U0, V0], dU = [du, dv]
+U0 = u0; // u*
 V0 = v0; // v*
 
 du = sin(2 * pi * x) * sin(2 * pi * y);
@@ -18,7 +29,7 @@ du = du / normu;
 real normv = sqrt(int2d(Th) (dv^2));
 dv = dv / normv;
 
-// attention !!! to eps defined in params
+// attention !!! different meaning of eps defined in PRM.edp
 upos = U0 + eps * du;
 vpos = V0 + eps * dv;
 uneg = U0 - eps * du;
@@ -43,13 +54,13 @@ real[int] Cu = cu(0,Xh);
 real[int] Cv = cv(0,Xh);
 
 real[int] JacU = Au + Bu;
-JacU = JacU + Cu; // questa dovrebbe essere la parte critica, non lineare
+JacU = JacU + Cu;
 
 real[int] JacV = Av + Bv;
-JacV = JacV + Cv; // questa dovrebbe essere la parte critica, non lineare
+JacV = JacV + Cv;
 real[int] Jac =[JacU, JacV];
 
-//G(U*+ eps*du)
+//G(U*+ eps*dU)
 varf Gupos(dummyu,phi) = int2d(Th) (-tildeD1 * gradS(upos)'*gradS(phi) + tildea1 * upos*phi)
                        + int2d(Th) (tildeb1 * vpos*phi)
                        + int2d(Th) (tildec1 * upos*upos*vpos *phi)
@@ -68,7 +79,7 @@ varf Gvpos(dummyv,phi) = int2d(Th) (-tildeD2 * gradS(vpos)'*gradS(phi) + tildea2
 //                   + int2d(Th) (beta*gamma/tau * upos*phi - gamma * upos*phi)
 //                   + int2d(Th) (gamma*alpha* upos*upos * vpos * phi);
 
-//G(U*- eps*du)
+//G(U*- eps*dU)
 varf Guneg(dummyu,phi) = int2d(Th) (-tildeD1 * gradS(uneg)'*gradS(phi) + tildea1 * uneg*phi)
                        + int2d(Th) (tildeb1 * vneg*phi)
                        + int2d(Th) (tildec1 * uneg*uneg*vneg *phi)
@@ -86,13 +97,26 @@ real[int] G2v = Gvpos(0,Xh);
 real[int] G1v = Gvneg(0,Xh);
 G2v = G2v - G1v;
 real[int] Rhs = [G2u, G2v];
-// Rhs = (2*eps)^(-1) * Rhs;
 
 for (int i=Jac.n-5; i < Jac.n; i++) cout << "Rhs(i) = " << Rhs[i] << " " << "Jac(i) = " << Jac[i] << endl;
-// real[int] res = Rhs - Jac;
+
 real[int] res = Rhs - (2*eps)*Jac;
 cout << "||RHS - JAC||_inf = " << res.linfty << endl << endl;
 
-/// For checking G(U0) = 0
-// for (int i=Jac.n-5; i < Jac.n; i++) cout << "F(i) = " << Rhs[i] << endl;
-// cout << "||F||_inf = " << Rhs.linfty << endl << endl;
+// Using G and Jac function defined
+// real[int] U = [U0[], V0[]],
+//           dU = [du[], dv[]] ;
+// real[int] J = Jac1(U, dU);
+//
+// U = [upos[], vpos[]];
+// real[int] GUpos = G(U);
+//
+// U = [uneg[], vneg[]];
+// real[int] GUneg = G(U);
+//
+// real[int] Rhs = GUpos - GUneg;
+//
+// for (int i=Rhs.n-5; i < Rhs.n; i++) cout << "Rhs(i) = " << Rhs[i] << " " << "Jac(i) = " << J[i] << endl;
+//
+// real[int] res = Rhs - (2*eps)*J;
+// cout << "||RHS - JAC||_inf = " << res.linfty << endl << endl;
