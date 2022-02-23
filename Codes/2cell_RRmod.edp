@@ -9,6 +9,7 @@ string path = "results/2022-01-24_09-49-16/";  // path of the U0,V0 to load
 
 /// Parameters:
 string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
+bool standalone = true;
 include "PRM.edp";
 include "channelPRM.edp";
 

@@ -1,4 +1,4 @@
-/// Semi-implicit method: functionals, matrices, rhs
+/// Semi-implicit method: functionals, matrices, rhs for 1 cell
 // varf
 varf au(u,phi) = int2d(Th) (u*phi / dt + tildeD1 * gradS(u)'*gradS(phi) - tildea1 * u*phi)
                + int2d(Th) (U0*phi / dt); //F1
