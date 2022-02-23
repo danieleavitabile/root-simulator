@@ -1,5 +1,5 @@
 // Compute G(U)
-// (input) real[int] U: vector corresponding to [u,v], Xh u,v;
+// (input)  real[int] U: vector corresponding to [u,v], Xh u,v;
 // (output) real[int] Gu :G(U) vector corresponding to [Gu, Gv];
 func real[int] G(real[int] &U){
   Xh u,v;

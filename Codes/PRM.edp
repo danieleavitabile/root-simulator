@@ -12,6 +12,8 @@ real Lx, Ly, //dimension 2D domain [micro m]
      u0, v0, //initial states
      tildeD1, tildeD2, tildea1, tildea2, tildeb1, tildeb2, f2; // synthetic coefficients
 
+real eps = 0; // pertubation of initial state
+
 if(prm == "Set 1")
 {
   //Table1, set1 from ref.[10]

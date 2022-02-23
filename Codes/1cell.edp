@@ -1,30 +1,32 @@
-// 1 cell solver, simulator: solve eq.(1) paper intra2, NEWTON + IMPL EULER
-// FULLY IMPLICIT
+// 1 cell solver
+// FULLY IMPLICIT : NEWTON + IMPL EULER
 
 load "ffrandom";
 load "iovtk";
 int[int] ffordervel = [1]; // to save images in .vtk format
 int seed = 10;
-int ld = 0;
+int ld = 0; // 1: load prev. sol. as initial state
+            // 0: use custom initial state
 string path = "results/";  // path of the previously computed U, V
 
 /// Parameters:
-include "params.edp";
+string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
+include "PRM.edp";
 include "Jac.edp";
 include "G.edp";
 
-Xh U, V, // U_n+1, V_n+1 and new sol at each time step
-   Uold, Vold, // U_k, V_k previuos iteration of Newton
+Xh U, V, // U_n+1, V_n+1 (new sol at each time step and it.)
+   Uold, Vold, // U_k, V_k (prev. iteration sol. of Newton)
    incrU, incrV,
-   U0, V0; // U_n, V_n (previous time-step sol)
-Xh pert = eps * cos(2*pi *x)*cos(2*pi*y);
+   U0, V0; // U_n, V_n (prev. time-step sol)
+Xh pert = eps * cos(2*pi *x)*cos(2*pi*y); //custom perturbation of initial state
 real[int] tmp1(2*dimXh), tmp2(2*dimXh),  tmp3(2*dimXh);
 
 varf a(du,phi) = int2d(Th) (1/dt * du * phi);
 matrix A1 = a(Xh,Xh);
 matrix A = [[A1, 0],
             [0, A1]];
-//step of the Newton method: from Uold,Vold (u_k,V_k) -> find U,V (U_k+1, V_k+1))
+//step of the Newton method: from Uold,Vold (U_k,V_k) -> find U,V (U_k+1, V_k+1))
 func int step()
 {
   real[int] UU = [Uold[], Vold[]];
@@ -50,7 +52,7 @@ func int step()
   return 0;
 }
 
-//return error estimate: hyp. residual(normalized) with L2 norm
+//return residual estimate: (normalized) with L2 norm
 func real residual()
 {
   // compute the increment between (U,V) and (U0,V0)
@@ -60,21 +62,15 @@ func real residual()
   incrV[] = V[];
   incrV[] -= Vold[];
 
-  //calcolo residuo normalizzato con norma L2
   real errU = int2d(Th) ((incrU)^2);
   real errV = int2d(Th) ((incrV)^2);
   real normU = int2d(Th) ((Uold)^2);
   real normV = int2d(Th) ((Vold)^2);
-  // potrebbero essere nulle
-  // cout << "#check norma U" << normU << endl;
-  // cout << "#check norma V" << normV << endl;
-  // cout << "#check norma U INF" << U0[].linfty << endl;
-  // cout << "#check norma V INF" << V0[].linfty << endl;
 
   return sqrt(errU/(normU+1e-12)) + sqrt(errV/(normV+1e-12));
 }
 
-//Initialization
+///Initialization
 if (ld) {
   ifstream fU(path + "lastU.txt");
   ifstream fV(path + "lastV.txt");
@@ -89,6 +85,8 @@ else
 {
   U = u0;
   V = v0;
+  U[] += pert[];
+  V[] += pert[];
   // srandom(seed);
   // // ranreal 1 generates a random number in [0,1]
   //   for(int ii = 0; ii < Xh.ndof; ii++)
@@ -96,13 +94,12 @@ else
   //     U[][ii] += randreal1();
   //     V[][ii] += randreal1();
   //   }
-  U[] += pert[];
-  V[] += pert[];
 }
 plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs perturbed", ps = "results/U" + iter + ".ps");
 plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs perturbed", ps = "results/V" + iter + ".ps");
-plot(U, dim = 3, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs perturbed");
-plot(V, dim = 3, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs perturbed");
+// to plot solutions in 3D
+// plot(U, dim = 3, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs perturbed");
+// plot(V, dim = 3, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs perturbed");
 savevtk("results/U" + iter + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
 savevtk("results/V" + iter + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
 ofstream foutU("results/U" + iter + ".txt");
@@ -131,7 +128,7 @@ while(t < Tmax)
       break;
     }
 
-    //update err for the stp criterion
+    //update err for the stopping criterion
     err = residual(); //-> compute the residual between U,V and Uold,Vold
     cout << "#err: " << err << endl;
 
@@ -139,7 +136,7 @@ while(t < Tmax)
     Uold = U;
     Vold = V;
   }
-  //exit or with tol reache or with maxits reached
+  //exit or with tol reached or with MAXiter reached
   //Uold,Vold are equal to U,V new solution
   cout << "#time " << t << endl;
   //update previous time-step sol.
@@ -150,7 +147,8 @@ while(t < Tmax)
   {
     plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U" + t + ".ps");
     plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t, ps = "results/V" + t + ".ps");
-  	savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+    // save imgs in .vtk format
+    savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
   	savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
     // Output file for last results -> to be loaded in case of interuption
     ofstream foutU("results/U" + t + ".txt");

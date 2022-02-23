@@ -1,8 +1,8 @@
 #!/bin/bash
 
 echo "----------------------------------------------------";
-echo "---      Root-simulator 1st try with             ---";
-echo "---         semi-implicit method                 ---";
+echo "---             Root-simulator with              ---";
+echo "---             semi-implicit method             ---";
 echo "--- Teresa Babini (teresa.babini@mail.polimi.it) ---";
 echo "----------------------------------------------------";
 
@@ -17,12 +17,12 @@ EXEC=2cell_RRmod.edp;
 
 /u/opt/bin/FreeFem++ $EXEC 2>&1 | tee results/$STR/output.txt;
 wait;
-# cp *.edp results/$STR/code/;
-cp varf_2cellRR.edp results/$STR/code/;
-cp PRM.edp results/$STR/code/;
-cp 2cell_RRmod.edp results/$STR/code/;
-cp assemble_RR.edp results/$STR/code/;
-cp channelPRM.edp results/$STR/code/;
+cp *.edp results/$STR/code/;
+# cp varf_2cellRR.edp results/$STR/code/;
+# cp PRM.edp results/$STR/code/;
+# cp 2cell_RRmod.edp results/$STR/code/;
+# cp assemble_RR.edp results/$STR/code/;
+# cp channelPRM.edp results/$STR/code/;
 
 # cp 2cell_geometric.edp results/$STR/code;
 # cp step_semi_implicit.edp results/$STR/code;
@@ -39,7 +39,6 @@ mv results/channel.ps results/$STR;
 mv results/channel1.vtk results/$STR;
 mv results/channel2.vtk results/$STR;
 
-find . -name "*.ps" -exec rename 's/\.ps$/.eps/' '{}' + # cambia estensione .ps in .eps, per latex
+find . -name "*.ps" -exec rename 's/\.ps$/.eps/' '{}' +
 
 echo "--- Script ended ---";
-

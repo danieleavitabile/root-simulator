@@ -1,8 +1,8 @@
 // (input): SET U = [U0, V0], dU = [du, dv] of norm 1 with
 //              Xh U0, V0, du, dv;
-// (output): return
+// (output):
 // Jac1, Jac2 -> J(U*)dU:   real[int] Jac
-// Jac3 -> Jacobian Matrix: matrix J(U*)
+// Jac3       -> Jacobian Matrix: matrix J(U*)
 
 
 //1: directly computes the vector
@@ -45,7 +45,7 @@ func real[int] Jac1(real[int] & U, real[int] & dU)
   return Jac;
 }
 
-//2: return J(U*)dU computed as matrix * vector
+//2: return J(U*)dU computed as product matrix * vector
 func real[int] Jac2(real[int] & U, real[int] & dU)
 {
   Xh U0,V0;
