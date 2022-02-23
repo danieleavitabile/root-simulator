@@ -1,44 +1,51 @@
 /// Parameters:
-int Nx, Ny;
-real Lx, Ly, D1, D2,k1,b,c,r,k2,s,
-     epsi2,D,tau,beta,gamma,nu,
-     u0, v0,
-     tildeD1, tildeD2, tildea1, tildea2, tildeb1, tildeb2, f2;
+// ROPs dynamics prms
+int Nx, Ny; //number of nodes
+real Lx, Ly, //dimension 2D domain [micro m]
+     D1, D2, //diffusion constants, D1 << D2 [micro m /s^2]
+     k1, //activation rate of auxin [1/s]
+     k2, // k20 actually, overall auxin level [con^2/s]
+     b, //rate of production of inactive ROP [con/s]
+     c,r, //rate usage active ROPs [1/s]
+     s, //aspect ratio
+     epsi2,D,tau,beta,gamma,nu, //Rescaled prms
+     u0, v0, //initial states
+     tildeD1, tildeD2, tildea1, tildea2, tildeb1, tildeb2, f2; // synthetic coefficients
 
 if(prm == "Set 1")
 {
-  //Table1, set1
+  //Table1, set1 from ref.[10]
   Nx = 60;
-  Ny = 60; //number of nodes
+  Ny = 60;
 
-  Lx = 50; Ly = 20; //dimension rectangular domain (micro m) */mu m
-  D1 = 0.1; D2 = 10; //diffusion constants, D1 << D2 - D1 from Fig.4
-  k1 = 0.01; //activation of auxin
-  b = 0.01; //rate of production of inactive ROP
+  Lx = 50; Ly = 20;
+  D1 = 0.1; D2 = 10;
+  k1 = 0.01;
+  b = 0.01;
   c = 0.1;
-  r = 0.01; //rate usage active ROPs
-  k2 = 0.1; //overall auxin level - from Fig.4
-  s = (Lx/Ly)^2; //aspect ratio 6.25
+  r = 0.01;
+  k2 = 0.1;
+  s = (Lx/Ly)^2;
 
-  //Scaled prms
+  //Rescaled prms
   epsi2 = D1/(Lx^2*(c+r));
   D = D2/(Lx^2*k1);
   tau = (c+r)/k1;
   beta = r/k1;
   gamma = (c+r)*k1^2/(k2*b^2);
 
-  //auxin
+  //prm for auxin
   nu = 1.5;
 
   //stationary point or initialization
-  u0 = 1./(gamma*beta); //0.9
-  v0 = tau*beta*gamma/(tau + beta^2*gamma); //1
+  u0 = 1./(gamma*beta);
+  v0 = tau*beta*gamma/(tau + beta^2*gamma);
   // real uu0 =1./(gamma*beta);
   // real vv0 = tau*beta*gamma/(tau + beta^2*gamma);
   // func u0 = uu0* exp(-10*x);
   // func v0 = vv0 * exp(-10*x);
 
-  //F coefficients: PAPER
+  //F coefficients:
   tildeD1 = epsi2;
   tildeD2 = D / tau;
   tildea1 = - 1;
@@ -50,32 +57,32 @@ if(prm == "Set 1")
 }
 else if(prm == "V1 matlab")
 {
-  Nx = 100; Ny = 50; //number of nodes
+  Nx = 100; Ny = 50;
 
-  Lx = 2; Ly = 1; //dimension rectangular domain (micro m) */mu m
-  D1 = 0.1; D2 = 10; //diffusion constants, D1 << D2 - D1 from Fig.4
-  k1 = 0.01; //activation of auxin
-  b = 0.01; //rate of production of inactive ROP
+  Lx = 2; Ly = 1;
+  D1 = 0.1; D2 = 10;
+  k1 = 0.01;
+  b = 0.01;
   c = 0.1;
-  r = 0.01; //rate usage active ROPs
-  k2 = 0.1; //overall auxin level - from Fig.4
-  s = 1; //so that gradS not scaled
+  r = 0.01;
+  k2 = 0.1;
+  s = 1;
 
-  //Scaled prms
+  //Rescaled prms
   epsi2 = D1/(Lx^2*(c+r));
   D = D2/(Lx^2*k1);
   tau = (c+r)/k1;
   beta = r/k1;
   gamma = (c+r)*k1^2/(k2*b^2);
 
-  //auxin
+  //prm for auxin
   nu = 1.5;
 
   //stationary point or initialization
   u0 = b/r;
   v0 = (b*r*(c+r)) / (k1*r^2 + k2*b^2);
 
-  //F coefficients: MATLAB-Version1,2
+  //F coefficients
   tildeD1 = D1;
   tildeD2 = D2;
   tildea1 = -(c+r);
@@ -87,22 +94,22 @@ else if(prm == "V1 matlab")
 }
 else if(prm == "V2 matlab")
 {
-  Nx = 100; Ny = 30; //number of nodes
+  Nx = 100; Ny = 30;
 
-  //MATLAB set version 2 - Table set 3?
+  //Table1, set3 from ref.[10]
   s = 5.5;
-  Lx = 70.; Ly = Lx/sqrt(s); //dimension rectangular domain (micro m) */mu m
-  D1 = 0.075; D2 = 20; //diffusion constants, D1 << D2 - D1
-  k1 = 0.008; //activation of auxin
-  b = 0.008; //rate of production of inactive ROP
+  Lx = 70.; Ly = Lx/sqrt(s);
+  D1 = 0.075; D2 = 20;
+  k1 = 0.008;
+  b = 0.008;
   c = 0.1;
-  r = 0.05; //rate usage active ROPs
-  k2 = 0.5; //overall auxin level, in matlab cambia
+  r = 0.05;
+  k2 = 0.5;
 
-  //auxin
+  //prm for auxin
   nu = 1.5;
 
-  //Scaled prms
+  //Rescaled prms
   epsi2 = D1/(Lx^2*(c+r));
   D = D2/(Lx^2*k1);
   tau = (c+r)/k1;
@@ -113,7 +120,7 @@ else if(prm == "V2 matlab")
   u0 = 0.9;
   v0 = 1;
 
-  //F coefficients: MATLAB-Version1,2
+  //F coefficients:
   tildeD1 = D1;
   tildeD2 = D2;
   tildea1 = -(c+r);
@@ -127,7 +134,7 @@ else if(prm == "V2 matlab")
 cout << "u0: " << u0 << endl;
 cout << "v0: " << v0 << endl;
 
-/// Macros:  attention rescaled derivatives
+/// Macros:  attention to rescaled derivatives
 macro gradS(f) [dx(f) , sqrt(s)*dy(f)] //
 
 real t = 0.0;
@@ -139,42 +146,33 @@ if(standalone)
   func alpha1 = exp(-nu*x); //set1
   func alpha2 = k2* exp(-nu*x/Lx)*sin(pi*y/Ly); //v1
   func alpha3 = k2* exp(-nu*x/Lx); //v2
-  func alpha4 = exp(-nu*x/Lx); //paper intra1_R alpha
+  func alpha4 = exp(-nu*x/Lx);
   func alpha5 = k2* exp(-nu*(x-70)/Lx) * (x>=70) + k2* exp(nu*(x-70)/Lx) * (x<70); // for opposite gradient
-  // func alpha = alpha3; //change ...
+
   //alpha time dep.
   // real period = 100;
-  // func alpha = alpha3 * sin(2*pi*t/period) + k2;
+  // func alpha6 = alpha3 * sin(2*pi*t/period) + k2;
   func x0 = 2*Lx/Tmax * t;
-  func alpha = k2* exp(-nu*(x-x0)/Lx) * (x>=x0) + k2* exp(nu*(x-x0)/Lx) * (x<x0);
+  func alpha7 = k2* exp(-nu*(x-x0)/Lx) * (x>=x0) + k2* exp(nu*(x-x0)/Lx) * (x<x0);
 
-  // PAPER
+  /// Change properly here
+  func alpha = alpha3;
+
+  // "Set 1"
   // func tildec1 = alpha;
   // func tildec2 = - gamma*alpha;
-  // MATLAB
+  // "V1 matlab", "V2 matlab"
   func tildec1 = alpha;
   func tildec2 = - alpha;
 }
-// else // non funziona ... è necessario includere diretttamente il file edp in 2cell_auxina.edp
-// {
-//   include "PRMauxina.edp";
-//   // sarà poi un pb capire come gestire alpha e quindi i tildec vari dopo se con ROPS
-//
-//   // PAPER
-//   // func tildec1 = alpha;
-//   // func tildec2 = - gamma*alpha;
-//   // MATLAB
-//   // func tildec1 = alpha;
-//   // func tildec2 = - alpha;
-// }
 
-// TIME dep interations prm
-real dt = 0.001; // dal paper
-int OUTPUTit = 2; //save img every OUTPUTit
-int it = 0 * 1000;
-int tload = 499; //to be change if ld tru
+// TIME dep interations prms
+real dt = 0.001; //delta t
+int OUTPUTit = 2; //save solution img every OUTPUTit
+int it = 0 * 1000; //counter for time-step solved
+int tload = 499; //time t to be loaded: to be change if ld true
 
 //NEWTON's method prms
-int MAXiter =200;
-real tol = 1e-12, err;
-int iter = 0;
+int MAXiter =200; // maximum number of iterations
+real tol = 1e-12, err; // tolerance
+int iter = 0; //counter for Newton's iterations
