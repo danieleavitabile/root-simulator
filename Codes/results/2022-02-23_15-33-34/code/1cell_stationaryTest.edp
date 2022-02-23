@@ -1,0 +1,142 @@
+// Look for stationary solution of 1cell
+// Newton's method
+// classic assembling with func Jac e G
+
+//Parameters
+string prm = "V1 matlab"; // "Set1", "V1 matlab", "V2 matlab"
+include "PRM.edp";
+include "Jac.edp";
+include "G.edp";
+
+load "ffrandom";
+load "iovtk";
+int[int] ffordervel = [1]; // to save images in .vtk format
+int seed = 10;
+int ld = 0; // 1: load prev. sol. as initial state
+            // 0: use custom initial state
+string path = "results/2021-10-20_10-56-37/";  // path of the previously computed U, V
+
+Xh U, V, // U_k+1, V_k+1
+   U0, V0, // U_k, V_k
+   incrU, incrV;
+real[int] tmp1(2*dimXh);
+
+//step of the Newton method: from U0,V0 (U_k,V_k) -> find U,V (U_k+1, V_k+1))
+func int step()
+{
+  real[int] UU = [U0[], V0[]];
+  matrix Jac = Jac3(UU);
+  //set solver for matrices
+  set(Jac, solver = UMFPACK);
+  real[int] Rhs = - G(UU);
+
+  tmp1 = Jac^-1 * Rhs; //tmp1 = [du, dv]
+  for(int ii = 0; ii < Xh.ndof; ii++)
+  {
+    U[][ii] += tmp1[ii];
+    V[][ii] += tmp1[ii + Xh.ndof];
+  }
+
+  return 0;
+}
+
+//return residual estimate: (normalized) with L2 norm
+func real residual()
+{
+  // compute the increment between (U,V) and (U0,V0)
+  incrU[] = U[];
+  incrU[] -= U0[];
+
+  incrV[] = V[];
+  incrV[] -= V0[];
+
+  real errU = int2d(Th) ((incrU)^2);
+  real errV = int2d(Th) ((incrV)^2);
+  real normU = int2d(Th) ((U0)^2);
+  real normV = int2d(Th) ((V0)^2);
+
+  return sqrt(errU/(normU+1e-12)) + sqrt(errV/(normV+1e-12));
+}
+
+//Initialization:
+if (ld) {
+  ifstream fU(path + "U/U" + t + ".txt");
+  ifstream fV(path + "V/V" + t + ".txt");
+
+  fU >> U[];
+  fV >> V[];
+
+  plot(U, fill = 1, value = 1, cmm = "Loaded Active ROPS", wait = 1);
+  plot(V, fill = 1, value = 1, cmm = "Loaded Inactive ROPS", wait = 1);
+}
+else
+{
+  U = u0;
+  V = v0;
+  U[] += pert[];
+  V[] += pert[];
+  // srandom(seed);
+  // // ranreal 1 generates a random number in [0,1]
+  //   for(int ii = 0; ii < Xh.ndof; ii++)
+  //   {
+  //     U[][ii] += randreal1();
+  //     V[][ii] += randreal1();
+  //   }
+}
+
+plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs perturbed", ps = "results/U" + iter + ".ps");
+plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs perturbed", ps = "results/V" + iter + ".ps");
+plot(U, dim = 3, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs perturbed");
+plot(V, dim = 3, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs perturbed");
+savevtk("results/U" + iter + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+savevtk("results/V" + iter + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+ofstream foutU("results/U" + iter + ".txt");
+ofstream foutV("results/V" + iter + ".txt");
+foutU << U[];
+foutV << V[];
+U0 = U;
+V0 = V;
+
+/// Main: Newton loop
+err = tol + 1; // at least one iteration has to be performed
+for(iter = 1; iter < MAXiter && err > tol; ++iter)
+{
+  //perform an iteration of the linerized solver
+  int errc = step(); // -> find U,V
+  if (errc != 0)
+  {
+    cout << "ERROR" << endl;
+    break;
+  }
+
+  //update err for the stopping criterion
+  err = residual(); //-> compute the residual between U,V and U0, V0
+  cout << "#err at "<< iter << "iter: " << err << endl;
+
+  /// update old solution
+  U0 = U;
+  V0 = V;
+
+  plot(U, value =1, fill =1, cmm="Concentration of ACTIVE ROPs at ITERATION "+ iter, ps = "results/U" + iter + ".ps");
+  plot(V, value =1, fill =1, cmm="Concentration of INACTIVE ROPs at ITERATION"+ iter, ps = "results/V" + iter + ".ps");
+  plot(U, dim = 3, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs perturbed");
+  plot(V, dim = 3, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs perturbed");
+  savevtk("results/U" + iter + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+  savevtk("results/V" + iter + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+
+  // Output file for last results -> to be loaded in case of interruption
+  ofstream foutU("results/U" + iter + ".txt");
+  ofstream foutV("results/V" + iter + ".txt");
+  foutU << U[];
+  foutV << V[];
+
+}
+
+/// Postprocessing
+cout << "# nonlinear iter: " << iter << endl;
+cout << "# residual: " << err << endl;
+
+plot(U, value =1, fill =1, wait=1, cmm="Concentration of ACTIVE ROPs");
+plot(V, value =1, fill =1, wait=1, cmm="Concentration of INACTIVE ROPs");
+plot(U, dim = 3, value =1, fill =1, wait=1, cmm="Concentration of ACTIVE ROPs");
+plot(V, dim = 3, value =1, fill =1, wait=1, cmm="Concentration of INACTIVE ROPs");

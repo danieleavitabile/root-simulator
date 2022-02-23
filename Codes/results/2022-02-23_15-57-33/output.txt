@@ -1,0 +1,657 @@
+-- FreeFem++ v4.9 (Mon Oct  4 22:12:06 CEST 2021 - git v4.9)
+ Load: lg_fem lg_mesh lg_mesh3 eigenvalue 
+    1 : // Look for stationary solution of 1cell
+    2 : // Newton's method
+    3 : // assembling system explicitly from wf
+    4 : load "ffrandom";
+    5 : load "iovtk" load: iovtk 
+;
+    6 : int[int] ffordervel = [1]; // to save images in .vtk format
+    7 : int seed = 10;
+    8 : int ld = 0; // 1: load prev. sol. as initial state
+    9 :             // 0: use custom initial state
+   10 : string path = "results/";  // path of the previously computed U, V
+   11 : 
+   12 : /// Parameters:
+   13 : string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
+   14 : include "PRM.edp"/// Parameters:
+    2 : // ROPs dynamics prms
+    3 : int Nx, Ny; //number of nodes
+    4 : real Lx, Ly, //dimension 2D domain [micro m]
+    5 :      D1, D2, //diffusion constants, D1 << D2 [micro m /s^2]
+    6 :      k1, //activation rate of auxin [1/s]
+    7 :      k2, // k20 actually, overall auxin level [con^2/s]
+    8 :      b, //rate of production of inactive ROP [con/s]
+    9 :      c,r, //rate usage active ROPs [1/s]
+   10 :      s, //aspect ratio
+   11 :      epsi2,D,tau,beta,gamma,nu, //Rescaled prms
+   12 :      u0, v0, //initial states
+   13 :      tildeD1, tildeD2, tildea1, tildea2, tildeb1, tildeb2, f2; // synthetic coefficients
+   14 : 
+   15 : real eps = 0; // pertubation of initial state
+   16 : 
+   17 : if(prm == "Set 1")
+   18 : {
+   19 :   //Table1, set1 from ref.[10]
+   20 :   Nx = 60;
+   21 :   Ny = 60;
+   22 : 
+   23 :   Lx = 50; Ly = 20;
+   24 :   D1 = 0.1; D2 = 10;
+   25 :   k1 = 0.01;
+   26 :   b = 0.01;
+   27 :   c = 0.1;
+   28 :   r = 0.01;
+   29 :   k2 = 0.1;
+   30 :   s = (Lx/Ly)^2;
+   31 : 
+   32 :   //Rescaled prms
+   33 :   epsi2 = D1/(Lx^2*(c+r));
+   34 :   D = D2/(Lx^2*k1);
+   35 :   tau = (c+r)/k1;
+   36 :   beta = r/k1;
+   37 :   gamma = (c+r)*k1^2/(k2*b^2);
+   38 : 
+   39 :   //prm for auxin
+   40 :   nu = 1.5;
+   41 : 
+   42 :   //stationary point or initialization
+   43 :   u0 = 1./(gamma*beta);
+   44 :   v0 = tau*beta*gamma/(tau + beta^2*gamma);
+   45 :   // real uu0 =1./(gamma*beta);
+   46 :   // real vv0 = tau*beta*gamma/(tau + beta^2*gamma);
+   47 :   // func u0 = uu0* exp(-10*x);
+   48 :   // func v0 = vv0 * exp(-10*x);
+   49 : 
+   50 :   //F coefficients:
+   51 :   tildeD1 = epsi2;
+   52 :   tildeD2 = D / tau;
+   53 :   tildea1 = - 1;
+   54 :   tildea2 = - 1/ tau;
+   55 :   tildeb1 = 1/(gamma*tau);
+   56 :   tildeb2 = gamma*(1 - beta/tau);
+   57 : 
+   58 :   f2 = 1/tau;
+   59 : }
+   60 : else if(prm == "V1 matlab")
+   61 : {
+   62 :   Nx = 100; Ny = 50;
+   63 : 
+   64 :   Lx = 2; Ly = 1;
+   65 :   D1 = 0.1; D2 = 10;
+   66 :   k1 = 0.01;
+   67 :   b = 0.01;
+   68 :   c = 0.1;
+   69 :   r = 0.01;
+   70 :   k2 = 0.1;
+   71 :   s = 1;
+   72 : 
+   73 :   //Rescaled prms
+   74 :   epsi2 = D1/(Lx^2*(c+r));
+   75 :   D = D2/(Lx^2*k1);
+   76 :   tau = (c+r)/k1;
+   77 :   beta = r/k1;
+   78 :   gamma = (c+r)*k1^2/(k2*b^2);
+   79 : 
+   80 :   //prm for auxin
+   81 :   nu = 1.5;
+   82 : 
+   83 :   //stationary point or initialization
+   84 :   u0 = b/r;
+   85 :   v0 = (b*r*(c+r)) / (k1*r^2 + k2*b^2);
+   86 : 
+   87 :   //F coefficients
+   88 :   tildeD1 = D1;
+   89 :   tildeD2 = D2;
+   90 :   tildea1 = -(c+r);
+   91 :   tildea2 = -k1;
+   92 :   tildeb1 = k1;
+   93 :   tildeb2 = c;
+   94 : 
+   95 :   f2 = b;
+   96 : }
+   97 : else if(prm == "V2 matlab")
+   98 : {
+   99 :   Nx = 100; Ny = 30;
+  100 : 
+  101 :   //Table1, set3 from ref.[10]
+  102 :   s = 5.5;
+  103 :   Lx = 70.; Ly = Lx/sqrt(s);
+  104 :   D1 = 0.075; D2 = 20;
+  105 :   k1 = 0.008;
+  106 :   b = 0.008;
+  107 :   c = 0.1;
+  108 :   r = 0.05;
+  109 :   k2 = 0.5;
+  110 : 
+  111 :   //prm for auxin
+  112 :   nu = 1.5;
+  113 : 
+  114 :   //Rescaled prms
+  115 :   epsi2 = D1/(Lx^2*(c+r));
+  116 :   D = D2/(Lx^2*k1);
+  117 :   tau = (c+r)/k1;
+  118 :   beta = r/k1;
+  119 :   gamma = (c+r)*k1^2/(k2*b^2);
+  120 : 
+  121 :   //stationary point or initialization
+  122 :   u0 = 0.9;
+  123 :   v0 = 1;
+  124 : 
+  125 :   //F coefficients:
+  126 :   tildeD1 = D1;
+  127 :   tildeD2 = D2;
+  128 :   tildea1 = -(c+r);
+  129 :   tildea2 = -k1;
+  130 :   tildeb1 = k1;
+  131 :   tildeb2 = c;
+  132 : 
+  133 :   f2 = b;
+  134 : }
+  135 : 
+  136 : cout << "u0: " << u0 << endl;
+  137 : cout << "v0: " << v0 << endl;
+  138 : 
+  139 : /// Macros:  attention to rescaled derivatives
+  140 : macro gradS(f) [dx(f) , sqrt(s)*dy(f)]  )  //
+  141 : 
+  142 : real t = 0.0;
+  143 : real Tmax = 5;
+  144 : 
+  145 : 
+  146 : func alpha1 = exp(-nu*x); //set1
+  147 : func alpha2 = k2* exp(-nu*x/Lx)*sin(pi*y/Ly); //v1
+  148 : func alpha3 = k2* exp(-nu*x/Lx); //v2
+  149 : func alpha4 = exp(-nu*x/Lx);
+  150 : func alpha5 = k2* exp(-nu*(x-70)/Lx) * (x>=70) + k2* exp(nu*(x-70)/Lx) * (x<70); // for opposite gradient
+  151 : 
+  152 : //alpha time dep.
+  153 : // real period = 100;
+  154 : // func alpha6 = alpha3 * sin(2*pi*t/period) + k2;
+  155 : func x0 = 2*Lx/Tmax * t;
+  156 : func alpha7 = k2* exp(-nu*(x-x0)/Lx) * (x>=x0) + k2* exp(nu*(x-x0)/Lx) * (x<x0);
+  157 : 
+  158 : /// Change properly here
+  159 : func alpha = alpha3;
+  160 : 
+  161 : // "Set 1"
+  162 : // func tildec1 = alpha;
+  163 : // func tildec2 = - gamma*alpha;
+  164 : // "V1 matlab", "V2 matlab"
+  165 : func tildec1 = alpha;
+  166 : func tildec2 = - alpha;
+  167 : 
+  168 : // TIME dep interations prms
+  169 : real dt = 0.5; //delta t
+  170 : int OUTPUTit = 2; //save solution img every OUTPUTit
+  171 : int it = 0 * 1000; //counter for time-step solved
+  172 : int tload = 499; //time t to be loaded: to be change if ld true
+  173 : 
+  174 : //NEWTON's method prms
+  175 : int MAXiter =200; // maximum number of iterations
+  176 : real tol = 1e-12, err; // tolerance
+  177 : int iter = 0; //counter for Newton's iterations
+  178 : ;
+   15 : 
+   16 : /// Mesh
+   17 : mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); // v1,v2 matlab
+   18 : 
+   19 : /// Finite element spaces
+   20 : fespace Xh(Th, P1);
+   21 : int dimXh =Xh.ndof;
+   22 : 
+   23 : // perturbation
+   24 : Xh pert = eps * cos(2*pi*x/Lx)* cos(2*pi*y/Ly);
+   25 : 
+   26 : Xh U, V, // U_k+1, V_k+1
+   27 :    U0, V0, // U_k, V_k
+   28 :    incrU, incrV;
+   29 : 
+   30 : // Linearized problem: matrices and vectors
+   31 : varf au(u,phi) = int2d(Th) (-tildeD1 * gradS(u)     [dx(u) , sqrt(s)*dy(u)] '*gradS(phi)     [dx(phi) , sqrt(s)*dy(phi)]  + tildea1 * u*phi);
+   32 : varf bu(v,phi) = int2d(Th) (tildeb1 * v*phi);
+   33 : varf cuu(u,phi) = int2d(Th) (2 * tildec1 * U0 * V0 * u * phi) +
+   34 :                   int2d(Th) (2 * tildec1 * U0 * V0 * U0 * phi); //rhs1
+   35 : varf cuv(v,phi) = int2d(Th) (tildec1 * U0 * U0 * v * phi);
+   36 : 
+   37 : varf av(v,phi) = int2d(Th) (-tildeD2 * gradS(v)     [dx(v) , sqrt(s)*dy(v)] '*gradS(phi)     [dx(phi) , sqrt(s)*dy(phi)]  + tildea2 * v*phi);
+   38 : varf bv(u,phi) = int2d(Th) (tildeb2 * u*phi);
+   39 : varf cvu(u,phi) = int2d(Th) (2 * tildec2 * U0 * V0 * u * phi) +
+   40 :                   int2d(Th) (2 * tildec2 * U0 * V0 * U0 * phi) - int2d(Th) (f2 * phi); //rhs2
+   41 : varf cvv(v,phi) = int2d(Th) (tildec2 * U0 * U0 * v * phi);
+   42 : 
+   43 : matrix Au = au(Xh,Xh);
+   44 : matrix Av = av(Xh,Xh);
+   45 : matrix Bu = bu(Xh,Xh);
+   46 : matrix Bv = bv(Xh,Xh);
+   47 : matrix tmpu1, tmpu2, tmpv1, tmpv2;
+   48 : matrix Cuu, Cuv, Cvu, Cvv; // nedd to be updated at every Newton it
+   49 : real[int] rhs1(dimXh),
+   50 :           rhs2(dimXh),
+   51 :           tmp1(2*dimXh);
+   52 : 
+   53 : matrix A;
+   54 : real[int] F(2*dimXh);
+   55 : 
+   56 : //step of the Newton method: from Uold,Vold (u_k,V_k) -> find U,V (U_k+1, V_k+1))
+   57 : func int step()
+   58 : {
+   59 :   // update time-dep matrices and vectors
+   60 :   Cuu = cuu(Xh,Xh);
+   61 :   Cuv = cuv(Xh,Xh);
+   62 :   Cvu = cvu(Xh,Xh);
+   63 :   Cvv = cvv(Xh,Xh);
+   64 :   rhs1 = cuu(0,Xh);
+   65 :   rhs2 = cvu(0,Xh);
+   66 : 
+   67 :   tmpu1 = Au + Cuu;
+   68 :   tmpu2 = Bu + Cuv;
+   69 :   tmpv1 = Bv + Cvu;
+   70 :   tmpv2 = Av + Cvv;
+   71 :   A = [[tmpu1, tmpu2],
+   72 :        [tmpv1, tmpv2]];
+   73 :   //set solver for matrices
+   74 :   set(A, solver = UMFPACK);
+   75 :   F = [rhs1,rhs2];
+   76 : 
+   77 :   tmp1 = A^-1 * F;
+   78 :   for(int ii = 0; ii < Xh.ndof; ii++)
+   79 :   {
+   80 :     U[][ii] = tmp1[ii];
+   81 :     V[][ii] = tmp1[ii + Xh.ndof];
+   82 :   }
+   83 : 
+   84 :   return 0;
+   85 : }
+   86 : 
+   87 : //return residual estimate: (normalized) with L2 norm
+   88 : func real residual()
+   89 : {
+   90 :   // compute the increment between (U,V) and (U0,V0)
+   91 :   incrU[] = U[];
+   92 :   incrU[] -= U0[];
+   93 : 
+   94 :   incrV[] = V[];
+   95 :   incrV[] -= V0[];
+   96 : 
+   97 :   real errU = int2d(Th) ((incrU)^2);
+   98 :   real errV = int2d(Th) ((incrV)^2);
+   99 :   real normU = int2d(Th) ((U0)^2);
+  100 :   real normV = int2d(Th) ((V0)^2);
+  101 : 
+  102 :   return sqrt(errU/(normU+1e-12)) + sqrt(errV/(normV+1e-12));
+  103 : }
+  104 : 
+  105 : //Initialization:
+  106 : if (ld) {
+  107 :   ifstream fU(path + "lastU.txt");
+  108 :   ifstream fV(path + "lastV.txt");
+  109 : 
+  110 :   fU >> U[];
+  111 :   fV >> V[];
+  112 : 
+  113 :   plot(U, fill = 1, value = 1, cmm = "Loaded Active ROPS", wait = 1);
+  114 :   plot(V, fill = 1, value = 1, cmm = "Loaded Inactive ROPS", wait = 1);
+  115 : }
+  116 : else
+  117 : {
+  118 :   U = u0;
+  119 :   V = v0;
+  120 :   U[] += pert[];
+  121 :   V[] += pert[];
+  122 :   // srandom(seed);
+  123 :   // // ranreal 1 generates a random number in [0,1]
+  124 :   //   for(int ii = 0; ii < Xh.ndof; ii++)
+  125 :   //   {
+  126 :   //     U[][ii] += randreal1();
+  127 :   //     V[][ii] += randreal1();
+  128 :   //   }
+  129 : }
+  130 : 
+  131 : plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs perturbed", ps = "results/U" + iter + ".ps");
+  132 : plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs perturbed", ps = "results/V" + iter + ".ps");
+  133 : savevtk("results/U" + iter + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+  134 : savevtk("results/V" + iter + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+  135 : ofstream foutU("results/U" + iter + ".txt");
+  136 : ofstream foutV("results/V" + iter + ".txt");
+  137 : foutU << U[];
+  138 : foutV << V[];
+  139 : U0 = U;
+  140 : V0 = V;
+  141 : 
+  142 : /// Main: Newton loop
+  143 : err = tol + 1; // at least one iteration has to be performed
+  144 : for(iter = 1; iter < MAXiter && err > tol; ++iter)
+  145 : {
+  146 :   //perform an iteration of the linerized solver
+  147 :   int errc = step(); // -> find U,V
+  148 :   if (errc != 0)
+  149 :   {
+  150 :     cout << "ERROR" << endl;
+  151 :     break;
+  152 :   }
+  153 : 
+  154 :   //update err for the stopping criterion
+  155 :   err = residual(); //-> compute the residual between U,V and U0, V0
+  156 :   cout << "#err: " << err << endl;
+  157 : 
+  158 :   /// update old solution
+  159 :   U0 = U;
+  160 :   V0 = V;
+  161 : 
+  162 :   plot(U, value =1, fill =1, cmm="Concentration of ACTIVE ROPs at ITERATION "+ iter, ps = "results/U" + iter + ".ps");
+  163 :   plot(V, value =1, fill =1, cmm="Concentration of INACTIVE ROPs at ITERATION"+ iter, ps = "results/V" + iter + ".ps");
+  164 :   savevtk("results/U" + iter + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+  165 :   savevtk("results/V" + iter + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+  166 : 
+  167 :   // Output file for last results -> to be loaded in case of interruption
+  168 :   ofstream foutU("results/U" + iter + ".txt");
+  169 :   ofstream foutV("results/V" + iter + ".txt");
+  170 :   foutU << U[];
+  171 :   foutV << V[];
+  172 : 
+  173 : }
+  174 : 
+  175 : 
+  176 : /// Postprocessing
+  177 : cout << "# nonlinear iter: " << iter << endl;
+  178 : cout << "# residual: " << err << endl;
+  179 : 
+  180 : plot(U, value =1, fill =1, wait=1, cmm="Concentration of ACTIVE ROPs");
+  181 : plot(V, value =1, fill =1, wait=1, cmm="Concentration of INACTIVE ROPs");
+  182 : plot(U, dim = 3, value =1, fill =1, wait=1, cmm="Concentration of ACTIVE ROPs");
+  183 : plot(V, dim = 3, value =1, fill =1, wait=1, cmm="Concentration of INACTIVE ROPs");
+  184 :  sizestack + 1024 =15920  ( 14896 )
+
+u0: 0.9
+v0: 1
+  -- Square mesh : nb vertices  =3131 ,  nb triangles = 6000 ,  nb boundary edges 260
+ 0x55de2ebb0ce0 VTK_FILE 1
+ 0x55de2ebb0290 VTK_FILE 1
+#err: 1.58174
+ 0x55de2ebb7ea0 VTK_FILE 1
+ 0x55de2ebb7ea0 VTK_FILE 1
+#err: 1.05797
+ 0x55de2ebb09c0 VTK_FILE 1
+ 0x55de2ebb09c0 VTK_FILE 1
+#err: 1.42526
+ 0x55de2ebac8b0 VTK_FILE 1
+ 0x55de2ebac8b0 VTK_FILE 1
+#err: 2.339
+ 0x55de2ebadc60 VTK_FILE 1
+ 0x55de2ebadc60 VTK_FILE 1
+#err: 2.36308
+ 0x55de2ebb0dd0 VTK_FILE 1
+ 0x55de2ebb0dd0 VTK_FILE 1
+#err: 2.93991
+ 0x55de2ebb0a90 VTK_FILE 1
+ 0x55de2ebb0a90 VTK_FILE 1
+#err: 0.92608
+ 0x55de2ebba9d0 VTK_FILE 1
+ 0x55de2ebba9d0 VTK_FILE 1
+#err: 1.30317
+ 0x55de2ebb08f0 VTK_FILE 1
+ 0x55de2ebb08f0 VTK_FILE 1
+#err: 1.88631
+ 0x55de2ebba520 VTK_FILE 1
+ 0x55de2ebba520 VTK_FILE 1
+#err: 58.3256
+ 0x55de2ebba5c0 VTK_FILE 1
+ 0x55de2ebba5c0 VTK_FILE 1
+#err: 0.665913
+ 0x55de2ebba750 VTK_FILE 1
+ 0x55de2ebba750 VTK_FILE 1
+#err: 0.637984
+ 0x55de2ebb16c0 VTK_FILE 1
+ 0x55de2ebb16c0 VTK_FILE 1
+#err: 1.34919
+ 0x55de2ebb0a90 VTK_FILE 1
+ 0x55de2ebb0a90 VTK_FILE 1
+#err: 1.95338
+ 0x55de2ebb7900 VTK_FILE 1
+ 0x55de2ebb7900 VTK_FILE 1
+#err: 6.38019
+ 0x55de2ebbd490 VTK_FILE 1
+ 0x55de2ebbd490 VTK_FILE 1
+#err: 2.32102
+ 0x55de2ebbc8b0 VTK_FILE 1
+ 0x55de2ebbc8b0 VTK_FILE 1
+#err: 0.643338
+ 0x55de2ebadc60 VTK_FILE 1
+ 0x55de2ebadc60 VTK_FILE 1
+#err: 0.687886
+ 0x55de2ebc40a0 VTK_FILE 1
+ 0x55de2ebc40a0 VTK_FILE 1
+#err: 5.74189
+ 0x55de2ebc3440 VTK_FILE 1
+ 0x55de2ebc3440 VTK_FILE 1
+#err: 0.820794
+ 0x55de2ebba9d0 VTK_FILE 1
+ 0x55de2ebba9d0 VTK_FILE 1
+#err: 0.676635
+ 0x55de2ebbed00 VTK_FILE 1
+ 0x55de2ebbed00 VTK_FILE 1
+#err: 1.99155
+ 0x55de2ebb95f0 VTK_FILE 1
+ 0x55de2ebb95f0 VTK_FILE 1
+#err: 0.921715
+ 0x55de2eb96ce0 VTK_FILE 1
+ 0x55de2eb96ce0 VTK_FILE 1
+#err: 0.941697
+ 0x55de2ebb1520 VTK_FILE 1
+ 0x55de2ebb1520 VTK_FILE 1
+#err: 0.66842
+ 0x55de2ebb0f70 VTK_FILE 1
+ 0x55de2ebb0f70 VTK_FILE 1
+#err: 3.28204
+ 0x55de2ebbab60 VTK_FILE 1
+ 0x55de2ebbab60 VTK_FILE 1
+#err: 6.56684
+ 0x55de2ebb04e0 VTK_FILE 1
+ 0x55de2ebb04e0 VTK_FILE 1
+#err: 124.388
+ 0x55de2ebb90c0 VTK_FILE 1
+ 0x55de2ebb90c0 VTK_FILE 1
+#err: 0.667948
+ 0x55de2ebb0430 VTK_FILE 1
+ 0x55de2ebb0430 VTK_FILE 1
+#err: 0.666357
+ 0x55de2ebbdbb0 VTK_FILE 1
+ 0x55de2ebbdbb0 VTK_FILE 1
+#err: 0.733885
+ 0x55de2ebb9010 VTK_FILE 1
+ 0x55de2ebb9010 VTK_FILE 1
+#err: 0.676237
+ 0x55de2ebb8f60 VTK_FILE 1
+ 0x55de2ebb8f60 VTK_FILE 1
+#err: 0.670946
+ 0x55de2ebbae60 VTK_FILE 1
+ 0x55de2ebbae60 VTK_FILE 1
+#err: 2.90343
+ 0x55de2ebada80 VTK_FILE 1
+ 0x55de2ebada80 VTK_FILE 1
+#err: 0.703811
+ 0x55de2ebbf6a0 VTK_FILE 1
+ 0x55de2ebbf6a0 VTK_FILE 1
+#err: 0.720016
+ 0x55de2ebae4f0 VTK_FILE 1
+ 0x55de2ebae4f0 VTK_FILE 1
+#err: 0.688821
+ 0x55de2ebc8070 VTK_FILE 1
+ 0x55de2ebc8070 VTK_FILE 1
+#err: 0.674684
+ 0x55de2ebb1380 VTK_FILE 1
+ 0x55de2ebb1380 VTK_FILE 1
+#err: 0.669904
+ 0x55de2ebb9150 VTK_FILE 1
+ 0x55de2ebb9150 VTK_FILE 1
+#err: 0.67635
+ 0x55de2ebb8f60 VTK_FILE 1
+ 0x55de2ebb8f60 VTK_FILE 1
+#err: 0.678919
+ 0x55de2ebba6b0 VTK_FILE 1
+ 0x55de2ebba6b0 VTK_FILE 1
+#err: 0.677646
+ 0x55de2ebb7ea0 VTK_FILE 1
+ 0x55de2ebb7ea0 VTK_FILE 1
+#err: 0.689635
+ 0x55de2ebada80 VTK_FILE 1
+ 0x55de2ebada80 VTK_FILE 1
+#err: 0.707255
+ 0x55de2ebbdbb0 VTK_FILE 1
+ 0x55de2ebbdbb0 VTK_FILE 1
+#err: 0.748368
+ 0x55de2ebc4430 VTK_FILE 1
+ 0x55de2ebc4430 VTK_FILE 1
+#err: 0.738199
+ 0x55de2eb96ef0 VTK_FILE 1
+ 0x55de2eb96ef0 VTK_FILE 1
+#err: 0.874498
+ 0x55de2ebb0750 VTK_FILE 1
+ 0x55de2ebb0750 VTK_FILE 1
+#err: 1.04745
+ 0x55de2ebba6b0 VTK_FILE 1
+ 0x55de2ebba6b0 VTK_FILE 1
+#err: 0.848122
+ 0x55de2ebb0290 VTK_FILE 1
+ 0x55de2ebb0290 VTK_FILE 1
+#err: 0.566743
+ 0x55de2ebba840 VTK_FILE 1
+ 0x55de2ebba840 VTK_FILE 1
+#err: 0.544498
+ 0x55de2ebb1520 VTK_FILE 1
+ 0x55de2ebb1520 VTK_FILE 1
+#err: 0.452019
+ 0x55de2ebb9430 VTK_FILE 1
+ 0x55de2ebb9430 VTK_FILE 1
+#err: 0.500555
+ 0x55de2ebae4f0 VTK_FILE 1
+ 0x55de2ebae4f0 VTK_FILE 1
+#err: 0.480477
+ 0x55de2ebb9430 VTK_FILE 1
+ 0x55de2ebb9430 VTK_FILE 1
+#err: 0.251132
+ 0x55de2ebb0340 VTK_FILE 1
+ 0x55de2ebb0340 VTK_FILE 1
+#err: 0.717932
+ 0x55de2ebc3a50 VTK_FILE 1
+ 0x55de2ebc3a50 VTK_FILE 1
+#err: 0.840232
+ 0x55de2ebaf1b0 VTK_FILE 1
+ 0x55de2ebaf1b0 VTK_FILE 1
+#err: 0.560861
+ 0x55de2ebb15f0 VTK_FILE 1
+ 0x55de2ebb15f0 VTK_FILE 1
+#err: 0.452052
+ 0x55de2ebbab60 VTK_FILE 1
+ 0x55de2ebbab60 VTK_FILE 1
+#err: 0.773534
+ 0x55de2ebc3d70 VTK_FILE 1
+ 0x55de2ebc3d70 VTK_FILE 1
+#err: 0.289112
+ 0x55de2ebb1520 VTK_FILE 1
+ 0x55de2ebb1520 VTK_FILE 1
+#err: 0.554785
+ 0x55de2ebba520 VTK_FILE 1
+ 0x55de2ebba520 VTK_FILE 1
+#err: 9.51322
+ 0x55de2ebb0ea0 VTK_FILE 1
+ 0x55de2ebb0ea0 VTK_FILE 1
+#err: 0.5076
+ 0x55de2ebada80 VTK_FILE 1
+ 0x55de2ebada80 VTK_FILE 1
+#err: 0.510669
+ 0x55de2ebb12b0 VTK_FILE 1
+ 0x55de2ebb12b0 VTK_FILE 1
+#err: 0.503458
+ 0x55de2ebb1a40 VTK_FILE 1
+ 0x55de2ebb1a40 VTK_FILE 1
+#err: 0.573828
+ 0x55de2ebaf0b0 VTK_FILE 1
+ 0x55de2ebaf0b0 VTK_FILE 1
+#err: 0.48795
+ 0x55de2ebb9530 VTK_FILE 1
+ 0x55de2ebb9530 VTK_FILE 1
+#err: 0.267527
+ 0x55de2ebafcd0 VTK_FILE 1
+ 0x55de2ebafcd0 VTK_FILE 1
+#err: 0.193013
+ 0x55de2ebb9010 VTK_FILE 1
+ 0x55de2ebb9010 VTK_FILE 1
+#err: 0.684511
+ 0x55de2ebc8070 VTK_FILE 1
+ 0x55de2ebc8070 VTK_FILE 1
+#err: 0.319421
+ 0x55de2ebc3440 VTK_FILE 1
+ 0x55de2ebc3440 VTK_FILE 1
+#err: 0.38762
+ 0x55de2ebba840 VTK_FILE 1
+ 0x55de2ebba840 VTK_FILE 1
+#err: 1.7036
+ 0x55de2ebb8e40 VTK_FILE 1
+ 0x55de2ebb8e40 VTK_FILE 1
+#err: 0.378409
+ 0x55de2ebb1790 VTK_FILE 1
+ 0x55de2ebb1790 VTK_FILE 1
+#err: 0.281071
+ 0x55de2ebc4220 VTK_FILE 1
+ 0x55de2ebc4220 VTK_FILE 1
+#err: 0.188995
+ 0x55de2eb96ce0 VTK_FILE 1
+ 0x55de2eb96ce0 VTK_FILE 1
+#err: 0.317435
+ 0x55de2ebb0f70 VTK_FILE 1
+ 0x55de2ebb0f70 VTK_FILE 1
+#err: 0.535108
+ 0x55de2ebbab60 VTK_FILE 1
+ 0x55de2ebbab60 VTK_FILE 1
+#err: 0.26265
+ 0x55de2ebb7770 VTK_FILE 1
+ 0x55de2ebb7770 VTK_FILE 1
+#err: 0.207495
+ 0x55de2ebaf0b0 VTK_FILE 1
+ 0x55de2ebaf0b0 VTK_FILE 1
+#err: 0.240736
+ 0x55de2ebb7ea0 VTK_FILE 1
+ 0x55de2ebb7ea0 VTK_FILE 1
+#err: 0.172802
+ 0x55de2ebb0820 VTK_FILE 1
+ 0x55de2ebb0820 VTK_FILE 1
+#err: 0.19415
+ 0x55de2ebada80 VTK_FILE 1
+ 0x55de2ebada80 VTK_FILE 1
+#err: 0.135763
+ 0x55de2ebba520 VTK_FILE 1
+ 0x55de2ebba520 VTK_FILE 1
+#err: 0.142405
+ 0x55de2ebadc60 VTK_FILE 1
+ 0x55de2ebadc60 VTK_FILE 1
+#err: 0.0844818
+ 0x55de2ebb0750 VTK_FILE 1
+ 0x55de2ebb0750 VTK_FILE 1
+#err: 0.0791595
+ 0x55de2ebb8f60 VTK_FILE 1
+ 0x55de2ebb8f60 VTK_FILE 1
+#err: 0.0308593
+ 0x55de2ebc3a50 VTK_FILE 1
+ 0x55de2ebc3a50 VTK_FILE 1
+#err: 0.0152613
+ 0x55de2ebbf6a0 VTK_FILE 1
+ 0x55de2ebbf6a0 VTK_FILE 1
+#err: 0.00129956
+ 0x55de2ebb08f0 VTK_FILE 1
+ 0x55de2ebb08f0 VTK_FILE 1
+#err: 2.73301e-05
+ 0x55de2ebb0680 VTK_FILE 1
+ 0x55de2ebb0680 VTK_FILE 1
+#err: 4.31469e-09
+ 0x55de2ebb1880 VTK_FILE 1
+ 0x55de2ebb1880 VTK_FILE 1
+#err: 9.49955e-14
+ 0x55de2ebb0b60 VTK_FILE 1
+ 0x55de2ebb0b60 VTK_FILE 1
+# nonlinear iter: 95
+# residual: 9.49955e-14
+times: compile 0.010276s, execution 12.8862s,  mpirank:0
+ CodeAlloc : nb ptr  5169,  size :547648 mpirank: 0
+Ok: Normal End

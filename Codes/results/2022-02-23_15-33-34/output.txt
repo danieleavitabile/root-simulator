@@ -1,0 +1,374 @@
+-- FreeFem++ v4.9 (Mon Oct  4 22:12:06 CEST 2021 - git v4.9)
+ Load: lg_fem lg_mesh lg_mesh3 eigenvalue 
+    1 : // 1 cell solver
+    2 : // SEMI-IMPLICIT: Implicit in Time + diffusion, explicit in the reaction term
+    3 : 
+    4 : load "ffrandom";
+    5 : load "iovtk" load: iovtk 
+;
+    6 : int[int] ffordervel = [1]; // to save images in .vtk format
+    7 : int seed = 10;
+    8 : int ld = 0; // 1: load prev. sol. as initial state
+    9 :             // 0: use custom initial state
+   10 : string path = "results/stationaryNEW";  // path of the previously computed U, V
+   11 : 
+   12 : /// Parameters:
+   13 : string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
+   14 : include "PRM.edp"/// Parameters:
+    2 : // ROPs dynamics prms
+    3 : int Nx, Ny; //number of nodes
+    4 : real Lx, Ly, //dimension 2D domain [micro m]
+    5 :      D1, D2, //diffusion constants, D1 << D2 [micro m /s^2]
+    6 :      k1, //activation rate of auxin [1/s]
+    7 :      k2, // k20 actually, overall auxin level [con^2/s]
+    8 :      b, //rate of production of inactive ROP [con/s]
+    9 :      c,r, //rate usage active ROPs [1/s]
+   10 :      s, //aspect ratio
+   11 :      epsi2,D,tau,beta,gamma,nu, //Rescaled prms
+   12 :      u0, v0, //initial states
+   13 :      tildeD1, tildeD2, tildea1, tildea2, tildeb1, tildeb2, f2; // synthetic coefficients
+   14 : 
+   15 : real eps = 0; // pertubation of initial state
+   16 : 
+   17 : if(prm == "Set 1")
+   18 : {
+   19 :   //Table1, set1 from ref.[10]
+   20 :   Nx = 60;
+   21 :   Ny = 60;
+   22 : 
+   23 :   Lx = 50; Ly = 20;
+   24 :   D1 = 0.1; D2 = 10;
+   25 :   k1 = 0.01;
+   26 :   b = 0.01;
+   27 :   c = 0.1;
+   28 :   r = 0.01;
+   29 :   k2 = 0.1;
+   30 :   s = (Lx/Ly)^2;
+   31 : 
+   32 :   //Rescaled prms
+   33 :   epsi2 = D1/(Lx^2*(c+r));
+   34 :   D = D2/(Lx^2*k1);
+   35 :   tau = (c+r)/k1;
+   36 :   beta = r/k1;
+   37 :   gamma = (c+r)*k1^2/(k2*b^2);
+   38 : 
+   39 :   //prm for auxin
+   40 :   nu = 1.5;
+   41 : 
+   42 :   //stationary point or initialization
+   43 :   u0 = 1./(gamma*beta);
+   44 :   v0 = tau*beta*gamma/(tau + beta^2*gamma);
+   45 :   // real uu0 =1./(gamma*beta);
+   46 :   // real vv0 = tau*beta*gamma/(tau + beta^2*gamma);
+   47 :   // func u0 = uu0* exp(-10*x);
+   48 :   // func v0 = vv0 * exp(-10*x);
+   49 : 
+   50 :   //F coefficients:
+   51 :   tildeD1 = epsi2;
+   52 :   tildeD2 = D / tau;
+   53 :   tildea1 = - 1;
+   54 :   tildea2 = - 1/ tau;
+   55 :   tildeb1 = 1/(gamma*tau);
+   56 :   tildeb2 = gamma*(1 - beta/tau);
+   57 : 
+   58 :   f2 = 1/tau;
+   59 : }
+   60 : else if(prm == "V1 matlab")
+   61 : {
+   62 :   Nx = 100; Ny = 50;
+   63 : 
+   64 :   Lx = 2; Ly = 1;
+   65 :   D1 = 0.1; D2 = 10;
+   66 :   k1 = 0.01;
+   67 :   b = 0.01;
+   68 :   c = 0.1;
+   69 :   r = 0.01;
+   70 :   k2 = 0.1;
+   71 :   s = 1;
+   72 : 
+   73 :   //Rescaled prms
+   74 :   epsi2 = D1/(Lx^2*(c+r));
+   75 :   D = D2/(Lx^2*k1);
+   76 :   tau = (c+r)/k1;
+   77 :   beta = r/k1;
+   78 :   gamma = (c+r)*k1^2/(k2*b^2);
+   79 : 
+   80 :   //prm for auxin
+   81 :   nu = 1.5;
+   82 : 
+   83 :   //stationary point or initialization
+   84 :   u0 = b/r;
+   85 :   v0 = (b*r*(c+r)) / (k1*r^2 + k2*b^2);
+   86 : 
+   87 :   //F coefficients
+   88 :   tildeD1 = D1;
+   89 :   tildeD2 = D2;
+   90 :   tildea1 = -(c+r);
+   91 :   tildea2 = -k1;
+   92 :   tildeb1 = k1;
+   93 :   tildeb2 = c;
+   94 : 
+   95 :   f2 = b;
+   96 : }
+   97 : else if(prm == "V2 matlab")
+   98 : {
+   99 :   Nx = 100; Ny = 30;
+  100 : 
+  101 :   //Table1, set3 from ref.[10]
+  102 :   s = 5.5;
+  103 :   Lx = 70.; Ly = Lx/sqrt(s);
+  104 :   D1 = 0.075; D2 = 20;
+  105 :   k1 = 0.008;
+  106 :   b = 0.008;
+  107 :   c = 0.1;
+  108 :   r = 0.05;
+  109 :   k2 = 0.5;
+  110 : 
+  111 :   //prm for auxin
+  112 :   nu = 1.5;
+  113 : 
+  114 :   //Rescaled prms
+  115 :   epsi2 = D1/(Lx^2*(c+r));
+  116 :   D = D2/(Lx^2*k1);
+  117 :   tau = (c+r)/k1;
+  118 :   beta = r/k1;
+  119 :   gamma = (c+r)*k1^2/(k2*b^2);
+  120 : 
+  121 :   //stationary point or initialization
+  122 :   u0 = 0.9;
+  123 :   v0 = 1;
+  124 : 
+  125 :   //F coefficients:
+  126 :   tildeD1 = D1;
+  127 :   tildeD2 = D2;
+  128 :   tildea1 = -(c+r);
+  129 :   tildea2 = -k1;
+  130 :   tildeb1 = k1;
+  131 :   tildeb2 = c;
+  132 : 
+  133 :   f2 = b;
+  134 : }
+  135 : 
+  136 : cout << "u0: " << u0 << endl;
+  137 : cout << "v0: " << v0 << endl;
+  138 : 
+  139 : /// Macros:  attention to rescaled derivatives
+  140 : macro gradS(f) [dx(f) , sqrt(s)*dy(f)]  )  //
+  141 : 
+  142 : real t = 0.0;
+  143 : real Tmax = 5;
+  144 : 
+  145 : 
+  146 : func alpha1 = exp(-nu*x); //set1
+  147 : func alpha2 = k2* exp(-nu*x/Lx)*sin(pi*y/Ly); //v1
+  148 : func alpha3 = k2* exp(-nu*x/Lx); //v2
+  149 : func alpha4 = exp(-nu*x/Lx);
+  150 : func alpha5 = k2* exp(-nu*(x-70)/Lx) * (x>=70) + k2* exp(nu*(x-70)/Lx) * (x<70); // for opposite gradient
+  151 : 
+  152 : //alpha time dep.
+  153 : // real period = 100;
+  154 : // func alpha6 = alpha3 * sin(2*pi*t/period) + k2;
+  155 : func x0 = 2*Lx/Tmax * t;
+  156 : func alpha7 = k2* exp(-nu*(x-x0)/Lx) * (x>=x0) + k2* exp(nu*(x-x0)/Lx) * (x<x0);
+  157 : 
+  158 : /// Change properly here
+  159 : func alpha = alpha3;
+  160 : 
+  161 : // "Set 1"
+  162 : // func tildec1 = alpha;
+  163 : // func tildec2 = - gamma*alpha;
+  164 : // "V1 matlab", "V2 matlab"
+  165 : func tildec1 = alpha;
+  166 : func tildec2 = - alpha;
+  167 : 
+  168 : // TIME dep interations prms
+  169 : real dt = 0.5; //delta t
+  170 : int OUTPUTit = 2; //save solution img every OUTPUTit
+  171 : int it = 0 * 1000; //counter for time-step solved
+  172 : int tload = 499; //time t to be loaded: to be change if ld true
+  173 : 
+  174 : //NEWTON's method prms
+  175 : int MAXiter =200; // maximum number of iterations
+  176 : real tol = 1e-12, err; // tolerance
+  177 : int iter = 0; //counter for Newton's iterations
+  178 : ;
+   15 : /// Mesh
+   16 : mesh Th = square(Nx, Ny, [Lx * x, Ly * y]);
+   17 : 
+   18 : /// Finite element spaces
+   19 : fespace Xh(Th, P1);
+   20 : int dimXh =Xh.ndof;
+   21 : 
+   22 : Xh pert = eps * cos(2*pi*x/Lx)* cos(2*pi*y/Ly); //custom perturbation of initial state
+   23 : 
+   24 : Xh U, V, // U_n+1, V_n+1 (new sol at each time step)
+   25 :    U0, V0; // U_n, V_n (previous time-step sol)
+   26 : 
+   27 : include "step_semi_implicit.edp"/// Semi-implicit method: functionals, matrices, rhs for 1 cell
+    2 : // varf
+    3 : varf au(u,phi) = int2d(Th) (u*phi / dt + tildeD1 * gradS(u)     [dx(u) , sqrt(s)*dy(u)] '*gradS(phi)     [dx(phi) , sqrt(s)*dy(phi)]  - tildea1 * u*phi)
+    4 :                + int2d(Th) (U0*phi / dt); //F1
+    5 : varf bu(v,phi) = int2d(Th) (- tildeb1  * v*phi);
+    6 : varf cu(v,phi) = int2d(Th) (- tildec1 * U0 * U0 * v * phi);
+    7 : 
+    8 : varf av(v,phi) = int2d(Th) (v*phi / dt + tildeD2 * gradS(v)     [dx(v) , sqrt(s)*dy(v)] '*gradS(phi)     [dx(phi) , sqrt(s)*dy(phi)]  - tildea2 * v*phi)
+    9 :                + int2d(Th) (V0*phi / dt + phi * f2); //F2
+   10 : varf bv(u,phi) = int2d(Th) (- tildeb2 * u*phi);
+   11 : varf cv(v,phi) = int2d(Th) (- tildec2 * U0 * U0 * v * phi);
+   12 : 
+   13 : matrix Au = au(Xh,Xh);
+   14 : matrix Av = av(Xh,Xh);
+   15 : matrix Bu = bu(Xh,Xh);
+   16 : matrix Bv = bv(Xh,Xh);
+   17 : matrix tmpu, tmpv;
+   18 : matrix Cu, Cv; // nedd to be updated at every time step
+   19 : real[int] rhs1(dimXh),
+   20 :           rhs2(dimXh),
+   21 :           tmp1(2*dimXh); //need to be updated at every time step
+   22 : 
+   23 : matrix A;
+   24 : real[int] F(2*dimXh);
+   25 : 
+   26 : // step of the SI method
+   27 : func int step()
+   28 : {
+   29 :   // update time-dep matrices and vectors
+   30 :   Cu = cu(Xh,Xh);
+   31 :   Cv = cv(Xh,Xh);
+   32 :   rhs1 = au(0,Xh);
+   33 :   rhs2 = av(0,Xh);
+   34 : 
+   35 :   tmpu = Bu+Cu;
+   36 :   tmpv = Av+Cv;
+   37 :   A = [[Au, tmpu],
+   38 :        [Bv, tmpv]];
+   39 :   //set solver for matrices
+   40 :   set(A, solver = UMFPACK);
+   41 : 
+   42 :   F = [rhs1,rhs2];
+   43 : 
+   44 :   tmp1 = A^-1 * F;
+   45 :   for(int ii = 0; ii < Xh.ndof; ii++)
+   46 :   {
+   47 :     U[][ii] = tmp1[ii];
+   48 :     V[][ii] = tmp1[ii + Xh.ndof];
+   49 :   }
+   50 : 
+   51 :   return 0;
+   52 : }
+   53 : ;
+   28 : 
+   29 : // Initialization:
+   30 : if (ld) {
+   31 :   ifstream fU(path + "U" + tload + ".txt");
+   32 :   ifstream fV(path + "V" + tload + ".txt");
+   33 : 
+   34 :   fU >> U[];
+   35 :   fV >> V[];
+   36 : 
+   37 :   plot(U, fill = 1, value = 1, cmm = "Loaded Active ROPS"/*, wait = 1*/);
+   38 :   plot(V, fill = 1, value = 1, cmm = "Loaded Inactive ROPS"/*, wait = 1*/);
+   39 :   U[] += pert[];
+   40 :   V[] += pert[];
+   41 : }
+   42 : else
+   43 : {
+   44 :   U = u0;
+   45 :   V = v0;
+   46 :   U[] += pert[];
+   47 :   V[] += pert[];
+   48 :   // srandom(seed);
+   49 :   // // ranreal 1 generates a random number in [0,1]
+   50 :   //   for(int ii = 0; ii < Xh.ndof; ii++)
+   51 :   //   {
+   52 :   //     U[][ii] += randreal1() / 3e5;
+   53 :   //     V[][ii] += randreal1() / 3e5;
+   54 :   //   }
+   55 : }
+   56 : 
+   57 : plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t + "perturbed", ps = "results/U" + t + ".ps");
+   58 : plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t + "perturbed", ps = "results/V" + t + ".ps");
+   59 : savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+   60 : savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+   61 : ofstream foutU("results/U" + t + ".txt");
+   62 : ofstream foutV("results/V" + t + ".txt");
+   63 : foutU << U[];
+   64 : foutV << V[];
+   65 : U0 = U;
+   66 : V0 = V;
+   67 : 
+   68 : /// Main
+   69 : while(t < Tmax)
+   70 : {
+   71 :   t += dt;
+   72 :   it ++;
+   73 : 
+   74 :   // perform an iteration of the linerized solver
+   75 :   int errc = step(); // -> find U,V
+   76 :   if (errc != 0)
+   77 :   {
+   78 :     cout << "ERROR" << endl;
+   79 :     break;
+   80 :   }
+   81 : 
+   82 :   // update old solution
+   83 :   U0 = U;
+   84 :   V0 = V;
+   85 : 
+   86 :   if((it % OUTPUTit == 0.0))
+   87 :   {
+   88 :     plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U" + t + ".ps");
+   89 :     plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t, ps = "results/V" + t + ".ps");
+   90 :   	savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+   91 :   	savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+   92 :     // Output file for last results -> to be loaded in case of interuption
+   93 :     ofstream foutU("results/U" + t + ".txt");
+   94 :     ofstream foutV("results/V" + t + ".txt");
+   95 :     foutU << U[];
+   96 :     foutV << V[];
+   97 :     cout << "#time " << t << endl;
+   98 :   }
+   99 :   // else if ((t<100 & it%10==0)) //eventually to capture first time evolution
+  100 :   // {
+  101 :   //   plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U" + t + ".ps");
+  102 :   //   plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t, ps = "results/V" + t + ".ps");
+  103 :   //   savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+  104 :   //   savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+  105 :   //
+  106 :   //   // Output file for last results -> to be loaded in case of interuption
+  107 :   //   ofstream foutU("results/U" + t + ".txt");
+  108 :   //   ofstream foutV("results/V" + t + ".txt");
+  109 :   //   foutU << U[];
+  110 :   //   foutV << V[];
+  111 :   //   cout << "#time " << t << endl;
+  112 :   // }
+  113 : }
+  114 : 
+  115 : /// Postprocessing
+  116 : plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs");
+  117 : plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs");
+  118 :  sizestack + 1024 =12424  ( 11400 )
+
+u0: 0.9
+v0: 1
+  -- Square mesh : nb vertices  =3131 ,  nb triangles = 6000 ,  nb boundary edges 260
+ 0x55e891e1de70 VTK_FILE 1
+ 0x55e891e1de70 VTK_FILE 1
+ 0x55e891e1ee30 VTK_FILE 1
+ 0x55e891e1ee30 VTK_FILE 1
+#time 1
+ 0x55e891ec07e0 VTK_FILE 1
+ 0x55e891ec07e0 VTK_FILE 1
+#time 2
+ 0x55e891e21d40 VTK_FILE 1
+ 0x55e891e21d40 VTK_FILE 1
+#time 3
+ 0x55e891e119a0 VTK_FILE 1
+ 0x55e891e119a0 VTK_FILE 1
+#time 4
+ 0x55e891e17420 VTK_FILE 1
+ 0x55e891e17420 VTK_FILE 1
+#time 5
+times: compile 0.010959s, execution 1.24892s,  mpirank:0
+ CodeAlloc : nb ptr  4982,  size :538224 mpirank: 0
+Ok: Normal End

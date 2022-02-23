@@ -13,7 +13,7 @@ mkdir results/$STR/code/;
 mkdir results/$STR/U;
 mkdir results/$STR/V;
 
-EXEC=1cell_semi_implicit.edp;
+EXEC=1cell_stationaryTest_explicit.edp;
 
 FreeFem++ $EXEC 2>&1 | tee results/$STR/output.txt;
 wait;
