@@ -5,9 +5,9 @@ load "ffrandom";
 load "iovtk";
 int[int] ffordervel = [1]; // to save images in .vtk format
 int seed = 10;
-int ld = 0; // 1: load prev. sol. as initial state
+int ld = 1; // 1: load prev. sol. as initial state
             // 0: use custom initial state
-string path = "results/stationaryNEW";  // path of the previously computed U, V
+string path = "results/2021-11-28_10-19-46/";  // path of the previously computed U, V
 
 /// Parameters:
 string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"

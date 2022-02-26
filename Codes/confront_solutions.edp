@@ -3,13 +3,20 @@
 load "ffrandom";
 load "iovtk";
 int[int] ffordervel = [1]; // to save images in .vtk format
-string path1 = "file_su_remoto/";  //
-string path2 = "file_su_remoto/results/2021-11-30_08-55-57/";
+string path1 = "results/2021-11-28_10-19-46/";  //
+string path2 = "results/2022-02-26_18-07-00/";
 int it1 = 84;
-int it2 = 2999;
+int it2 = 200;
 
 string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
 include "PRM.edp";
+/// Mesh
+mesh Th = square(Nx, Ny, [Lx * x, Ly * y]);
+
+/// Finite element spaces
+fespace Xh(Th, P1);
+int dimXh =Xh.ndof;
+
 Xh U1, V1,
    U2, V2;
 
@@ -52,3 +59,6 @@ plot(diffV, fill = 1, value = 1, cmm = "Diff inactive", wait = 1);
 
 cout << "||diffU||_inf = " << diffU[].linfty << endl;
 cout << "||diffV||_inf = " << diffV[].linfty << endl << endl;
+
+cout << "Normalized ||diffU||_inf = " << diffU[].linfty /U1[].linfty << endl;
+cout << "Normalized ||diffV||_inf = " << diffV[].linfty /V1[].linfty << endl << endl;

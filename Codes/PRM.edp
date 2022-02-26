@@ -12,7 +12,7 @@ real Lx, Ly, //dimension 2D domain [micro m]
      u0, v0, //initial states
      tildeD1, tildeD2, tildea1, tildea2, tildeb1, tildeb2, f2; // synthetic coefficients
 
-real eps = 1e-2; // pertubation of initial state
+real eps = 1e-0; // pertubation of initial state
 
 if(prm == "Set 1")
 {
@@ -140,7 +140,7 @@ cout << "v0: " << v0 << endl;
 macro gradS(f) [dx(f) , sqrt(s)*dy(f)] //
 
 real t = 0.0;
-real Tmax = 5;
+real Tmax = 200;
 
 
 func alpha1 = exp(-nu*x); //set1
@@ -169,7 +169,7 @@ func tildec2 = - alpha;
 real dt = 0.5; //delta t
 int OUTPUTit = 2; //save solution img every OUTPUTit
 int it = 0 * 1000; //counter for time-step solved
-int tload = 499; //time t to be loaded: to be change if ld true
+int tload = 84; //time t to be loaded: to be change if ld true
 
 //NEWTON's method prms
 int MAXiter =200; // maximum number of iterations
