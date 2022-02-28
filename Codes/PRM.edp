@@ -140,7 +140,7 @@ cout << "v0: " << v0 << endl;
 macro gradS(f) [dx(f) , sqrt(s)*dy(f)] //
 
 real t = 0.0;
-real Tmax = 200;
+real Tmax = 1;
 
 
 func alpha1 = exp(-nu*x); //set1
