@@ -38,22 +38,44 @@ for(int i = 0; i < 2; i++) Th[i] = trunc(TH, region==reg(i));
 /// Finite element spaces:
 // [U1,V1] solution on domain Th1, [U2,V2] solution on domain Th2
 fespace Vh1(Th[0], P1);
-Vh1 U1 = u0;
-Vh1 V1 = v0;
-Vh1 U01 = U1, V01 = V1; // previous time-step sol.
-Vh1 U1prec, V1prec, incrU1, incrV1;
+Vh1 U1;
+Vh1 V1;
 
 fespace Vh2(Th[1], P1);
-Vh2 U2 = u0;
-Vh2 V2 = v0;
-Vh2 U02 = U2, V02 = V2; // previous time-step sol.
+Vh2 U2;
+Vh2 V2;
+
+/// Initialization: loaded or homogeneuous
+if (ld) {
+  ifstream fU(path+"U/U" + tload + ".txt");
+  ifstream fV(path+"V/V" + tload + ".txt");
+
+  fU >> U1[];
+  fV >> V1[];
+  fU >> U2[];
+  fV >> V2[];
+
+  plot(U1, U2, value =1, fill =1, wait=1, cmm="Concentration of ACTIVE ROPs at time "+ t);
+  plot(V1, V2, value =1, fill =1, wait=1, cmm="Concentration of INACTIVE ROPs at time "+ t);
+}
+else
+{
+  U1 = 1.5 * u0;
+  V1 = 1.5 * v0;
+  U2 = u0;
+  V2 = v0;
+}
+
+// U/Viprec previous IT. sol; U/V0i previous time_step sol.
+Vh1 U01 = U1, V01 = V1;
+Vh1 U1prec, V1prec, incrU1, incrV1;
+Vh2 U02 = U2, V02 = V2;
 Vh2 U2prec, V2prec, incrU2, incrV2;
 
-// U/Viprec previous IT. sol
 U1prec = U01;
 V1prec = V01;
 U2prec = U02;
-V2prec = V01;
+V2prec = V02;
 real resU1, resV1, resU2, resV2;
 
 /// Varf

@@ -75,6 +75,9 @@ if (ld) {
   fV >> V1[];
   fU >> U2[];
   fV >> V2[];
+
+  plot(U1, U2, value =1, fill =1, wait=1, cmm="Concentration of ACTIVE ROPs at time "+ t);
+  plot(V1, V2, value =1, fill =1, wait=1, cmm="Concentration of INACTIVE ROPs at time "+ t);
 }
 else
 {
@@ -84,7 +87,7 @@ else
   V2 = v0;
 }
 
-// U/Viprec previous IT. sol
+// U/Viprec previous IT. sol; U/V0i previous time_step sol.
 Vh1 U01 = U1, V01 = V1;
 Vh1 U1prec, V1prec, incrU1, incrV1;
 Vh2 U02 = U2, V02 = V2;
