@@ -89,7 +89,7 @@ while(t < Tmax)
     plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t, ps = "results/V" + t + ".ps");
   	savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
   	savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
-    // Output file for last results -> to be loaded in case of interuption
+    // Output file for last results -> to be loaded in case of interruption
     ofstream foutU("results/U" + t + ".txt");
     ofstream foutV("results/V" + t + ".txt");
     foutU << U[];
@@ -103,7 +103,7 @@ while(t < Tmax)
   //   savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
   //   savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
   //
-  //   // Output file for last results -> to be loaded in case of interuption
+  //   // Output file for last results -> to be loaded in case of interruption
   //   ofstream foutU("results/U" + t + ".txt");
   //   ofstream foutV("results/V" + t + ".txt");
   //   foutU << U[];

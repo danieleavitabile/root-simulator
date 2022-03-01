@@ -1,51 +1,151 @@
 // To compare different solutions
+// both 1,2,4 cells: need to change comments
 
 load "ffrandom";
 load "iovtk";
 int[int] ffordervel = [1]; // to save images in .vtk format
-string path1 = "results/2021-11-28_10-19-46/";  //
-string path2 = "results/2022-02-26_18-07-00/";
-int it1 = 84;
-int it2 = 200;
+string path1 = "results/";
+string path2 = "results/2022-02-26_18-11-29/";
+
+real it1 = 84;
+real it2 = 200;
 
 string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
 include "PRM.edp";
-/// Mesh
+/// Mesh 1 cell
 mesh Th = square(Nx, Ny, [Lx * x, Ly * y]);
 
 /// Finite element spaces
 fespace Xh(Th, P1);
 int dimXh =Xh.ndof;
-
 Xh U1, V1,
    U2, V2;
 
-ifstream fU1(path1 + "U" + it1 + ".txt");
-ifstream fV1(path1 + "V" + it1 + ".txt");
+/// Mesh 2cell
+// int[int] reg(2);
+// mesh[int] Th(2);
+// int inside = 1;
+// int outside = 2;
+// border o1(t=Ly*2, 0){x=0; y=t; label=outside;}
+// border o2(t=0, Lx){x=t; y=0; label=outside;}
+// border o3(t=0, 2*Ly){x=Lx; y=t; label=outside;}
+// border o4(t=0, Lx){x=Lx-t; y=2*Ly; label=outside;}
+// border i1(t=0, Lx){x=Lx - t; y=Ly; label=inside;}
+// // border i2(t=0, Lx){x=t; y=Ly; label=inside2;}
+// mesh TH = buildmesh(o1(2*Ny) + o2(Nx) + o3(2*Ny) + o4(Nx) + i1(Nx));
+//
+// reg(0) = TH(Lx/2, Ly - 2).region;
+// reg(1) = TH(Lx/2, Ly + 2).region;
+//
+// for(int i = 0; i < 2; i++) Th[i] = trunc(TH, region==reg(i));
 
+/// Mesh 4 cells
+// int[int] reg(4);
+// mesh[int] Th(4);
+// int inside = 6;
+// int inside1 = 6;
+// int inside2 = 6;
+// int inside3 = 6;
+// int inside4 = 6;
+// int outside = 5;
+// border o1(t=2*Ly, 0){x=0; y=t; label=outside;}
+// border o2(t=0, 2*Lx){x=t; y=0; label=outside;}
+// border o3(t=0,2*Ly){x=2*Lx; y=t; label=outside;}
+// border o4(t=0, 2*Lx){x=2*Lx-t; y=2*Ly; label=outside;}
+// border i1(t=Lx,0){x=t; y=Ly; label=inside;}
+// border i2(t=2*Ly,Ly){x=Lx; y=t; label=inside;}
+// border i3(t=Lx, 2*Lx){x=t; y=Ly; label=inside;}
+// border i4(t=0, Ly){x=Lx; y=t; label=inside;}
+//
+// mesh TH = buildmesh(o1(2*Ny) + o2(2*Nx) + o3(2*Ny) + o4(2*Nx)
+//                     + i1(Nx) + i2(Ny) + i3(Nx) + i4(Ny));
+//
+// reg(0) = TH(Lx/2, Ly - 2).region;
+// reg(1) = TH(Lx/2, Ly + 2).region;
+// reg(2) = TH(Lx+2, Ly + 2).region;
+// reg(3) = TH(Lx+2, Ly - 2).region;
+//
+// for(int i = 0; i < reg.n; i++) Th[i] = trunc(TH, region==reg(i));
+
+/// FEspace: Uij, solution i domain j
+// fespace Vh1(Th[0], P1);
+// Vh1 U11, V11, U21, V21;
+//
+// fespace Vh2(Th[1], P1);
+// Vh2 U12, V12, U22, V22;
+
+// fespace Vh3(Th[2], P1);
+// Vh3 U13, V13, U23, V23;
+//
+// fespace Vh4(Th[3], P1);
+// Vh4 U14, V14, U24, V24;
+
+ifstream fU1(path1 + "statU" + it1 + ".txt");
+ifstream fV1(path1 + "statV" + it1 + ".txt");
+// ifstream fU1(path1 + "U/U" + it1 + ".txt");
+// ifstream fV1(path1 + "V/V" + it1 + ".txt");
+
+//1 cell
 fU1 >> U1[];
 fV1 >> V1[];
 
+// 2 cell
+// fU1 >> U11[];
+// fU1 >> U12[];
+// fV1 >> V11[];
+// fV1 >> V12[];
+
+// 4 cell
+// fU1 >> U11[];
+// fU1 >> U12[];
+// fU1 >> U13[];
+// fU1 >> U14[];
+//
+// fV1 >> V11[];
+// fV1 >> V12[];
+// fV1 >> V13[];
+// fV1 >> V14[];
+
 plot(U1, fill = 1, value = 1, cmm = "1 Loaded Active ROPS", wait = 1);
 plot(V1, fill = 1, value = 1, cmm = "1 Loaded Inactive ROPS", wait = 1);
-cout << "||U1||_inf = " << U1[].linfty << endl;
-cout << "||V1||_inf = " << V1[].linfty << endl << endl;
+// plot(U11, U12,/* U13, U14,*/ fill = 1, value = 1, cmm = "1 Loaded Active ROPS", wait = 1);
+// plot(V11, V12,/* V13, V14,*/ fill = 1, value = 1, cmm = "1 Loaded Inactive ROPS", wait = 1);
+// cout << "||U1||_inf = " << U1[].linfty << endl;
+// cout << "||V1||_inf = " << V1[].linfty << endl << endl;
 
 ifstream fU2(path2 + "U/U" + it2 + ".txt");
 ifstream fV2(path2 + "V/V" + it2 + ".txt");
 
-// to confront with a single precise solution(stationary point)
-// ifstream fU2(path2 + "/U" + it2 + ".txt");
-// ifstream fV2(path2 + "/V" + it2 + ".txt");
-
+//1 cell
 fU2 >> U2[];
 fV2 >> V2[];
 
-plot(U2, fill = 1, value = 1, cmm = "2 Loaded Active ROPS", wait = 1);
-plot(V2, fill = 1, value = 1, cmm = "2 Loaded Inactive ROPS", wait = 1);
-cout << "||U2||_inf = " << U2[].linfty << endl;
-cout << "||V2||_inf = " << V2[].linfty << endl << endl;
+// 2 cell
+// fU2 >> U21[];
+// fU2 >> U22[];
+// fV2 >> V21[];
+// fV2 >> V22[];
 
+// 4 cell
+// fU2 >> U21[];
+// fU2 >> U22[];
+// fU2 >> U23[];
+// fU2 >> U24[];
+// fV2 >> V21[];
+// fV2 >> V22[];
+// fV2 >> V23[];
+// fV2 >> V24[];
+
+plot(U2, fill = 1, value = 1, cmm = "1 Loaded Active ROPS", wait = 1);
+plot(V2, fill = 1, value = 1, cmm = "1 Loaded Inactive ROPS", wait = 1);
+// plot(U21, U22, fill = 1, value = 1, cmm = "2 Loaded Active ROPS", wait = 1);
+// plot(V21, V22, fill = 1, value = 1, cmm = "2 Loaded Inactive ROPS", wait = 1);
+// plot(U21, U22,/* U23, U24,*/ fill = 1, value = 1, cmm = "2 Loaded Active ROPS", wait = 1);
+// plot(V21, V22,/* V23, V24,*/ fill = 1, value = 1, cmm = "2 Loaded Inactive ROPS", wait = 1);
+// cout << "||U2||_inf = " << U2[].linfty << endl;
+// cout << "||V2||_inf = " << V2[].linfty << endl << endl;
+
+// 1 cell
 Xh diffU;
 diffU[] = U1[];
 diffU[] -= U2[];
@@ -54,11 +154,54 @@ Xh diffV;
 diffV[] = V1[];
 diffV[] -= V2[];
 
+// 2 cell
+// Vh1 diffU1;
+// diffU1[] = U11[];
+// diffU1[] -= U21[];
+//
+// Vh1 diffV1;
+// diffV1[] = V11[];
+// diffV1[] -= V21[];
+//
+// Vh2 diffU2;
+// diffU2[] = U12[];
+// diffU2[] -= U22[];
+//
+// Vh2 diffV2;
+// diffV2[] = V12[];
+// diffV2[] -= V22[];
+
+// Vh3 diffU3;
+// diffU3[] = U13[];
+// diffU3[] -= U23[];
+//
+// Vh3 diffV3;
+// diffV3[] = V13[];
+// diffV3[] -= V23[];
+//
+// Vh4 diffU4;
+// diffU4[] = U14[];
+// diffU4[] -= U24[];
+//
+// Vh4 diffV4;
+// diffV4[] = V14[];
+// diffV4[] -= V24[];
+
 plot(diffU, fill = 1, value = 1, cmm = "Diff active", wait = 1);
 plot(diffV, fill = 1, value = 1, cmm = "Diff inactive", wait = 1);
+// plot(diffU1, diffU2,/* diffU3, diffU4,*/ fill = 1, value = 1, cmm = "Diff active", wait = 1);
+// plot(diffV2, diffV2,/* diffV3, diffV4,*/ fill = 1, value = 1, cmm = "Diff inactive", wait = 1);
 
 cout << "||diffU||_inf = " << diffU[].linfty << endl;
 cout << "||diffV||_inf = " << diffV[].linfty << endl << endl;
-
 cout << "Normalized ||diffU||_inf = " << diffU[].linfty /U1[].linfty << endl;
 cout << "Normalized ||diffV||_inf = " << diffV[].linfty /V1[].linfty << endl << endl;
+
+// cout << "||diffU1||_inf = " << diffU1[].linfty << endl;
+// cout << "||diffV1||_inf = " << diffV1[].linfty << endl << endl;
+// cout << "||diffU2||_inf = " << diffU2[].linfty << endl;
+// cout << "||diffV2||_inf = " << diffV2[].linfty << endl << endl;
+// cout << "||diffU3||_inf = " << diffU3[].linfty << endl;
+// cout << "||diffV3||_inf = " << diffV3[].linfty << endl << endl;
+// cout << "||diffU4||_inf = " << diffU4[].linfty << endl;
+// cout << "||diffV4||_inf = " << diffV4[].linfty << endl << endl;
