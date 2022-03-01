@@ -1,11 +1,12 @@
 //2 cell solver: geometric approach
-// probably unconvenient
 
 load "iovtk";
 int[int] ffordervel = [1]; // to save images in .vtk format
 int seed = 10;
-int ld = 0;//1 if initial guess is loaded
-string path = "results/2021-11-29_11-37-42/";  // path of the U0,V0 to load
+int ld = 0; // 1: load prev. sol. as initial state
+            // 0: use custom initial state
+string path = "results/2021-11-28_10-19-46/";  // path of the previously computed U, V
+
 /// Parameters:
 string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
 include "PRM.edp";
@@ -13,21 +14,21 @@ include "PRM.edp";
 /// Mesh
 int inside = 1;
 int outside = 2;
-real eps=0.001;
+real epsy=0.001;
 real epsx = 4.5;
 real a = 30;
 border o1(t=0, Lx){x=t; y=0; label=outside;}
-border o2(t=0, Ly - eps){x=Lx; y=t; label=outside;}
-border i1(t=Lx, Lx/2 - a){x=t; y=Ly - eps; label=inside;}
-border i2(t=Ly - eps,Ly + eps){x=Lx/2 - a; y=t; label=inside;}
-border i3(t=Lx/2 - a, Lx){x=t; y=Ly + eps; label=inside;}
-border o3(t=Ly + eps, 2*Ly){x=Lx; y=t; label=outside;}
+border o2(t=0, Ly - epsy){x=Lx; y=t; label=outside;}
+border i1(t=Lx, Lx/2 - a){x=t; y=Ly - epsy; label=inside;}
+border i2(t=Ly - epsy,Ly + epsy){x=Lx/2 - a; y=t; label=inside;}
+border i3(t=Lx/2 - a, Lx){x=t; y=Ly + epsy; label=inside;}
+border o3(t=Ly + epsy, 2*Ly){x=Lx; y=t; label=outside;}
 border o4(t=Lx,0){x=t; y=2*Ly; label=outside;}
-border o5(t=2*Ly, Ly + eps){x=0; y=t; label=outside;}
-border i4(t=0, Lx/2 - epsx - a){x=t; y=Ly + eps; label=inside;}
-border i5(t=Ly + eps,Ly - eps){x=Lx/2-epsx-a; y=t; label=inside;}
-border i6(t=Lx/2 - epsx - a, 0){x=t; y=Ly - eps; label=inside;}
-border o6(t=Ly - eps, 0){x=0; y=t; label=outside;}
+border o5(t=2*Ly, Ly + epsy){x=0; y=t; label=outside;}
+border i4(t=0, Lx/2 - epsx - a){x=t; y=Ly + epsy; label=inside;}
+border i5(t=Ly + epsy,Ly - epsy){x=Lx/2-epsx-a; y=t; label=inside;}
+border i6(t=Lx/2 - epsx - a, 0){x=t; y=Ly - epsy; label=inside;}
+border o6(t=Ly - epsy, 0){x=0; y=t; label=outside;}
 
 mesh Th = buildmesh(o1(Nx) + o2(Ny) + i1(Nx/2) + i2(1) + i3(Nx/2) +
                     o3(Ny) + o4(Nx) + o5(Ny) + i4(Nx/2) + i5(1) +
@@ -39,13 +40,30 @@ mesh Th = buildmesh(o1(Nx) + o2(Ny) + i1(Nx/2) + i2(1) + i3(Nx/2) +
 fespace Xh(Th, P1);
 int dimXh =Xh.ndof;
 
-Xh U, V, // U_n+1, V_n+1 and new sol at each time step
-   U0, V0; // U_n, V_n (previous time step sol)
+Xh U, V,   // U_n+1, V_n+1 (new sol at each time-step)
+   U0, V0; // U_n, V_n (previous time-step sol)
 
 include "step_semi_implicit.edp";
 
-U = u0;
-V = v0;
+// Initialization:
+if (ld) {
+  ifstream fU(path + "U" + tload + ".txt");
+  ifstream fV(path + "V" + tload + ".txt");
+
+  fU >> U[];
+  fV >> V[];
+
+  plot(U, fill = 1, value = 1, cmm = "Loaded Active ROPS"/*, wait = 1*/);
+  plot(V, fill = 1, value = 1, cmm = "Loaded Inactive ROPS"/*, wait = 1*/);
+  U[] += pert[];
+  V[] += pert[];
+}
+else
+{
+  U = u0;
+  V = v0;
+}
+
 U0 = U;
 V0 = V;
 
@@ -69,8 +87,6 @@ while(t < Tmax){
     cout << "ERROR" << endl;
     break;
   }
-  plot(U, fill = 1, value = 1, cmm = "Active ROPS at time "+ t, wait = 1);
-  plot(V, fill = 1, value = 1, cmm = "Inactive ROPS at time "+ t, wait = 1);
 
   // update old solution
   U0 = U;
@@ -81,11 +97,9 @@ while(t < Tmax){
   {
     plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U" + t + ".ps");
     plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs at time "+ t, ps = "results/V" + t + ".ps");
-
-    savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+  	savevtk("results/U" + t + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
   	savevtk("results/V" + t + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
-
-    // Output file for last results -> to be loaded in case of interuption
+    // Output file for last results -> to be loaded in case of interruption
     ofstream foutU("results/U" + t + ".txt");
     ofstream foutV("results/V" + t + ".txt");
     foutU << U[];

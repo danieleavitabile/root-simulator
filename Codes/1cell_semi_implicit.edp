@@ -21,12 +21,12 @@ int dimXh =Xh.ndof;
 
 Xh pert = eps * cos(2*pi*x/Lx)* cos(2*pi*y/Ly); //custom perturbation of initial state
 
-Xh U, V, // U_n+1, V_n+1 (new sol at each time step)
+Xh U, V,   // U_n+1, V_n+1 (new sol at each time-step)
    U0, V0; // U_n, V_n (previous time-step sol)
 
 include "step_semi_implicit.edp";
 
-// Initialization:
+/// Initialization:
 if (ld) {
   ifstream fU(path + "U" + tload + ".txt");
   ifstream fV(path + "V" + tload + ".txt");
@@ -83,6 +83,7 @@ while(t < Tmax)
   U0 = U;
   V0 = V;
 
+  ///Results and save imgs
   if((it % OUTPUTit == 0.0))
   {
     plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U" + t + ".ps");

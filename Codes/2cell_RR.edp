@@ -4,7 +4,7 @@
 load "iovtk";
 int[int] ffordervel = [1]; // to save images in .vtk format
 int seed = 10;
-int ld = 1; // 1: load prev. sol. as initial state
+int ld = 0; // 1: load prev. sol. as initial state
             // 0: use custom initial state
 string path = "results/2021-11-28_10-19-46/";  // path of the previously computed U, V
 
@@ -151,7 +151,7 @@ while(t < Tmax){
 
     real[int] Fu = fu(0,Vh2);
     real[int] Fv = fv(0,Vh2);
-    
+
     //compute weak normal derivative
     real[int] Du1dn = du1dn(0, Vh1);
     real[int] Tdu1dn(Vh2.ndof);
