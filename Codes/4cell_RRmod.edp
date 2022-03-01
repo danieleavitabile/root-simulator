@@ -102,7 +102,7 @@ V4prec = V04;
 real resU1, resV1, resU2, resV2, resU3, resV3, resU4, resV4;
 
 /// Varf
-include "varf_ncellRR.edp"
+include "varf_ncellRR.edp";
 matrix[int] A(N);
 real[int] F1(2*Vh1.ndof), F2(2*Vh2.ndof), F3(2*Vh3.ndof), F4(2*Vh4.ndof);
 real[int] tmp1(2*Vh1.ndof), tmp2(2*Vh2.ndof), tmp3(2*Vh3.ndof), tmp4(2*Vh4.ndof);
@@ -206,8 +206,8 @@ while(t < Tmax){
   // Solve on Th1
   {
     i = 0;
-    real[int] Fu = fu1(0,Vh1);
-    real[int] Fv = fv1(0,Vh1);
+    real[int] Fu = fu(0,Vh1);
+    real[int] Fv = fv(0,Vh1);
 
     // 2->1
     real[int] Du2dn = du2dn1(0, Vh2);
@@ -242,8 +242,8 @@ while(t < Tmax){
   // Solve on Th2
   {
     i = 1;
-    real[int] Fu = fu2(0,Vh2);
-    real[int] Fv = fv2(0,Vh2);
+    real[int] Fu = fu(0,Vh2);
+    real[int] Fv = fv(0,Vh2);
 
     //1->2
     real[int] Du1dn = du1dn2(0, Vh1);
@@ -280,8 +280,8 @@ while(t < Tmax){
   // Solve on Th3
   {
     i = 2;
-    real[int] Fu = fu3(0,Vh3);
-    real[int] Fv = fv3(0,Vh3);
+    real[int] Fu = fu(0,Vh3);
+    real[int] Fv = fv(0,Vh3);
 
     //2->3
     real[int] Du2dn = du2dn3(0, Vh2);
@@ -318,8 +318,8 @@ while(t < Tmax){
   // Solve on Th4
   {
     i = 3;
-    real[int] Fu = fu4(0,Vh4);
-    real[int] Fv = fv4(0,Vh4);
+    real[int] Fu = fu(0,Vh4);
+    real[int] Fv = fv(0,Vh4);
 
     //3->4
     real[int] Du3dn = du3dn4(0, Vh3);
