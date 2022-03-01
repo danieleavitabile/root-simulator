@@ -3,8 +3,9 @@
 load "iovtk";
 int[int] ffordervel = [1]; // to save images in .vtk format
 int seed = 10;
-int ld = 0;//1 if initial guess is loaded
-string path = "results/2021-11-29_11-37-42/";  // path of the U0,V0 to load
+int ld = 0; // 1: load prev. sol. as initial state
+            // 0: use custom initial state
+string path = "results/2021-11-28_10-19-46/";  // path of the previously computed U, V
 
 /// Parameters:
 string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
@@ -12,15 +13,12 @@ include "PRM.edp";
 include "channelPRM.edp";
 
 /// Mesh
-int[int] reg(4);
-mesh[int] Th(4);
-// seems to be the same to use one unique label for internal borders or 4 different
-int inside = 6;
-// int inside1 = 1;
-// int inside2 = 2;
-// int inside3 = 3;
-// int inside4 = 4;
-int outside = 5;
+int N = 4;
+int[int] reg(N);
+mesh[int] Th(N);
+int i; // index to distinguish cells: i -> Th(i+1)
+int inside = 1;
+int outside = 2;
 border o1(t=2*Ly, 0){x=0; y=t; label=outside;}
 border o2(t=0, 2*Lx){x=t; y=0; label=outside;}
 border o3(t=0,2*Ly){x=2*Lx; y=t; label=outside;}
@@ -46,7 +44,8 @@ for(int i = 0; i < reg.n; i++) Th[i] = trunc(TH, region==reg(i));
 // plot(Th[2], wait = true);
 // plot(Th[3], wait = true);
 
-/// FEspace: [Uj,Vj] solutiion of domain Thj
+/// Finite element spaces:
+// [Uj,Vj] solution of domain Thj
 fespace Vh1(Th[0], P1);
 Vh1 U1;
 Vh1 V1;
@@ -70,8 +69,10 @@ savevtk("results/channel1.vtk", Th[0], channel1, dataname = "channel1", order = 
 savevtk("results/channel2.vtk", Th[1], channel2, dataname = "channel2", order = ffordervel);
 savevtk("results/channel3.vtk", Th[2], channel3, dataname = "channel3", order = ffordervel);
 savevtk("results/channel4.vtk", Th[3], channel4, dataname = "channel4", order = ffordervel);
+savevtk("results/channel.vtk", TH, channel1, channel2, channel3, channel4, dataname = "channel_open", order = ffordervel);
 
-// same initil guess in the direction of the auxin gradient (x axis)
+/// Initialization:
+// same initial guess in the direction of the auxin gradient
 U1 = 1.5 * u0;
 V1 = 1.5 * v0;
 U2 = 1.5 * u0;
@@ -90,13 +91,6 @@ Vh3 U3prec, V3prec, incrU3, incrV3;
 Vh4 U04 = U4, V04 = V4;
 Vh4 U4prec, V4prec, incrU4, incrV4;
 
-int i;
-
-// i =2 ;
-// cout << "check " << (U01 + (U02-U01)*i*(i-2)*(i-3)*1./2.
-// - 0.5 * (U03-U01)*i*(i-1)*(i-3)
-// + (U04-U01)*i*(i-1)*(i-2)*1./6.) << endl;
-
 U1prec = U01;
 V1prec = V01;
 U2prec = U02;
@@ -108,13 +102,13 @@ V4prec = V04;
 real resU1, resV1, resU2, resV2, resU3, resV3, resU4, resV4;
 
 /// Varf
-include "varf_ncellRR_inside.edp"; // or "varf_ncellRR.edp"
-matrix[int] A(4); //each elemnt is a block matrix
+include "varf_ncellRR.edp"
+matrix[int] A(N);
 real[int] F1(2*Vh1.ndof), F2(2*Vh2.ndof), F3(2*Vh3.ndof), F4(2*Vh4.ndof);
 real[int] tmp1(2*Vh1.ndof), tmp2(2*Vh2.ndof), tmp3(2*Vh3.ndof), tmp4(2*Vh4.ndof);
 include "assemble_RR.edp";
 
-///Interpolation matrix
+// interpolation matrix
 // 1<->2
 matrix I12 = interpolate(Vh2, Vh1, inside = 1);
 matrix I21 = interpolate(Vh1, Vh2, inside = 1);
@@ -128,7 +122,7 @@ matrix I43 = interpolate(Vh3, Vh4, inside = 1);
 matrix I41 = interpolate(Vh1, Vh4, inside = 1);
 matrix I14 = interpolate(Vh4, Vh1, inside = 1);
 
-//function to compute residual with normalized L2 norm
+//function to //save residual estimate: (normalized) with L2 norm
 func int residual(){
   incrU1[] = U1[];
   incrU1[] -= U1prec[];
@@ -198,10 +192,6 @@ func int residual(){
 while(t < Tmax){
   t += dt;
   it ++;
-  // for(int ii = 0; ii < (reg.n); ii++){
-  //   i = ii;
-  //   assemble(ii);
-  // }
   i = 0;
   assemble(i);
   i = 1;
@@ -210,6 +200,7 @@ while(t < Tmax){
   assemble(i);
   i = 3;
   assemble(i);
+
   checktol = false;
   for (int iter = 0; iter < Niter; iter++){
   // Solve on Th1
@@ -218,7 +209,6 @@ while(t < Tmax){
     real[int] Fu = fu1(0,Vh1);
     real[int] Fv = fv1(0,Vh1);
 
-    // only 1 contribute with beta
     // 2->1
     real[int] Du2dn = du2dn1(0, Vh2);
     real[int] Tdu2dn(Vh1.ndof);
@@ -249,14 +239,12 @@ while(t < Tmax){
       V1[][ii] = tmp1[ii + Vh1.ndof];
     }
   }
-
   // Solve on Th2
   {
     i = 1;
     real[int] Fu = fu2(0,Vh2);
     real[int] Fv = fv2(0,Vh2);
 
-    //beta contirbute
     //1->2
     real[int] Du1dn = du1dn2(0, Vh1);
     real[int] Tdu1dn(Vh2.ndof);
@@ -295,7 +283,6 @@ while(t < Tmax){
     real[int] Fu = fu3(0,Vh3);
     real[int] Fv = fv3(0,Vh3);
 
-    //beta contirbute
     //2->3
     real[int] Du2dn = du2dn3(0, Vh2);
     real[int] Tdu2dn(Vh3.ndof);
@@ -334,7 +321,6 @@ while(t < Tmax){
     real[int] Fu = fu4(0,Vh4);
     real[int] Fv = fv4(0,Vh4);
 
-    //beta contirbute
     //3->4
     real[int] Du3dn = du3dn4(0, Vh3);
     real[int] Tdu3dn(Vh4.ndof);
@@ -374,7 +360,7 @@ while(t < Tmax){
     iter = Niter+1;
   }
 
-  //update previous ITERATION sol.
+  //update previous IT. sol.
   U1prec = U1;
   V1prec = V1;
   U2prec = U2;
@@ -383,12 +369,6 @@ while(t < Tmax){
   V3prec = V3;
   U4prec = U4;
   V4prec = V4;
-  // plot(U1,U2,U3,U4, fill = 1, value = 1, cmm = "Active ROPS at time "+ t, wait = 1);
-  // plot(V1,V2,V3,V4,fill = 1, value = 1, cmm = "Active ROPS at time "+ t, wait = 1);
-  // savevtk("results/U1_" + iter + ".vtk", Th[0], U1, dataname = "U1", order = ffordervel);
-  // savevtk("results/V1_" + iter + ".vtk", Th[0], V1, dataname = "V1", order = ffordervel);
-  // savevtk("results/U2_" + iter + ".vtk", Th[1], U2, dataname = "U2", order = ffordervel);
-  // savevtk("results/V2_" + iter + ".vtk", Th[1], V2, dataname = "V2", order = ffordervel);
   }
   // update old solution
   U01 = U1;
@@ -399,7 +379,7 @@ while(t < Tmax){
   V03 = V3;
   U04 = U4;
   V04 = V4;
-  ///Results and save imgs
+  /// Results and save imgs
   if((it % OUTPUTit == 0.0))
   {
     plot(U1, U2, U3, U4, value =1, fill =1, wait=1, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U" + t + ".ps");
