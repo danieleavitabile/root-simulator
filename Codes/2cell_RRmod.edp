@@ -1,11 +1,12 @@
-//2 cell solver: Robin-Robin ALGO MODIFIED
-// 2 celle ma con canali aperti
+// 2 cell solver: Robin-Robin ALGO MODIFIED
+// 2cells system with communication
 
 load "iovtk";
 int[int] ffordervel = [1]; // to save images in .vtk format
 int seed = 10;
-int ld = 0; //1 if initial guess is loaded
-string path = "results/2022-01-24_09-49-16/";  // path of the U0,V0 to load
+int ld = 1; // 1: load prev. sol. as initial state
+            // 0: use custom initial state
+string path = "results/2021-11-28_10-19-46/";  // path of the previously computed U, V
 
 /// Parameters:
 string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
@@ -13,8 +14,10 @@ include "PRM.edp";
 include "channelPRM.edp";
 
 /// Mesh
-int[int] reg(2);
-mesh[int] Th(2);
+int N = 2;
+int[int] reg(N);
+mesh[int] Th(N);
+int i; // index to distinguish cells: i = 0 -> Th1, i = 1 -> Th2
 int inside = 1;
 int outside = 2;
 border o1(t=Ly*2, 0){x=0; y=t; label=outside;}
@@ -27,13 +30,14 @@ mesh TH = buildmesh(o1(2*Ny) + o2(Nx) + o3(2*Ny) + o4(Nx) + i1(Nx));
 reg(0) = TH(Lx/2, Ly - 2).region;
 reg(1) = TH(Lx/2, Ly + 2).region;
 
-for(int i = 0; i < 2; i++) Th[i] = trunc(TH, region==reg(i));
+for(int i = 0; i < N; i++) Th[i] = trunc(TH, region==reg(i));
 
 // plot(TH, wait = true);
 // plot(Th[0], wait = true);
 // plot(Th[1], wait = true);
 
-/// FEspace: [U1,V1] solutiion of domain Th1, [U2,V2] solution of domain Th2
+/// Finite element spaces:
+// [U1,V1] solution on domain Th1, [U2,V2] solution on domain Th2
 fespace Vh1(Th[0], P1);
 Vh1 U1;
 Vh1 V1;
@@ -41,14 +45,13 @@ fespace Vh2(Th[1], P1);
 Vh2 U2;
 Vh2 V2;
 
-/// save channels imgs
+/// Save channels imgs
 Vh1 channel1 = betauRR;
 Vh2 channel2 = betavRR;
 plot(channel1, channel2, value =1, fill =1, cmm="opened channels", ps = "results/channel.ps");
-savevtk("results/channel1.vtk", Th[0], channel1, dataname = "channel1", order = ffordervel);
-savevtk("results/channel2.vtk", Th[1], channel2, dataname = "channel2", order = ffordervel);
+savevtk("results/channel.vtk", TH, channel1, channel2, dataname = "channel_open", order = ffordervel);
 
-// initial guess: loaded or homogeneuous
+/// Initialization: loaded or homogeneuous
 if (ld) {
   ifstream fU(path+"U/U" + tload + ".txt");
   ifstream fV(path+"V/V" + tload + ".txt");
@@ -60,18 +63,17 @@ if (ld) {
 }
 else
 {
-  U1 = u0;
-  V1 = v0;
+  U1 = 1.5 * u0;
+  V1 = 1.5 * v0;
   U2 = u0;
   V2 = v0;
 }
 
+// U/Viprec previous IT. sol
 Vh1 U01 = U1, V01 = V1;
 Vh1 U1prec, V1prec, incrU1, incrV1;
 Vh2 U02 = U2, V02 = V2;
 Vh2 U2prec, V2prec, incrU2, incrV2;
-
-int i;
 
 U1prec = U01;
 V1prec = V01;
@@ -81,16 +83,16 @@ real resU1, resV1, resU2, resV2;
 
 /// Varf
 include "varf_2cellRR.edp";
-matrix[int] A(2); //each elemnt is a block matrix to solve the pb inside each domain
+matrix[int] A(N);
 real[int] F1(2*Vh1.ndof), F2(2*Vh2.ndof);
 real[int] tmp1(2*Vh1.ndof), tmp2(2*Vh2.ndof);
 include "assemble_RR.edp";
 
-///Interpolation matrix
+// interpolation matrix
 matrix I12 = interpolate(Vh2, Vh1, inside = 1);
 matrix I21 = interpolate(Vh1, Vh2, inside = 1);
 
-//function to compute residual with normalized L2 norm
+//save residual estimate: (normalized) with L2 norm
 func int residual(){
   incrU1[] = U1[];
   incrU1[] -= U1prec[];
@@ -136,6 +138,7 @@ while(t < Tmax){
   assemble(i);
   i = 1;
   assemble(i);
+
   checktol = false;
   for (int iter = 0; iter < Niter; iter++){
   // Solve on Th1
@@ -144,8 +147,7 @@ while(t < Tmax){
     real[int] Fu = fu(0,Vh1);
     real[int] Fv = fv(0,Vh1);
 
-    //no need to compute weak normal derivative:
-    // only 1 contribute with beta
+    // RRmod contribute
     real[int] Du2dn = du2dn(0, Vh2);
     real[int] Tdu2dn(Vh1.ndof);
     Tdu2dn = I12' * Du2dn;
@@ -166,14 +168,13 @@ while(t < Tmax){
       V1[][ii] = tmp1[ii + Vh1.ndof];
     }
   }
-
   // Solve on Th2
   {
     i = 1;
     real[int] Fu = fu(0,Vh2);
     real[int] Fv = fv(0,Vh2);
 
-    //no need to compute weak normal derivative
+    // RRmod contribute
     real[int] Du1dn = du1dn(0, Vh1);
     real[int] Tdu1dn(Vh2.ndof);
     Tdu1dn = I21' * Du1dn;
@@ -202,7 +203,7 @@ while(t < Tmax){
     iter = Niter+1;
   }
 
-  //update previous ITERATION sol.
+  //update previous IT. sol.
   U1prec = U1;
   V1prec = V1;
   U2prec = U2;
@@ -216,7 +217,8 @@ while(t < Tmax){
   V01 = V1;
   U02 = U2;
   V02 = V2;
-  ///Results and save imgs
+
+  /// Results and save imgs
   if((it % OUTPUTit == 0.0))
   {
     plot(U1, U2, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs at time "+ t, ps = "results/U" + t + ".ps");

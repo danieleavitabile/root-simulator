@@ -67,7 +67,7 @@ include "assemble_RR.edp";
 matrix I12 = interpolate(Vh2, Vh1, inside = 1);
 matrix I21 = interpolate(Vh1, Vh2, inside = 1);
 
-//return residual estimate: (normalized) with L2 norm
+//save residual estimate: (normalized) with L2 norm
 func int residual(){
   incrU1[] = U1[];
   incrU1[] -= U1prec[];
@@ -122,6 +122,7 @@ while(t < Tmax){
 
     real[int] Fu = fu(0,Vh1);
     real[int] Fv = fv(0,Vh1);
+
     //compute weak normal derivative
     real[int] Du2dn = du2dn(0, Vh2);
     real[int] Tdu2dn(Vh1.ndof);
@@ -150,6 +151,7 @@ while(t < Tmax){
 
     real[int] Fu = fu(0,Vh2);
     real[int] Fv = fv(0,Vh2);
+    
     //compute weak normal derivative
     real[int] Du1dn = du1dn(0, Vh1);
     real[int] Tdu1dn(Vh2.ndof);
