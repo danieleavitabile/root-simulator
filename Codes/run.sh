@@ -28,7 +28,7 @@ mv results/V*.vtk results/$STR/V;
 mv results/V*.ps results/$STR/V;
 mv results/V*.txt results/$STR/V;
 
-mv results/channel*.ps results/$STR;
+mv results/channel.ps results/$STR;
 mv results/channel*.vtk results/$STR;
 
 find . -name "*.ps" -exec rename 's/\.ps$/.eps/' '{}' +

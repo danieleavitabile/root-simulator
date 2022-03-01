@@ -64,8 +64,8 @@ Vh2 V2;
 Vh1 channel1 = betauRR;
 Vh2 channel2 = betavRR;
 plot(channel1, channel2, value =1, fill =1, cmm="opened channels", ps = "results/channel.ps");
-savevtk("results/channel.vtk", TH, channel1, channel2, dataname = "channel_open", order = ffordervel);
-
+savevtk("results/channel1.vtk", Th[0], channel1, dataname = "channel1", order = ffordervel);
+savevtk("results/channel2.vtk", Th[1], channel2, dataname = "channel2", order = ffordervel);
 /// Initialization: loaded or homogeneuous
 if (ld) {
   ifstream fU(path+"U/U" + tload + ".txt");

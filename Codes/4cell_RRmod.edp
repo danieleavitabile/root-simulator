@@ -69,19 +69,38 @@ savevtk("results/channel1.vtk", Th[0], channel1, dataname = "channel1", order = 
 savevtk("results/channel2.vtk", Th[1], channel2, dataname = "channel2", order = ffordervel);
 savevtk("results/channel3.vtk", Th[2], channel3, dataname = "channel3", order = ffordervel);
 savevtk("results/channel4.vtk", Th[3], channel4, dataname = "channel4", order = ffordervel);
-savevtk("results/channel.vtk", TH, channel1, channel2, channel3, channel4, dataname = "channel_open", order = ffordervel);
 
-/// Initialization:
+/// Initialization: loaded or homogeneuous
 // same initial guess in the direction of the auxin gradient
-U1 = 1.5 * u0;
-V1 = 1.5 * v0;
-U2 = 1.5 * u0;
-V2 = 1.5 * v0;
-U3 = u0;
-V3 = v0;
-U4 = u0;
-V4 = v0;
+if (ld) {
+  ifstream fU(path+"U/U" + tload + ".txt");
+  ifstream fV(path+"V/V" + tload + ".txt");
 
+  fU >> U1[];
+  fV >> V1[];
+  fU >> U2[];
+  fV >> V2[];
+  fU >> U3[];
+  fV >> V3[];
+  fU >> U4[];
+  fV >> V4[];
+
+  plot(U1, U2, U3, U4, value =1, fill =1, wait=1, cmm="Concentration of ACTIVE ROPs at time "+ t);
+  plot(V1, V2, V3, V4, value =1, fill =1, wait=1, cmm="Concentration of INACTIVE ROPs at time "+ t);
+}
+else
+{
+  U1 = 1.5 * u0;
+  V1 = 1.5 * v0;
+  U2 = 1.5 * u0;
+  V2 = 1.5 * v0;
+  U3 = u0;
+  V3 = v0;
+  U4 = u0;
+  V4 = v0;
+}
+
+// U/Viprec previous IT. sol; U/V0i previous time_step sol.
 Vh1 U01 = U1, V01 = V1;
 Vh1 U1prec, V1prec, incrU1, incrV1;
 Vh2 U02 = U2, V02 = V2;
