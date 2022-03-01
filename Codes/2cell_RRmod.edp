@@ -20,6 +20,8 @@ mesh[int] Th(N);
 int i; // index to distinguish cells: i = 0 -> Th1, i = 1 -> Th2
 int inside = 1;
 int outside = 2;
+
+// 1st type of mesh
 border o1(t=Ly*2, 0){x=0; y=t; label=outside;}
 border o2(t=0, Lx){x=t; y=0; label=outside;}
 border o3(t=0, 2*Ly){x=Lx; y=t; label=outside;}
@@ -31,6 +33,19 @@ reg(0) = TH(Lx/2, Ly - 2).region;
 reg(1) = TH(Lx/2, Ly + 2).region;
 
 for(int i = 0; i < N; i++) Th[i] = trunc(TH, region==reg(i));
+
+// 2nd type of mesh
+// border o1(t=Ly, 0){x=0; y=t; label=outside;}
+// border o2(t=0, 2 * Lx){x=t; y=0; label=outside;}
+// border o3(t=0, Ly){x=2*Lx; y=t; label=outside;}
+// border o4(t=0, 2*Lx){x=2*Lx-t; y=Ly; label=outside;}
+// border i1(t=0, Ly){x=Lx; y=Ly-t; label=inside;}
+// mesh TH = buildmesh(o1(Ny) + o2(2*Nx) + o3(Ny) + o4(2*Nx) + i1(Ny));
+//
+// reg(0) = TH(Lx - 2, Ly/2).region;
+// reg(1) = TH(Lx + 2, Ly/2).region;
+//
+// for(int i = 0; i < N; i++) Th[i] = trunc(TH, region==reg(i));
 
 // plot(TH, wait = true);
 // plot(Th[0], wait = true);
