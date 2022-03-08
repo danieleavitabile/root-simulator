@@ -1,0 +1,58 @@
+//auxin_PINs dynamics Parameters
+
+
+// TIME dep interations prm for auxina-PIN
+real dtauxina = 1.0; // dal paper
+int OUTPUTitauxina = 1; //save img every OUTPUTit
+int itauxina = 0 * 1000;
+int tloadauxina = 499; //to be change if ld tru
+
+real Da, k, delta, mu;
+real rho;
+//func flow ...
+
+if(prmA == "F4")
+{
+  Da = 0.1;
+  k = 1.0;
+  delta = 1.0;
+  mu = 1.0;
+}
+else if(prmA == "F5")
+{
+  Da = 0.1;
+  k = 1.0;
+  delta = 10.0;
+  mu = 0.1;
+}
+else if(prmA == "F6")
+{
+  Da = 0.3;
+  k = 0.5;
+  delta = 0.5;
+  mu = 1.0;
+  rho = 2.3;
+}
+else if(prmA == "F7")
+{
+  Da = 7.0;
+  k = 0.5;
+  delta = 0.5;
+  mu = 1.5;
+  rho = 2.8;
+}
+
+func real h(real flow){
+  real res;
+  if(prmA == "F4" || prmA == "F5")
+  {
+    res = flow^5 / ((5.0)^5+flow^5) * (flow > 0.0);
+  }
+  else if (prmA == "F6" || prmA == "F7")
+  {
+    // rho = 2.0; // or 2.0, 2.3, 2.7, 2.8
+    res = rho * flow * (flow > 0.0);
+  }
+
+  return res;
+}
