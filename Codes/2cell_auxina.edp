@@ -1,0 +1,129 @@
+//2 cell AUXINA-PINs dynamic
+//SI method -> ok  alues but more oscillatory vs F&
+//F7 prm - rho2.8
+
+load "ffrandom";
+load "iovtk";
+int[int] ffordervel = [1]; // to save images in .vtk format
+int seed = 10;
+int ld = 0;
+string path = "results/2021-11-29_11-37-42/";
+
+/// Parameters:
+string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
+string prmA = "F7"; // "F4", "F5", "F6", "F7" ... boh eventualmente altre
+include "PRM.edp";
+include "PRMauxina.edp";
+
+/// Mesh: only to visualize solutons ...
+int N = 2; // number of cells
+int[int] reg(N);
+mesh[int] Th(N);
+int inside = 1;
+int outside = 2;
+border o1(t=Ly, 0){x=0; y=t; label=outside;}
+border o2(t=0, 2 * Lx){x=t; y=0; label=outside;}
+border o3(t=0, Ly){x=2*Lx; y=t; label=outside;}
+border o4(t=0, 2*Lx){x=2*Lx-t; y=Ly; label=outside;}
+border i1(t=0, Ly){x=Lx; y=Ly-t; label=inside;}
+mesh TH = buildmesh(o1(Ny) + o2(2*Nx) + o3(Ny) + o4(2*Nx) + i1(Ny));
+
+reg(0) = TH(Lx - 2, Ly/2).region;
+reg(1) = TH(Lx + 2, Ly/2).region;
+
+for(int i = 0; i < N; i++) Th[i] = trunc(TH, region==reg(i));
+
+// plot(TH, wait = true);
+// plot(Th[0], wait = true);
+// plot(Th[1], wait = true);
+fespace Ah1(Th[0], P1);
+Ah1 a1,p1;
+fespace Ah2(Th[1], P1);
+Ah2 a2,p2;
+
+// mesh actually not necessary
+real[int] auxina(N);
+real[int] PIN(2*(N-1));
+int i,j;
+
+/// Initialization
+srandom(seed);
+// ranreal 1 generates a random number in [0,1]
+for(int i = 0; i < N; i++) auxina[i] = randreal1();
+for(int i = 0; i < 2*(N-1); i++) PIN[i] = randreal1();
+// for(int i = 0; i < N; i++) auxina[i] = i;
+// for(int i = 0; i < 2*(N-1); i++) PIN[i] =i ;
+
+/// Assemble
+matrix Aa;
+Aa = [[1/dtauxina + delta + PIN[0] + Da, -PIN[1]-Da],
+     [-PIN[0]-Da ,1/dtauxina + delta + PIN[1] + Da]];
+real Ap = 1/dtauxina + mu; // di fatto non è una matrice ma numero reale
+real[int] ba(N);
+real[int] bp(2*(N-1));
+
+func real flow(int i, int j)
+{
+  if(i<j)
+    return (PIN[i+j-1]+Da)*auxina[i] - (PIN[i+j]+Da)*auxina[j];
+  else
+    return (PIN[i+j]+Da)*auxina[i] - (PIN[i+j-1]+Da)*auxina[j];
+}
+
+func int updateAa()
+{
+  Aa = [[1/dtauxina + delta + PIN[0] + Da, -PIN[1]-Da],
+        [-PIN[0]-Da ,1/dtauxina + delta + PIN[1] + Da]];
+  return 0;
+}
+
+exec("touch results/auxin.csv");
+
+ofstream out("results/auxin.csv", append);
+out << "time,auxin1,auxin2,PIN12,PIN21" << endl;
+
+while(t<Tmax)
+{
+  t += dtauxina;
+  it ++;
+
+  /// Update matrix and rhs (time-dep)
+  ba = k;
+  ba += 1/dtauxina * auxina;
+  bp = 1/dtauxina * PIN;
+  i = 0; j = 1; // from cell 1 to cell 2
+  bp[i] += h(flow(i,j));
+  i = 1; j = 0; // from cell 2 to cell 1
+  bp[i] += h(flow(i,j));
+
+  updateAa();
+  set(Aa, solver = UMFPACK);
+
+  /// Solve
+  auxina = Aa^(-1)*ba;
+  for(int i = 0; i < 2*(N-1); i++) PIN[i] = 1/Ap * bp[i];
+
+  // /// Results and save imgs -> adesso per visualizzarle ma poi in realtà in ROP basta inserile nelle varf ...
+  // a1 = auxina[0];
+  // a2 = auxina[1];
+  // p1 = PIN[0];
+  // p2 = PIN[1];
+  if((it % OUTPUTitauxina == 0.0))
+  {
+    // plot(a1, a2, value =1, fill =1/*, wait=1*/, cmm="Auxina time "+ t/*, ps = "results/U" + t + ".ps"*/);
+    // cout << "#time " << t << endl;
+    // savevtk("results/a1_" + t + ".vtk", Th[0], a1, dataname = "auxina1", order = ffordervel);
+    // savevtk("results/a2_" + t + ".vtk", Th[1], a2, dataname = "auxina2", order = ffordervel);
+    // savevtk("results/p1_" + t + ".vtk", Th[0], p1, dataname = "PIN12", order = ffordervel);
+    // savevtk("results/p2_" + t + ".vtk", Th[1], p2, dataname = "PIN21", order = ffordervel);
+    // ofstream foutA("results/a" + t + ".txt");
+    // foutA << a1[];
+    // foutA << a2[];
+
+    out << t <<","
+        << auxina[0] << ","
+        << auxina[1] << ","
+        << PIN[0] << ","
+        << PIN[1] << endl;
+  }
+}
