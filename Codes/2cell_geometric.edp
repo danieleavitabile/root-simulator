@@ -55,8 +55,6 @@ if (ld) {
 
   plot(U, fill = 1, value = 1, cmm = "Loaded Active ROPS"/*, wait = 1*/);
   plot(V, fill = 1, value = 1, cmm = "Loaded Inactive ROPS"/*, wait = 1*/);
-  U[] += pert[];
-  V[] += pert[];
 }
 else
 {

@@ -13,13 +13,16 @@ string path = "results/2021-11-28_10-19-46/";  // path of the previously compute
 string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
 include "PRM.edp";
 /// Mesh
-mesh Th = square(Nx, Ny, [Lx * x, Ly * y]);
+mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); //v1, v2
+mesh Th = square(Nx, Ny, [x, y]);  // set1
 
 /// Finite element spaces
 fespace Xh(Th, P1);
 int dimXh =Xh.ndof;
 
-Xh pert = eps * cos(2*pi*x/Lx)* cos(2*pi*y/Ly); //custom perturbation of initial state
+Xh pert; //custom perturbation of initial state
+pert = eps * cos(2*pi*x/Lx)* cos(2*pi*y/Ly); //v1, v2 matlab
+// pert = eps * cos(2*pi*x)* cos(2*pi*y); //set1
 
 Xh U, V,   // U_n+1, V_n+1 (new sol at each time-step)
    U0, V0; // U_n, V_n (previous time-step sol)

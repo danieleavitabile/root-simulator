@@ -12,7 +12,7 @@ real Lx, Ly, //dimension 2D domain [micro m]
      u0, v0, //initial states
      tildeD1, tildeD2, tildea1, tildea2, tildeb1, tildeb2, f2; // synthetic coefficients
 
-real eps = 1e-0; // pertubation of initial state
+real eps = 1e-1; // pertubation of initial state
 
 if(prm == "Set 1")
 {
@@ -156,14 +156,14 @@ func x0 = 2*Lx/Tmax * t;
 func alpha7 = k2* exp(-nu*(x-x0)/Lx) * (x>=x0) + k2* exp(nu*(x-x0)/Lx) * (x<x0);
 
 /// Change properly here
-func alpha = alpha3;
+func alpha = alpha1;
 
 // "Set 1"
-// func tildec1 = alpha;
-// func tildec2 = - gamma*alpha;
-// "V1 matlab", "V2 matlab"
 func tildec1 = alpha;
-func tildec2 = - alpha;
+func tildec2 = - gamma*alpha;
+// "V1 matlab", "V2 matlab"
+// func tildec1 = alpha;
+// func tildec2 = - alpha;
 
 // TIME dep interations prms
 real dt = 0.5; //delta t

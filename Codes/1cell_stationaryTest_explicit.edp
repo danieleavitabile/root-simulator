@@ -14,14 +14,16 @@ string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
 include "PRM.edp";
 
 /// Mesh
-mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); // v1,v2 matlab
+mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); //v1, v2
+mesh Th = square(Nx, Ny, [x, y]);  // set1
 
 /// Finite element spaces
 fespace Xh(Th, P1);
 int dimXh =Xh.ndof;
 
-// perturbation
-Xh pert = eps * cos(2*pi*x/Lx)* cos(2*pi*y/Ly);
+Xh pert; //custom perturbation of initial state
+pert = eps * cos(2*pi*x/Lx)* cos(2*pi*y/Ly); //v1, v2 matlab
+// pert = eps * cos(2*pi*x)* cos(2*pi*y); //set1
 
 Xh U, V, // U_k+1, V_k+1
    U0, V0, // U_k, V_k
