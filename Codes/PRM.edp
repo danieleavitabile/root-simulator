@@ -14,7 +14,7 @@ real Lx, Ly, //dimension 2D domain [micro m]
 
 real eps = 1e-1; // pertubation of initial state
 
-if(prm == "Set 1")
+if(prm == "Set A")
 {
   //Table1, set1 from ref.[10]
   Nx = 60;
@@ -57,18 +57,20 @@ if(prm == "Set 1")
 
   f2 = 1/tau;
 }
-else if(prm == "V1 matlab")
+else if(prm == "Set B")
 {
-  Nx = 100; Ny = 50;
+  //Table1, set1 from ref.[10] but homogeneous auxin
+  Nx = 60;
+  Ny = 60;
 
-  Lx = 2; Ly = 1;
+  Lx = 50; Ly = 20;
   D1 = 0.1; D2 = 10;
   k1 = 0.01;
   b = 0.01;
   c = 0.1;
   r = 0.01;
   k2 = 0.1;
-  s = 1;
+  s = (Lx/Ly)^2;
 
   //Rescaled prms
   epsi2 = D1/(Lx^2*(c+r));
@@ -78,23 +80,27 @@ else if(prm == "V1 matlab")
   gamma = (c+r)*k1^2/(k2*b^2);
 
   //prm for auxin
-  nu = 1.5;
+  nu = 0.0;
 
   //stationary point or initialization
-  u0 = b/r;
-  v0 = (b*r*(c+r)) / (k1*r^2 + k2*b^2);
+  u0 = 1./(gamma*beta);
+  v0 = tau*beta*gamma/(tau + beta^2*gamma);
+  // real uu0 =1./(gamma*beta);
+  // real vv0 = tau*beta*gamma/(tau + beta^2*gamma);
+  // func u0 = uu0* exp(-10*x);
+  // func v0 = vv0 * exp(-10*x);
 
-  //F coefficients
-  tildeD1 = D1;
-  tildeD2 = D2;
-  tildea1 = -(c+r);
-  tildea2 = -k1;
-  tildeb1 = k1;
-  tildeb2 = c;
+  //F coefficients:
+  tildeD1 = epsi2;
+  tildeD2 = D / tau;
+  tildea1 = - 1;
+  tildea2 = - 1/ tau;
+  tildeb1 = 1/(gamma*tau);
+  tildeb2 = gamma*(1 - beta/tau);
 
-  f2 = b;
+  f2 = 1/tau;
 }
-else if(prm == "V2 matlab")
+else if(prm == "Set C")
 {
   Nx = 100; Ny = 30;
 
@@ -142,10 +148,9 @@ macro gradS(f) [dx(f) , sqrt(s)*dy(f)] //
 real t = 0.0;
 real Tmax = 1;
 
-
-func alpha1 = exp(-nu*x); //set1
-func alpha2 = k2* exp(-nu*x/Lx)*sin(pi*y/Ly); //v1
-func alpha3 = k2* exp(-nu*x/Lx); //v2
+func alpha1 = exp(-nu*x);
+func alpha2 = k2* exp(-nu*x/Lx)*sin(pi*y/Ly);
+func alpha3 = k2* exp(-nu*x/Lx);
 func alpha4 = exp(-nu*x/Lx);
 func alpha5 = k2* exp(-nu*(x-70)/Lx) * (x>=70) + k2* exp(nu*(x-70)/Lx) * (x<70); // for opposite gradient
 
@@ -158,10 +163,10 @@ func alpha7 = k2* exp(-nu*(x-x0)/Lx) * (x>=x0) + k2* exp(nu*(x-x0)/Lx) * (x<x0);
 /// Change properly here
 func alpha = alpha1;
 
-// "Set 1"
+// "Set A", "Set B"
 func tildec1 = alpha;
 func tildec2 = - gamma*alpha;
-// "V1 matlab", "V2 matlab"
+// "Set C"
 // func tildec1 = alpha;
 // func tildec2 = - alpha;
 

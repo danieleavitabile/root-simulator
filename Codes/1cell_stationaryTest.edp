@@ -9,9 +9,8 @@ int ld = 0;
 string path = "results/2021-10-20_10-56-37/";  // path of the previously computed U, V
 
 /// Parameters:
-string prm = "Set 1"; // "Set 1", "V1 matlab", "V2 matlab"
+string prm = "Set B"; // "Set A", "Set B", "Set C"
 include "PRM.edp";
-nu = 0;
 
 /// Mesh
 // mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); // v1,v2 matlab
@@ -26,7 +25,7 @@ include "G.edp";
 
 // perturbation
 Xh pert;
-pert = eps * cos(2*pi*x/Lx)* cos(2*pi*y/Ly); //v1, v2 matlab
+// pert = eps * cos(2*pi*x/Lx)* cos(2*pi*y/Ly); //v1, v2 matlab
 pert = eps * cos(2*pi*x)* cos(2*pi*y); //set1
 
 Xh U, V, // U_k+1, V_k+1

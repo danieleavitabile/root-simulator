@@ -10,7 +10,7 @@ int ld = 0;
 string path = "results/2021-11-29_11-37-42/";
 
 /// Parameters:
-string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
+string prm = "Set C"; // "Set A", "Set B", "Set C"
 string prmA = "F6"; // "F4", "F5", "F6", "F7" ... boh eventualmente altre
 include "PRM.edp";
 include "channelPRM.edp";

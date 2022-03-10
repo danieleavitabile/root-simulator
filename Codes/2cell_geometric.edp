@@ -8,7 +8,7 @@ int ld = 0; // 1: load prev. sol. as initial state
 string path = "results/2021-11-28_10-19-46/";  // path of the previously computed U, V
 
 /// Parameters:
-string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
+string prm = "Set B"; // "Set A", "Set B", "Set C"
 include "PRM.edp";
 
 /// Mesh
