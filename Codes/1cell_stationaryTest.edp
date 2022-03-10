@@ -24,8 +24,8 @@ include "Jac.edp";
 include "G.edp";
 
 Xh pert; //custom perturbation of initial state
-pert = eps * cos(2*pi*x/Lx)* cos(2*pi*y/Ly); // "Set C"
-// pert = eps * cos(2*pi*x)* cos(2*pi*y); // "Set A", "Set B"
+// pert = eps * cos(2*pi*x/Lx)* cos(2*pi*y/Ly); // "Set C"
+pert = eps * cos(2*pi*x)* cos(2*pi*y); // "Set A", "Set B"
 
 Xh U, V, // U_k+1, V_k+1
    U0, V0, // U_k, V_k
