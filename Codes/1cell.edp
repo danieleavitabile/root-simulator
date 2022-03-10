@@ -24,7 +24,11 @@ Xh U, V, // U_n+1, V_n+1 (new sol at each time step and it.)
    Uold, Vold, // U_k, V_k (prev. iteration sol. of Newton)
    incrU, incrV,
    U0, V0; // U_n, V_n (prev. time-step sol)
-Xh pert = eps * cos(2*pi *x)*cos(2*pi*y); //custom perturbation of initial state
+
+Xh pert; //custom perturbation of initial state
+pert = eps * cos(2*pi*x/Lx)* cos(2*pi*y/Ly); // "Set C"
+// pert = eps * cos(2*pi*x)* cos(2*pi*y); // "Set A", "Set B"
+
 real[int] tmp1(2*dimXh), tmp2(2*dimXh),  tmp3(2*dimXh);
 
 varf a(du,phi) = int2d(Th) (1/dt * du * phi);
