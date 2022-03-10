@@ -14,8 +14,8 @@ string prm = "Set B"; // "Set A", "Set B", "Set C"
 include "PRM.edp";
 
 /// Mesh
-// mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); // "Set A", "Set B"
-mesh Th = square(Nx, Ny, [x, y]);  // "Set C"
+mesh Th = square(Nx, Ny, [x, y]);  // "Set A", "Set B"
+// mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); // "Set C"
 
 include "Jac.edp";
 include "G.edp";
