@@ -14,8 +14,8 @@ string prm = "Set B"; // "Set A", "Set B", "Set C"
 include "PRM.edp";
 
 /// Mesh
-mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); //v1, v2
-mesh Th = square(Nx, Ny, [x, y]);  // set1
+// mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); // "Set A", "Set B"
+mesh Th = square(Nx, Ny, [x, y]);  // "Set C"
 
 /// Finite element spaces
 fespace Xh(Th, P1);

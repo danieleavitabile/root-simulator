@@ -5,7 +5,7 @@ load "ffrandom";
 load "iovtk";
 int[int] ffordervel = [1]; // to save images in .vtk format
 int seed = 10;
-int ld = 1; // 1: load prev. sol. as initial state
+int ld = 0; // 1: load prev. sol. as initial state
             // 0: use custom initial state
 string path = "results/2021-11-28_10-19-46/";  // path of the previously computed U, V
 
@@ -14,8 +14,8 @@ string prm = "Set B"; // "Set A", "Set B", "Set C"
 include "PRM.edp";
 
 /// Mesh
-// mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); //v1, v2
-mesh Th = square(Nx, Ny, [x, y]);  // set1
+// mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); // "Set A", "Set B"
+mesh Th = square(Nx, Ny, [x, y]);  // "Set C"
 
 /// Finite element spaces
 fespace Xh(Th, P1);
