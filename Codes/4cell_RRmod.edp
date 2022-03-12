@@ -17,16 +17,19 @@ int N = 4;
 int[int] reg(N);
 mesh[int] Th(N);
 int i; // index to distinguish cells: i -> Th(i+1)
-int inside = 1;
-int outside = 2;
+int inside1 = 1;
+int inside2 = 2;
+int inside3 = 3;
+int inside4 = 4;
+int outside = 5;
 border o1(t=2*Ly, 0){x=0; y=t; label=outside;}
 border o2(t=0, 2*Lx){x=t; y=0; label=outside;}
 border o3(t=0,2*Ly){x=2*Lx; y=t; label=outside;}
 border o4(t=0, 2*Lx){x=2*Lx-t; y=2*Ly; label=outside;}
-border i1(t=Lx,0){x=t; y=Ly; label=inside;}
-border i2(t=2*Ly,Ly){x=Lx; y=t; label=inside;}
-border i3(t=Lx, 2*Lx){x=t; y=Ly; label=inside;}
-border i4(t=0, Ly){x=Lx; y=t; label=inside;}
+border i1(t=Lx,0){x=t; y=Ly; label=inside1;}
+border i2(t=2*Ly,Ly){x=Lx; y=t; label=inside2;}
+border i3(t=Lx, 2*Lx){x=t; y=Ly; label=inside3;}
+border i4(t=0, Ly){x=Lx; y=t; label=inside4;}
 
 mesh TH = buildmesh(o1(2*Ny) + o2(2*Nx) + o3(2*Ny) + o4(2*Nx)
                     + i1(Nx) + i2(Ny) + i3(Nx) + i4(Ny));
