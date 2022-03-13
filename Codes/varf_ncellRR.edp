@@ -38,6 +38,7 @@ varf fv(v,phi) = int2d(Th[i]) ((V01 + (V02-V01)*i*(i-2)*(i-3)*1./2.
                 ;
 
 // to choose if PARALLELIZABLE mode or not, RR original, RRmod (comment the not used one)// du1dn
+// du1dn
 varf du1dn2(u, phi) =
                       int1d(Th[0], inside1) (betauRR * alphauRR * U1 * phi)     // RRmod contribute
                    // int1d(Th[0], inside1) (betauRR * alphauRR * U1prec * phi) // for PARALLELIZABLE mode
@@ -64,7 +65,7 @@ varf du2dn3(u, phi) =
                       int1d(Th[1], inside2) (betauRR * alphauRR * U2 * phi)     // RRmod contribute
                    // int1d(Th[1], inside2) (betauRR * alphauRR * U2prec * phi) // for PARALLELIZABLE mode
                       ;
-//dv1dn
+//dv2n
 varf dv2dn1(v, phi) =
                       int1d(Th[1], inside1) (betavRR * alphavRR * V2 * phi)     // RRmod contribute
                    // int1d(Th[1], inside1) (betauRR * alphauRR * V2prec * phi) // for PARALLELIZABLE"mode
@@ -82,7 +83,7 @@ varf du3dn4(u, phi) =
                       int1d(Th[2], inside3) (betauRR * alphauRR * U3 * phi)     // RRmod contribute
                    // int1d(Th[2], inside3) (betauRR * alphauRR * U3prec * phi) //for PARALLELIZABLE mode
                       ;
-//dv1dn
+//dv3dn
 varf dv3dn2(v, phi) =
                       int1d(Th[2], inside2) (betavRR * alphavRR * V3 * phi)     // RRmod contribute
                    // int1d(Th[2], inside2) (betauRR * alphauRR * V3prec * phi) // for PARALLELIZABLE mode
@@ -91,7 +92,7 @@ varf dv3dn4(v, phi) =
                       int1d(Th[2], inside3) (betavRR * alphavRR * V3 * phi)     // RRmod contribute
                    // int1d(Th[2], inside3) (betauRR * alphauRR * V3prec * phi) // for PARALLELIZABLE mode
                       ;
-//du2dn
+//du4dn
 varf du4dn3(u, phi) =
                       int1d(Th[3], inside3) (betauRR * alphauRR * U4 * phi)     // RRmod contribute
                    // int1d(Th[3], inside3) (betauRR * alphauRR * U4prec * phi) // for PARALLELIZABLE mode
@@ -100,7 +101,7 @@ varf du4dn1(u, phi) =
                       int1d(Th[3], inside4) (betauRR * alphauRR * U4 * phi)     // RRmod contribute
                    // int1d(Th[3], inside4) (betauRR * alphauRR * U4prec * phi) // for PARALLELIZABLE mode
                       ;
-//dv1dn
+//dv4dn
 varf dv4dn3(v, phi) =
                       int1d(Th[3], inside3) (betavRR * alphavRR * V4 * phi)     // RRmod contribute
                     // int1d(Th[3], inside3) (betauRR * alphauRR * V4prec * phi)// for PARALLELIZABLE mode

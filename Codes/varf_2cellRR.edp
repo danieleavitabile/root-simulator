@@ -50,7 +50,7 @@ varf du2dn(u, phi) =
                       // int1d(Th[1], inside) (betauRR * alphauRR * U2 * phi)   // RRmod contribute
                       int1d(Th[1], inside) (betauRR * alphauRR * U2prec * phi)  // for PARALLELIZABLE mode
                         ;
-//dv1dn = - (av(v2, phi) + bv(u2,phi)) + cv(v2, phi) - fv(phi) ) + ...
+//dv2dn = - (av(v2, phi) + bv(u2,phi)) + cv(v2, phi) - fv(phi) ) + ...
 varf dv2dn(v, phi) =
                       //   int2d(Th[1]) ((-1/dt + tildea2) * V2*phi + tildeD2 * gradS(V2)'*gradS(phi))
                       // + int2d(Th[1]) ( tildeb2  * U2*phi)
