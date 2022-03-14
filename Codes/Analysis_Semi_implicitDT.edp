@@ -1,0 +1,213 @@
+// Analysis of the order of convergence w.r.t time
+
+load "ffrandom";
+load "iovtk";
+int[int] ffordervel = [1]; // to save images in .vtk format
+exec("rm analysis.csv");
+exec("touch analysis.csv");
+ofstream out("analysis.csv", append);
+out << "dt,t,||errU||_L1,||errV||_L1" << endl;
+
+/// Parameters:
+string prm = "Set C"; // "Set A", "Set B", "Set C"
+include "PRM.edp";
+
+/// Mesh
+// mesh Th = square(Nx, Ny, [x, y]);  // "Set A", "Set B"
+mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); // "Set C"
+
+/// Finite element spaces
+fespace Xh(Th, P1);
+int dimXh =Xh.ndof;
+
+Xh pert; //custom perturbation of initial state
+// pert = eps * cos(2*pi*x)* cos(2*pi*y); // "Set A", "Set B"
+pert = eps * cos(2*pi*x/Lx)* cos(2*pi*y/Ly); // "Set C"
+
+Xh U, V, // U_n+1, V_n+1 and new sol at each time step
+   U0, V0, // U_n, V_n (previous time step sol)
+   Uex, Vex, // exact solution
+   errU, errV;
+include "step_semi_implicit.edp";
+
+// Extract the exact solution: the stationary stable one
+string path = "results/2022-01-08_16-39-40/";  // path of the "exact" reference solution
+
+real errL2u = 0.0,
+     errL2v = 0.0;
+real errl2tu = 0.0,
+     errl2tv = 0.0;
+// real[int] DT = [1.0, 0.5, 0.25, 0.125];
+// real[int] DT = [2.5, 1.0, 0.5, 0.25, 0.2, 0.125, 0.1, 0.05, 0.01];
+// real[int] DT = [0.2, 0.125, 0.1, 0.05, 0.025, 0.01, 0.005];
+real[int] DT = [0.05, 0.02, 0.025, 0.01, 0.005, 0.002];
+
+int numOfDt = DT.n;
+real[int] errLinfu(numOfDt), errLinfv(numOfDt);
+real[int] errL2tu(numOfDt), errL2tv(numOfDt);
+
+
+func int errorLinf() //Linf time, L2 space
+{
+  ifstream fU(path + "U/U" + t + ".txt");
+  ifstream fV(path + "V/V" + t + ".txt");
+
+  fU >> Uex[];
+  fV >> Vex[];
+
+  real normUex = sqrt(int2d(Th) ((Uex)^2));
+  real normVex = sqrt(int2d(Th) ((Vex)^2));
+
+  // [errL2u, errL2v] -> error
+  errU[] = U[];
+  errU[] -= Uex[];
+
+  errV[] = V[];
+  errV[] -= Vex[];
+
+  // Compute errors for the solution just computed.
+  real errL2u0 = sqrt(int2d(Th)(errU^2)) / (normUex+1e-12);
+  real errL2v0 = sqrt(int2d(Th)(errV^2)) / (normVex+1e-12);
+  // Update error variables so that the
+  // maximum over the whole simulation time
+  // is kept in the memory.
+  cout << "errLu0" << errL2u0 << endl;
+  cout << "errLv0" << errL2v0 << endl;
+
+  errL2u = max(errL2u, errL2u0);
+  errL2v = max(errL2v, errL2v0);
+}
+
+func int errorL2t() //L2 time, L1 space
+{
+  ifstream fU(path + "U/U" + t + ".txt");
+  ifstream fV(path + "V/V" + t + ".txt");
+
+  fU >> Uex[];
+  fV >> Vex[];
+
+  //norm L1 space
+  real normUex = int2d(Th) (abs(Uex));
+  real normVex = int2d(Th) (abs(Vex));
+
+  // [errL2u, errL2v] -> error
+  errU[] = U[];
+  errU[] -= Uex[];
+
+  errV[] = V[];
+  errV[] -= Vex[];
+
+  // Compute errors for the solution just computed.
+  real errL1u0 = int2d(Th)(abs(errU)) / (normUex+1e-12);
+  real errL1v0 = int2d(Th)(abs(errV)) / (normVex+1e-12);
+
+  cout << "errL1u0" << errL1u0 << endl;
+  cout << "errL1v0" << errL1v0 << endl;
+  out << dt << "," << t << "," << errL1u0  << "," << errL1v0 << endl;
+
+  if(t == Tmax || t == 0.0)
+  {
+    errl2tu += errL1u0^2 * dt / 2.0;
+    errl2tv += errL1v0^2 * dt / 2.0;
+  }
+  else
+  {
+    errl2tu += errL1u0^2 * dt;
+    errl2tv += errL1v0^2 * dt;
+  }
+
+  return 0;
+}
+
+for (int i=0; i < numOfDt; ++i)
+{
+  dt = DT[i];
+
+  errL2u = errL2v = 0.0;
+  errl2tu = errl2tv = 0.0;
+  t = 0.0;
+
+  ifstream fU(path + "U/U" + t + ".txt");
+  ifstream fV(path + "V/V" + t + ".txt");
+
+  fU >> Uex[];
+  fV >> Vex[];
+  //Initialization
+  U0[] = Uex[];
+  V0[] = Vex[];
+
+  // need to be reassembled because dt changed
+  Au = au(Xh,Xh);
+  Av = av(Xh,Xh);
+
+  // Time loop.
+  while(t <= (Tmax-dt))
+  {
+    t += dt;
+    it ++;
+
+    // perform an iteration of the linerized solver
+    int errc = step(); // -> find U,V (function inside step_semi_implicit)
+    if (errc != 0)
+    {
+      cout << "ERROR" << endl;
+      break;
+    }
+
+    errorLinf();
+    errorL2t();
+    cout << "time " << t << ", "
+         << "dt " << dt << ": "
+         << errL2u << "   "
+         << errL2v << "   "
+         << errl2tu << "  "
+         << errl2tv << endl;
+
+    // update old solution
+    U0 = U;
+    V0 = V;
+  }
+
+  plot(U, value =1, fill =1/*, wait=1*/, cmm="Concentration of ACTIVE ROPs with delta_t "+ dt, ps = "results/U" + dt + ".ps");
+  plot(V, value =1, fill =1/*, wait=1*/, cmm="Concentration of INACTIVE ROPs with delta_t "+ dt, ps = "results/V" + dt + ".ps");
+	savevtk("results/U" + dt + ".vtk", Th, U, dataname = "Active_ROPs", order = ffordervel);
+	savevtk("results/V" + dt + ".vtk", Th, V, dataname = "Inactive_ROPs", order = ffordervel);
+  ofstream foutU("results/U" + dt + ".txt");
+  ofstream foutV("results/V" + dt + ".txt");
+  foutU << U[];
+  foutV << V[];
+
+  errLinfu[i] = errL2u;
+  errLinfv[i] = errL2v;
+  errL2tu[i] = sqrt(errl2tu);
+  errL2tv[i] = sqrt(errl2tv);
+
+}
+
+cout << " Convergence " << endl
+     << " L2inf u : " << errLinfu << endl;
+for (int i=0; i < numOfDt -1; ++i)
+{
+    cout << DT[i] << " order = " << log(errLinfu[i]/errLinfu[i+1]) / log(DT[i]/DT[i+1]) << endl;
+}
+
+cout << " Convergence " << endl
+     << " L2inf v : " << errLinfu << endl;
+for (int i=0; i < numOfDt -1; ++i)
+{
+    cout << DT[i] << " order = " << log(errLinfv[i]/errLinfv[i+1]) / log(DT[i]/DT[i+1]) << endl;
+}
+
+cout << " Convergence " << endl
+     << " L1space L2 t u : " << errL2tu << endl;
+for (int i=0; i < numOfDt -1; ++i)
+{
+  cout << DT[i] << " order = " << log(errL2tu[i]/errL2tu[i+1]) / log(DT[i]/DT[i+1]) << endl;
+}
+
+cout << " Convergence " << endl
+     << " L1space L2 t v : " << errL2tu << endl;
+for (int i=0; i < numOfDt -1; ++i)
+{
+  cout << DT[i] << " order = " << log(errL2tv[i]/errL2tv[i+1]) / log(DT[i]/DT[i+1]) << endl;
+}
