@@ -10,7 +10,8 @@ string path2 = "results/2022-02-26_18-11-29/";
 real it1 = 84;
 real it2 = 200;
 
-string prm = "V2 matlab"; // "Set1", "V1 matlab", "V2 matlab"
+/// Parameters:
+string prm = "Set C"; // "Set A", "Set B", "Set C"
 include "PRM.edp";
 /// Mesh 1 cell
 mesh Th = square(Nx, Ny, [Lx * x, Ly * y]);

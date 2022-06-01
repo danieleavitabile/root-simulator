@@ -161,14 +161,14 @@ func x0 = 2*Lx/Tmax * t;
 func alpha7 = k20* exp(-nu*(x-x0)/Lx) * (x>=x0) + k20* exp(nu*(x-x0)/Lx) * (x<x0);
 
 /// Change properly here
-func alpha = alpha1;
+func alpha = alpha3;
 
 // "Set A", "Set B"
-func tildec1 = alpha;
-func tildec2 = - gamma*alpha;
-// "Set C"
 // func tildec1 = alpha;
-// func tildec2 = - alpha;
+// func tildec2 = - gamma*alpha;
+// "Set C"
+func tildec1 = alpha;
+func tildec2 = - alpha;
 
 // TIME dep interations prms
 real dt = 0.5; //delta t
