@@ -2,6 +2,11 @@
 
 \usepackage{damacros}
 
+% PACKAGES added by TB
+% PACKAGES FOR ALGORITHMS (PSEUDO-CODE)
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
 % Sets running headers as well as PDF title and authors
 \headers{Coupling intra-cellular and multi-cellular dynamics in spatially-extended models of root-hair initiation}{D. Avitabile, S. Perotto, N. Ferro, T. Babini}
 
@@ -52,6 +57,52 @@ Finally, we consider a novel model in which the auxin dynamics are not prescribe
 
 mettere il modello Capitolo 4 (solo equazioni) +  posizionamento in
 letteratura + novelty paper
+
+% from chapter 4 physical model sec.
+
+the dynamics of auxin and carriers proteins PIN in each cell $\Omega_i$ with $i \in \{ 1, ..., N \}$ can be written as the following system of coupled ordinary differential equations:
+\begin{equation}\begin{aligned}
+\begin{cases}
+  {\displaystyle d a_i\over\displaystyle d t} & = {\displaystyle 1 \over \displaystyle V_i} \sum_{j=1}^{N} A_{ij} \Phi_{ij} +k - \delta a_i \\[8pt]
+  {\displaystyle d \Tilde{P}_{ij}\over\displaystyle d t} & = h\left(\Phi_{ij}\right) + \rho_0 - \mu \Tilde{P}_{ij},
+\end{cases}
+\end{aligned} \end{equation}
+
+% ...
+
+The original system of equations can be rescaled and simplified. In particular, under the assumptions of cells having same volume $V =V_i$ and exchange surface areas $A = A_{ij}$, rescaling properly the diffusion coefficient $D_a$ and variables $P_{ij}$, a new system is obtained. Thus, the final system of equations we work on is:
+\begin{equation}\label{eq:Sys_auxPIN}\begin{aligned}
+\begin{cases}
+  {\displaystyle d a_i\over\displaystyle d t} & = \sum_{j \in \mathcal{N}_i} \displaystyle \Phi_{ji} +k - \delta a_i \\[8pt]
+  {\displaystyle d P_{ij}\over\displaystyle d t} & = h\left(\Phi_{ij}\right) - \mu P_{ij},
+\end{cases}
+\end{aligned} \end{equation}
+
+% ... from chapter 2 sec physical model
+The dimentional reaction-diffusion model summarizing binding process, autocatalytic activation and catalysis of ROPs proteins described in Section \ref{sec:intromodel} is formulated as follows:
+% As mentioned before, the dimentional reaction-diffusion model is:
+\begin{equation} \label{eq:FM}\begin{aligned}
+\left\lbrace
+\begin{matrix}
+\partial_t u = & D_1 \Delta_s u + k_{20} \alpha(x,y)u^2 v - \left(c+r\right) u + k_1 v  & \ \text{in} \ \Omega\\
+    \partial_t v = & D_2 \Delta_s v - k_{20} \alpha(x,y) u^2 v - k_1 v + c \ u + b   & \ \text{in} \ \Omega.
+\end{matrix}
+\right.
+\end{aligned}\end{equation}
+
+% ...
+The RD system is rewritten to explicit its mathematical formulation and methods in order to solve it in the most general way, including both the case of the RD system with the original parameters and the RD system with the rescaled ones.
+
+As a consequence, we define a unified system of equations comprehensive of both \eqref{eq:FM} and \eqref{eq:adim} systems:
+\begin{equation} \label{eq:final}
+\left\lbrace
+\begin{matrix}
+\partial_t u = & \Tilde{D_1} \Delta_s u + \Tilde{a_1} u + \Tilde{b_1} v + \Tilde{c_1} u^2 v \ \ \text{in} \ \Omega\\
+\partial_t v = & \Tilde{D_2} \Delta_s v + \Tilde{a_2} v + \Tilde{b_2} u + \Tilde{c_2} u^2 v + f_2 \ \ \text{in} \ \Omega,
+\end{matrix}
+\right.
+\end{equation}
+with tilde parameters defined differently in the two cases under study
 
 \section{A starting modeling  (Teresa+Daniele)}
 
@@ -255,14 +306,58 @@ Matrices and vectors used are defined in the following way:
 \end{equation}
 being $\{\phi_l\}_{l = 1}^{N_h}$ the functional basis of $V_{i,h}$ finite dimensional space defined on each cell $\Omega_i$ with $i =1,2$.
 
+A sketch of the procedure to be adopted to deal with a generic N cells pluricellular system using Robin-Robin modifed algorithm is schematically given in Algorithm \ref{alg:RRmod}; $r_i$ are different coefficients characterizing initial state of concentrations, necessary for having flux between communicating cells. For physical reasons, we choose same initial guesses in the direction of the auxin gradient.
+
+We have implemented a solver for a system of four cells.
+
+As expressed in \eqref{eq::RRmod}, the iterative procedure is formulated such that the pluricellular domain is solved sequentially, in the sense that the boundary conditions characterizing sub-domain $i$, depending on sub-domain solutions of $j \in \mathcal{N}_i$, are computed using the newly updated solutions. In view of a parallel implementation, the method can be reformulated such that the new boundary conditions are a function of the previous iteration solution.
+
+\begin{algorithm}[t]
+    \caption{Pluricellular system solver procedure: RR}
+    \label{alg:RRmod}
+    Given $N \geq 1$ cells, $r_i$
+    \begin{algorithmic}[1]
+    \STATE Initialization: $\forall i = 1, ..., N$
+    \STATE \verb|[U0i, V0i]| $\gets [r_i u_0, r_i v_0]$
+    \STATE \verb|[Uiprec, Viprec]| $\gets$  \verb|[U0i, V0i]|
+    \WHILE{$t < T_{max}$}
+    \STATE{\verb|assemble| matrix for $\forall i = 1,..., N$}
+    \FOR{$iter < Niter$}
+    \STATE{$\forall i =1, ..., N$}
+    \STATE{compute BC contribute from $j \in \mathcal{N}_i$}
+    \STATE{\verb|interpolate| on $i$}
+    \STATE{update \verb|rhs|}
+    \STATE{\verb|solve| $\Omega_i$ problem \eqref{eq:pluriModel}}
+    \STATE{update residual, check tolerance, update $iter$}
+    \STATE \verb|[Uiprec, Viprec]| $\gets$  \verb|[Ui, Vi]|
+    \ENDFOR
+    \STATE \verb|[U0i, V0i]| $\gets$  \verb|[Ui, Vi]|
+    \ENDWHILE
+    \end{algorithmic}
+\end{algorithm}
+
 \subsection{Convergence check (Simona+Nicola+Teresa+Daniele)}
 \subsection{Reliability (Simona+Nicola+Teresa+Daniele)}
 \subsection{Eventuali sensitivity (Simona+Nicola+Teresa+Daniele)}
 
 \section{DD per il modello completo (Simona+Nicola+Teresa+Daniele)}
 
+\tb{si intende solo i risultati o anche la discretizzazione?}
+
 \section{Conclusions and future developments (Simona+Daniele)}
 
+\textbf{Conclusions and future developments}%
+In this thesis we developed a multi-cellular model accounting for a spatially-extended intra-cellular system for ROPs pattern formation. In the proposed framework, we solved ROPs pattern formation in a system composed by multiple cells, together with a transport model for hormone auxin. The RD model explains the auxin-mediated action of ROPs in an Arabidopsis root hair cell leading to formation of the localized patches of activated ROPs.
+
+Our simulations support conclusions reached in other works regarding ROPs dynamics under a-priori defined auxin distribution \cite{phdthesis:victor, intra1_R, intra2}. We have analyzed various scenarios such that a stripe-like patch forms where auxin concentration is higher. Then, instability of stripe into spot-like states occurs and multiple spots align with auxin gradient or travel towards auxin minimum. Several results confirm that, for a transversally independent gradient, lateral stripes become unstable states.
+
+Successively as a new contribution, we extended the intra-cellular dynamics for root-hair initiation model to a multi-cellular system, developing a new model taking into account communication between cells. In order to do so, we have defined a boundary value problem which assumes new boundary conditions between neighboring cells. Subsequently, we develop an iterative procedure to solve it. We take as reference scheme a Robin-Robin domain decomposition method. We impose fluxes of ROPs betweeen neighboring cells, depending on the difference of the ROPs concentrations, through localised open channels. Such connections are tuned in order to visualize considerably different results with respect to a configuration characterized by stagnant cells. In addition,we aim at preserving all previous analyses over important parameters characterizing the system. We numerically assessed the robustness of the proposed model in cooperating with auxin distribution in influencing ROPs pattern formation.
+
+Having defined a reliable multi-cellular model, we have taken into account also auxin concentration dynamics. Hormone auxin is regulated by carriers PIN following a non-linear ODEs system. We implement a semi-implicit method to solve such as a system on a two cells setting. The simulations we carried out show oscillating values of auxin concentration for specific sets of parameters, as expected from previous studies. A further confirmation of the robustness of pattern formation according to the proposed new multi-cellular model, when considering channel communication between cells, is given in Chapter \ref{cap:4}. It is shown that even if the system is under steady homogeneous auxin concentrations, the model robustly forms hotspots when considering open channels under a sufficiently high overall auxin level.
+
+The results show two ways spots of active ROPs can be generated. The first factor is the auxin gradient, which still guarantees and influence stripe to spot evolution. The second factor is the structural coupling between cells. Even if not characterized by variation in space but with a sufficiently high value of the auxin concentrations, the multi-cellular model leads the system to multiple spots.
+
+In conclusion, this thesis provides a first attempt in modeling communication between root-hair cells in pattern formation. Future developments include to study the structural model or to deeply analyze channels characterization. Moreover, the iterative procedure implemented could be applied to a multi-cellular system composed by more than four cells and eventually try to increase the computational performance through parallel computing. Another possible road to follow is to approach the problem through homogenization techniques. The cited method may increase the efficiency in solving the model, particularly when the number of cells involved becomes large. Finally, one could assume other auxin transport models, less simplified or accounting for spatial dependence inside the cells.
 
 
 

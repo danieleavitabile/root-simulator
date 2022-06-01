@@ -368,7 +368,6 @@ As expressed in \eqref{eq::RRmod}, the iterative procedure is formulated such th
     \STATE Initialization: $\forall i = 1, ..., N$
     \STATE \verb|[U0i, V0i]| $\gets [r_i u_0, r_i v_0]$
     \STATE \verb|[Uiprec, Viprec]| $\gets$  \verb|[U0i, V0i]|
-    % anche se in realtà init in tempo per tutti e quella prec solo da 2 a N ...
     \WHILE{$t < T_{max}$}
     \STATE{\verb|assemble| matrix for $\forall i = 1,..., N$}
     \FOR{$iter < Niter$}
