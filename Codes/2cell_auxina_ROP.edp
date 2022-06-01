@@ -1,6 +1,6 @@
 //2 cell
 //AUXINA-PINs dynamic + ROPs dynamics
-// hyp: k20 ~ auxin, F6 rho 2.3  -> try not homogeneous alpha
+// hyp: k20 ~ auxin
 
 load "ffrandom";
 load "iovtk";
@@ -15,7 +15,7 @@ string prmA = "F6"; // "F4", "F5", "F6", "F7"
 include "PRM.edp";
 include "channelPRM.edp";
 include "PRMauxina.edp";
-nu = 0.0; // set alpha homogeneous
+nu = 0.0; // set alpha homogeneous locally in each cell
 
 /// ROPs system staff
 /// Mesh:
@@ -49,6 +49,7 @@ fespace Vh2(Th[1], P1);
 Vh2 U2;
 Vh2 V2;
 
+/// Initialization
 U1 = 1.5 * u0;
 V1 = 1.5 * v0;
 U2 = u0;
@@ -67,12 +68,12 @@ real resU1, resV1, resU2, resV2;
 
 /// Varf
 include "varf_2cellRR.edp";
-matrix[int] A(N); //ogni elemento è una matrice a blocchi
+matrix[int] A(N); //each element is a block matrix
 real[int] F1(2*Vh1.ndof), F2(2*Vh2.ndof);
 real[int] tmp1(2*Vh1.ndof), tmp2(2*Vh2.ndof);
 include "assemble_RR.edp";
 
-///Interpolation matrix:
+/// Interpolation matrix:
 matrix I12 = interpolate(Vh2, Vh1, inside = 1);
 matrix I21 = interpolate(Vh1, Vh2, inside = 1);
 fespace Vh(TH, P1);
@@ -80,6 +81,7 @@ Vh U1proj, U2proj, V1proj,V2proj;
 matrix ITH1 = interpolate(Vh1, Vh, inside = 1);
 matrix ITH2 = interpolate(Vh2, Vh, inside = 1);
 
+//compute normalized residual with L2 norm
 func int residual(){
   incrU1[] = U1[];
   incrU1[] -= U1prec[];
@@ -93,7 +95,6 @@ func int residual(){
   incrV2[] = V2[];
   incrV2[] -= V2prec[];
 
-  //calcolo residuo normalizzato con norma L2
   real errU1 = int2d(Th[0]) ((incrU1)^2);
   real errV1 = int2d(Th[0]) ((incrV1)^2);
   real normU1 = int2d(Th[0]) ((U1prec)^2);
@@ -207,7 +208,7 @@ while(t<Tmax)
     real[int] Fu = fu(0,Vh1);
     real[int] Fv = fv(0,Vh1);
 
-    //no need to compute weak normal derivative:
+    // no need to compute weak normal derivative:
     // only 1 contribute with beta
     real[int] Du2dn = du2dn(0, Vh2);
     real[int] Tdu2dn(Vh1.ndof);

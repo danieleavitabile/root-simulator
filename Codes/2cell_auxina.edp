@@ -1,6 +1,5 @@
 //2 cell AUXINA-PINs dynamic
-//SI method -> ok  alues but more oscillatory vs F&
-//F7 prm - rho2.8
+//SI method
 
 load "ffrandom";
 load "iovtk";
@@ -11,11 +10,11 @@ string path = "results/2021-11-29_11-37-42/";
 
 /// Parameters:
 string prm = "Set C"; // "Set A", "Set B", "Set C"
-string prmA = "F7"; // "F4", "F5", "F6", "F7" ... boh eventualmente altre
+string prmA = "F7"; // "F4", "F5", "F6", "F7"
 include "PRM.edp";
 include "PRMauxina.edp";
 
-/// Mesh: only to visualize solutons ...
+/// Mesh: only to visualize solutons
 int N = 2; // number of cells
 int[int] reg(N);
 mesh[int] Th(N);
@@ -58,7 +57,7 @@ for(int i = 0; i < 2*(N-1); i++) PIN[i] = randreal1();
 matrix Aa;
 Aa = [[1/dtauxina + delta + PIN[0] + Da, -PIN[1]-Da],
      [-PIN[0]-Da ,1/dtauxina + delta + PIN[1] + Da]];
-real Ap = 1/dtauxina + mu; // di fatto non è una matrice ma numero reale
+real Ap = 1/dtauxina + mu;
 real[int] ba(N);
 real[int] bp(2*(N-1));
 
@@ -103,7 +102,7 @@ while(t<Tmax)
   auxina = Aa^(-1)*ba;
   for(int i = 0; i < 2*(N-1); i++) PIN[i] = 1/Ap * bp[i];
 
-  // /// Results and save imgs -> adesso per visualizzarle ma poi in realtà in ROP basta inserile nelle varf ...
+  // /// Results and save imgs
   // a1 = auxina[0];
   // a2 = auxina[1];
   // p1 = PIN[0];
