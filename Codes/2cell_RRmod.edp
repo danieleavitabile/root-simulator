@@ -1,4 +1,4 @@
-// 2 cell solver: Robin-Robin ALGO MODIFIED
+// 2 cell solver: Robin-Robin ALGO modified
 // 2cells system with communication
 
 load "iovtk";

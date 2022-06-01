@@ -1,5 +1,4 @@
-//2 cell solver: Robin-Robin ALGO
-// correspond to solve 2cells with no communication
+// 2 cell solver: classic Robin-Robin ALGO
 
 load "iovtk";
 int[int] ffordervel = [1]; // to save images in .vtk format

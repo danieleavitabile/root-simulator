@@ -1,4 +1,4 @@
-//4 cell solver: Robin-Robin ALGO MODIFIED
+//4 cell solver: Robin-Robin ALGO modified
 
 load "iovtk";
 int[int] ffordervel = [1]; // to save images in .vtk format

@@ -1,4 +1,4 @@
-//varf for 2 cells RR algos: original and modified
+// varf for 2 cells RR algos: classic and modified
 varf au(u,phi) = int2d(Th[i]) ((1/dt - tildea1) * u*phi + tildeD1 * gradS(u)'*gradS(phi))
                + int1d(Th[i], inside) (betauRR * alphauRR * u*phi)
                  ;
@@ -16,14 +16,14 @@ varf fu(u,phi) = int2d(Th[i]) ((U02 + (U01-U02)*(1-i))*phi / dt) //Fu
 varf fv(v,phi) = int2d(Th[i]) ((V02 + (V01-V02)*(1-i))*phi / dt + phi * f2) //Fv
                 ;
 
-// to choose if PARALLELIZABLE mode or not, RR original, RRmod (comment the not used one)
+// to choose if PARALLELIZABLE mode or not, RR classic, RRmod (comment the not used one)
 // du1dn = - (au(u1, phi) + bu(v1,phi)) + cu(v1, phi) - fu(phi) ) + ...
 varf du1dn(u, phi) =
                       //   int2d(Th[0]) ((-1/dt + tildea1) * U1*phi - tildeD1 * gradS(U1)'*gradS(phi))
                       // + int2d(Th[0]) (tildeb1  * V1*phi)
                       // + int2d(Th[0]) (tildec1 * U01^2 * V1 * phi)
                       // + int2d(Th[0]) (U01 * phi / dt)
-                      // + int1d(Th[0], inside) (alphauRR * U1 * phi)           // RR orignal upto here
+                      // + int1d(Th[0], inside) (alphauRR * U1 * phi)           // RR classic upto here
                       // int1d(Th[0], inside) (betauRR * alphauRR * Ubar * phi) // Ubar contribute
                       // int1d(Th[0], inside) (betauRR * alphauRR * U1 * phi)   // RRmod contribute
                       int1d(Th[0], inside) (betauRR * alphauRR * U1prec * phi)  // for PARALLELIZABLE mode
@@ -34,7 +34,7 @@ varf dv1dn(v, phi) =
                       // + int2d(Th[0]) ( tildeb2  * U1*phi)
                       // + int2d(Th[0]) ( tildec2 * U01^2 * V1 * phi)
                       // + int2d(Th[0]) (V01 * phi / dt + phi * f2)
-                      // + int1d(Th[0], inside) (alphavRR * V1 * phi)           // RR orignal upto here
+                      // + int1d(Th[0], inside) (alphavRR * V1 * phi)           // RR classic upto here
                       // int1d(Th[0], inside) (betavRR * alphavRR * Vbar * phi) // Vbar contribute
                       // int1d(Th[0], inside) (betavRR * alphavRR * V1 * phi)   // RRmod contribute
                       int1d(Th[0], inside) (betauRR * alphauRR * V1prec * phi)  //for PARALLELIZABLE mode
@@ -45,7 +45,7 @@ varf du2dn(u, phi) =
                       // + int2d(Th[1]) ( tildeb1  * V2*phi)
                       // + int2d(Th[1]) ( tildec1 * U02^2 * V2 * phi)
                       // + int2d(Th[1]) (U02 * phi / dt)
-                      // + int1d(Th[1], inside) (alphauRR * U2 * phi)           // RR orignal upto here
+                      // + int1d(Th[1], inside) (alphauRR * U2 * phi)           // RR classic upto here
                       // int1d(Th[1], inside) (betauRR * alphauRR * Ubar * phi) // Ubar contribute
                       // int1d(Th[1], inside) (betauRR * alphauRR * U2 * phi)   // RRmod contribute
                       int1d(Th[1], inside) (betauRR * alphauRR * U2prec * phi)  // for PARALLELIZABLE mode
@@ -56,7 +56,7 @@ varf dv2dn(v, phi) =
                       // + int2d(Th[1]) ( tildeb2  * U2*phi)
                       // + int2d(Th[1]) ( tildec2 * U02^2 * V2 * phi)
                       // + int2d(Th[1]) (V02 * phi / dt + phi * f2)
-                      // + int1d(Th[1], inside) (alphavRR * V2 * phi)           // RR orignal upto here
+                      // + int1d(Th[1], inside) (alphavRR * V2 * phi)           // RR classic upto here
                       // int1d(Th[1], inside) (betavRR * alphavRR * Vbar * phi) // Vbar contribute
                       // int1d(Th[1], inside) (betavRR * alphavRR * V2 * phi)   // RRmod contribute
                       int1d(Th[1], inside) (betavRR * alphavRR * V2prec * phi)  // for PARALLELIZABLE mode

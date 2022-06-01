@@ -37,7 +37,7 @@ varf fv(v,phi) = int2d(Th[i]) ((V01 + (V02-V01)*i*(i-2)*(i-3)*1./2.
                                + (V04-V01)*i*(i-1)*(i-2)*1./6.)*phi / dt + phi * f2) //Fv
                 ;
 
-// to choose if PARALLELIZABLE mode or not, RR original, RRmod (comment the not used one)// du1dn
+// to choose if PARALLELIZABLE mode or not (comment the not used one)
 // du1dn
 varf du1dn2(u, phi) =
                       int1d(Th[0], inside1) (betauRR * alphauRR * U1 * phi)     // RRmod contribute
