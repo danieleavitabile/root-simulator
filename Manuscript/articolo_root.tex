@@ -1,0 +1,273 @@
+\documentclass[a4paper]{siamart190516}
+
+\usepackage{damacros}
+
+% Sets running headers as well as PDF title and authors
+\headers{Coupling intra-cellular and multi-cellular dynamics in spatially-extended models of root-hair initiation}{D. Avitabile, S. Perotto, N. Ferro, T. Babini}
+
+% Title. If the supplement option is on, then "Supplementary Material"
+% is automatically inserted before the title.
+\title{Coupling intra-cellular and multi-cellular dynamics in spatially-extended models of root-hair initiation}
+
+% Authors: full names plus addresses.
+\author{%
+  Daniele Avitabile%
+  \thanks{%
+    Vrije Universiteit Amsterdam,
+    Department of Mathematics,
+    Faculteit der Exacte Wetenschappen,
+    De Boelelaan 1081a,
+    1081 HV Amsterdam, The Netherlands.
+  \protect\\
+    Inria Sophia Antipolis M\'editerran\'ee Research Centre,
+    MathNeuro Team,
+    2004 route des Lucioles-Boîte Postale 93 06902,
+    Sophia Antipolis, Cedex, France.
+  \protect\\
+    (\email{d.avitabile@vu.nl}, \url{writemywebpage}).
+  }
+ %  .... mancano altri
+  % \and
+%   Paul T. Frank \thanks{Department of Applied Mathematics, Fictional University, Boise, ID
+% (\email{ptfrank@fictional.edu}, \email{jesmith@fictional.edu}).}
+% \and Jane E. Smith\footnotemark[3]
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This thesis deals with novel models and numerical approximations of spatially-extended multi-cellular models of Rho Of Plants (ROPs), that is, a family of proteins responsible for root-hair initiation in the plant cell Arabidopsis thaliana. The study of this dynamical system is of great relevance in the so-called agriculture 4.0, since it is instrumental to optimise plant uptake. In particular, ascertaining how intra-cellular protein distributions and extra-cellular coupling influence root-hair initiation is a challenging but pressing problem.
+
+Current studies have focussed on two separate model types: on the one hand, ROPs dynamics is studied in single-cell models, which resolve patterns at sub cellular level; on the other, multi- cellular models with realistic geometries neglect intra-cellular patterning. In this thesis we make progress on coupling these two
+model descriptions.
+
+We initially focus on a well-established single-cell, nonlinear reaction-diffusion model, here approximated for the first time with a finite-element scheme. In addition, we present a new model which couples multiple cells through ROP flux at the interface. We present numerical evidence that such coupling has a bearing on the patterns supported by the model. It is shown that, under variations of auxin gradients, the model robustly forms ROP hotspots from ROP stripes, and that spots are later advected downstream.
+
+Finally, we consider a novel model in which the auxin dynamics are not prescribed, but derive from the interaction between this hormone and other membranals proteins (PIN). We show that self-sustained auxin oscillations influence ROP intracellular patterning.
+\end{abstract}
+
+\section{Introduction (Daniele+Teresa+Simona)}
+
+mettere il modello Capitolo 4 (solo equazioni) +  posizionamento in
+letteratura + novelty paper
+
+\section{A starting modeling  (Teresa+Daniele)}
+
+Modello di Capitolo 3
+
+\textbf{Physical model - Sec.3.1}
+We consider the root-hair cell projection onto a 2D rectangular domain, neglecting axial dimension.
+% as in Chapter \ref{cap:2}
+A system of four cells is schematically presented in Figure \ref{fig:2cell}. We can see that each cell has longitudinal and transverse boundaries in common with close cells.
+We recall the single cellular model, namely:
+\begin{equation} \label{eq:singModel}
+\left\lbrace
+\begin{matrix}
+  \begin{aligned}
+    & \partial_t u = \Tilde{D_1} \Delta_s u + \Tilde{a_1} u + \Tilde{b_1} v + \Tilde{c_1} u^2 v & \ \text{in} \ \Omega\\
+    & \partial_t v = \Tilde{D_2} \Delta_s v + \Tilde{a_2} v + \Tilde{b_2} u + \Tilde{c_2} u^2 v + f_2 & \ \text{in} \ \Omega \\
+    & \Tilde{D_1} \nabla_s u \cdot \mathbf{n} = 0 & \ \text{on} \ \partial \Omega \\
+    & \Tilde{D_2} \nabla_s v \cdot \mathbf{n} = 0 & \ \text{on} \ \partial \Omega.
+  \end{aligned}
+\end{matrix}
+\right.
+\end{equation}
+No-flux on $\partial \Omega$, namely Neumann homogeneous boundary conditions, characterizes the system behaviour along the cell boundary.
+% prima spieghiamo il significato fisico, poi come rappresentarlo matematicamente
+In the multi-cellular model, communication between cells is represented by allowed flux of ROPs, active and inactive, through localized channels along boundaries between neighboring cells.
+
+We define as neighbor of cell $\Omega_i$ the set of cells with index in $\mathcal{N}_i = \{ j : \partial \Omega_j  \cap \partial \Omega_i \neq \emptyset \}$. The flux of concentration of active and inactive ROPs $(u_i, v_i)$ is proportional to the difference of concentration $(u_j, v_j)$ in neighbouring cells for $j \ \in \ \mathcal{N}_i$.
+
+We formulate the new model still focusing on one single cell domain $\Omega_i$, taking into account the new flux generated from the discrepancy of concentrations with the neighboring cells. The new flux results in adding a non-homogeneous Neumann boundary condition on the common interfaces, as follows:
+\begin{equation} \label{eq:pluriModel}
+\left\lbrace
+\begin{matrix}
+  \begin{aligned}
+    & \partial_t u_i = \Tilde{D_1} \Delta_s u_i + \Tilde{a_1} u_i + \Tilde{b_1} v_i + \Tilde{c_1} (u_i)^2 v_i & \ \text{in} \ \Omega_i\\[6pt]
+    & \partial_t v_i = \Tilde{D_2} \Delta_s v_i + \Tilde{a_2} v_i + \Tilde{b_2} u_i + \Tilde{c_2} (u_i)^2 v_i + f_2 & \ \text{in} \ \Omega_i \\[6pt]
+    & \Tilde{D_1} \nabla_s u_i \cdot \mathbf{n} = 0 & \ on \ \partial \Omega_i \backslash \cup_{j \in \mathcal{N}_i} \Gamma_{j,i} \\[6pt]
+    & \Tilde{D_2} \nabla_s v_i \cdot \mathbf{n} = 0 & \ on \ \partial \Omega_i \backslash \cup_{j \in \mathcal{N}_i} \Gamma_{j,i} \\[6pt]
+    & \Tilde{D_1} \nabla_s u_i \cdot \mathbf{n} = \beta_{uRR} \ \alpha_{uRR} \left(u_j - u_i \right) & \ on \ \Gamma_{j,i} \ \forall j \in  \mathcal{N}_i \\[6pt]
+    & \Tilde{D_2} \nabla_s v_i \cdot \mathbf{n} = \beta_{vRR} \ \alpha_{vRR} \left(v_j - v_i \right) & \ on \ \Gamma_{j,i}\ \forall j \in  \mathcal{N}_i ,
+  \end{aligned}
+\end{matrix}
+\right.
+\end{equation}
+where we define as $(u_i, v_i)$ the concentrations of active and inactive ROPs restricted to cell $\Omega_i$: $(u_i, v_i): \Omega_i \times \left(0, T_{max} \right) \longrightarrow \RSet^2$ and $\Gamma_{j,i}$ represents the common side between cell $\Omega_i$ and cell $\Omega_j \ \in \mathcal{N}_i $, therefore defined as: $\Gamma_{j,i} = \partial \Omega_i \cap \partial \Omega_j$.
+
+Each of the neighboring cells follows the same model for hair formation, meaning that system in \eqref{eq:pluriModel} holds $\forall \ i$ cells composing the pluricellular system. As a consequence, the newly defined boundary conditions is coupled with the solutions $(u_j, v_j)$ with $j \ \in \mathcal{N}_i$. Therefore, the pluricellular system requires a proper iterative method for setting correctly boundary conditions depending on solutions in the neighboring cells.
+
+Not communicating with other RH cells boundaries have as before no-flux. The new boundary conditions are characterized by a function and a coefficient for both active active ROPs $u$ and inactive ROPs $v$, having the same meaning:
+\begin{itemize}
+  \item $\beta_{u/v RR} \ [\frac{1}{\mu m^2}]$ are indicator functions defined on boundaries of cells, equal to $1$ where the communicating channels are open and $0$ where  no-flux is assumed;
+  \item $\alpha_{u/v RR} \ [\frac{1}{\mu m}]$ are transport efficiency coefficients, representing a sort of flux quantity allowed through channels.
+  \end{itemize}
+These channel parameters aim at representing the average active transport along the sides of confining cells, set equal to the flux of proteins from one cell to the neighbouring ones.
+
+We have no physical insight on previously cited functions modeling open channels for ROPs. A whole set of simulations for the proper tuning of parameters is required, in order to find a sufficiently plausible setting of the system.
+
+\section{A new dd-wise coupling approach (Simona+Daniele+Nicola+Teresa)}
+
+DD sul modello del Capitolo 3 + parte discreta
+
+\textbf{Numerical treatment - Sec.3.2}
+% brutto mettere gli stessi titoli?
+% -> prima questione: trattarlo con uno schema iterativo simile robin robin algorithm of domain decomposition, in modo da accoppiare le soluzioni; quindi descrivere bene lo schema (dalla strong formulation); già partendo dalo schema semi implicit nel tempo
+The communication between cells requires a proper iterative algorithm in order to deal with the mutual interplay between confining cells.
+
+Every subdomain $\Omega_i$ of the pluricellular system $\Omega$ represents the single cell and the original system of equations in \eqref{eq:final} is solved in $\Omega_i$ for all $i = 1, ..., N$. We solve such systems by means of the semi-implicit method described in Section \ref{sec:SI method}. Let us consider the weak formulation restricted to $\Omega_i$, defining the functional space $V_i = \{ w_i \in \ H^1\left(\Omega_i\right)\}$, the finite element subspace $V_{i,h} \subset V_i $ and the time interval discretization used in Section \ref{sec:SI method}. In particular, we divide the time interval $\left[0, T_{max}\right]$ in $N_{max}$ time steps such that $t^n = n \Delta t$ with $\Delta t = T_{max} / N_{max}  $. We rewrite the full discretized formulation, identifying $u_{i,h}$ with $u_h|_{\Omega_i}$, as:
+
+given the initial state $(u_{i,h}^0, v_{i,h}^0) $, find $(u_{i,h}^{n+1}, v_{i,h}^{n+1}) \ \in V_{i,h} \times V_{i,h}$ such that
+\begin{equation} \label{eq:fullGalerkin}
+\left\lbrace
+\begin{matrix}
+\begin{aligned}
+  a_{i,u}(u_{i,h}^{n+1}, w_{i,h}) + b_{i,u}(v_{i,h}^{n+1}, w_{i,h}) + c_{i,u}(v_{i,h}^{n+1}, w_{i,h}) = f_{i,u}(w_{i,h}) \ \forall \ w_{i,h} \ \in V_{i,h} \\[6pt]
+ a_{i,v}(v_{i,h}^{n+1}, w_{i,h}) + b_{i,v}(u_{i,h}^{n+1}, w_{i,h}) + c_{i,v}(v_{i,h}^{n+1}, w_{i,h}) = f_{i,v}(w_{i,h}) \ \forall \ w_{i,h} \ \in V_{i,h},
+\end{aligned}
+\end{matrix}
+\right.
+\end{equation}
+$\forall n = 0, ... N_{max}$, where
+\begin{subequations} \label{eq:Gvarfmono}
+\begin{align}
+    a_{i,u}(u_{i,h}^{n+1}, w_{i,h}) = & \int_{\Omega_i} \left( \frac{1}{\Delta t} u_{i,h}^{n+1} w_{i,h} + \Tilde{D}_1 \nabla_s u_{i,h}^{n+1} \cdot w_{i,h} - \Tilde{a}_1 u_i^{n+1} w_{i,h} \right) \label{Gmono:au}\\ - & \int_{\partial \Omega_i}\left(\Tilde{D}_1 \nabla_s u_{i,h}^{n+1} \cdot \mathbf{n} w_{i,h}\right)  \nonumber\\
+    b_{i,u}(v_{i,h}^{n+1}, w_{i,h}) = & \int_{\Omega_i} \left(- \Tilde{b}_1 v_{i,h} w_{i,h} \right)  \label{Gmono:bu} \\
+    c_{i,u}(v_{i,h}^{n+1}, w_{i,h}) = & \int_{\Omega_i} \left(- \Tilde{c}_1 (u_{i,h}^{n})^2  v_{i,h}^{n+1} w_{i,h} \right) \label{Gmono:cu} \\[6pt]
+    a_{i,v}(v_{i,h}^{n+1}, w_{i,h}) = & \int_{\Omega_i} \left(\frac{1}{\Delta t} v_{i,h}^{n+1} w_{i,h} + \Tilde{D}_2 \nabla_s v_{i,h}^{n+1} \cdot w_{i,h} - \Tilde{a}_2 v_i^{n+1} w_{i,h} \right) \label{Gmono:av} \\ - &  \int_{\partial \Omega_i} \left( \Tilde{D}_1 \nabla_s u_{i,h}^{n+1} \cdot \mathbf{n} w_{i,h} \right) \nonumber\\
+    b_{i,v}(v_{i,h}^{n+1}, w_{i,h}) = &\int_{\Omega_i} \left( - \Tilde{b}_2 u_{i,h} w_{i,h} \right) \label{Gmono:bv}\\
+    c_{i,v}(v_{i,h}^{n+1}, w_{i,h}) =& \int_{\Omega_i} \left( - \Tilde{c}_2 (u_{i,h}^{n})^2  v_{i,h}^{n+1} w_{i,h} \right) \label{Gmono:cv}\\[6pt]
+    f_{i,u}(w_{i,h}) = & \int_{\Omega_i} \left( \frac{1}{\Delta t} u_{i,h}^n \ w_{i,h} \right) \label{Gmono:fu}\\
+    f_{i,v}(w_{i,h}) = & \int_{\Omega} \left( \frac{1}{\Delta t} v_{i,h}^n \ w_{i,h} + f_2 w_{i,h} \right). \label{Gmono:fv}
+\end{align}
+\end{subequations}
+
+The introduction of different boundary conditions will require to modify the bilinear forms \eqref{Gmono:au} and \eqref{Gmono:av} and to add contributions in the right hand sides \eqref{Gmono:fu} and \eqref{Gmono:fv}.
+
+To this aim, we synthetically rewrite the model problem \eqref{eq:fullGalerkin}, assuming generic boundary conditions, through a linear operator $\mathcal{L}$ in the following way:
+
+Given the initial state $(u_i^0, v_i^0)$, find $(u_i^{n+1}, v_i^{n+1}) \ \in \Omega_i$ such that:
+\begin{equation}\label{eq:modelpb}
+% \begin{cases}
+\mathcal{L}^n (u_i^{n+1}, v_i^{n+1}) = \mathbf{f}^n \ \text{in} \ \Omega_i
+% \Tilde{D_1} \nabla_s u_i^{n+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_i \\
+% \Tilde{D_2} \nabla_s v_i^{n+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_i
+% \end{cases}
+\end{equation}
+$\forall n = 0, ... N_{max}$.
+
+\textbf{A new iterative modeling algorithm - Sec 3.2.3 }
+The model that we propose to make cells communicate can be regarded as a simplification of the classical domain decomposition scheme with Robin boundary conditions. We start for simplicity from a two cells problem and rewrite the common interface boundary conditions in \eqref{eq:RR} to recover the modelled open channels in \eqref{eq:pluriModel}. In the spirit of a block-Gauss-Seidel algorithm, we solve in sequence:
+\begin{equation} \label{eq:RR_final}
+\begin{aligned}
+& \begin{cases}
+\mathcal{L}^n (u_1^{k+1}, v_1^{k+1}) = \mathbf{f}^n \ \text{in} \ \Omega_1 \\
+\Tilde{D_1} \nabla_s u_1^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_1 \setminus \Gamma \\
+\Tilde{D_1} \displaystyle{\partial u_1^{k+1}\over\partial \mathbf{n}} = \alpha_{uRR} u_2^{k} - \alpha_{uRR} u_1^{k+1} \ \text{on} \ \Gamma \\
+\Tilde{D_2} \nabla_s v_1^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_1 \setminus \Gamma \\
+\Tilde{D_2} \displaystyle{\partial v_1^{k+1}\over\partial \mathbf{n}} = \alpha_{vRR} v_2^{k} -\alpha_{vRR} v_1^{k+1} \ \text{on} \ \Gamma
+\end{cases}
+\\[6pt]
+& \begin{cases}
+\mathcal{L}^n (u_2^{k+1}, v_2^{k+1}) = \mathbf{f}^n \ \text{in} \ \Omega_2 \\
+\Tilde{D_1} \nabla_s u_2^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_2 \setminus \Gamma \\
+\Tilde{D_1} \displaystyle{\partial u_2^{k+1}\over\partial \mathbf{n}} = \alpha_{uRR} u_1^{k+1} - \alpha_{uRR} u_2^{k+1} \ \text{on} \ \Gamma \\
+\Tilde{D_2} \nabla_s v_2^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_2 \setminus \Gamma\\
+\Tilde{D_2} \displaystyle{\partial v_2^{k+1}\over\partial \mathbf{n}} = \alpha_{vRR} v_1^{k+1} -\alpha_{vRR} v_2^{k+1} \ \text{on} \ \Gamma.
+\end{cases}
+\end{aligned}\end{equation}
+The flux imposed depends on the difference of the neighbouring solutions. As a consequence, we are imposing a not necessarily null Neumann boundary condition. Equation \eqref{eq:RR_final} defines a RR iterative method applied to two cells using proper parameters $\beta_{u/vRR}$ and $\alpha_{u/v RR}$ from the model formulated in Section \ref{sec:PluriMod}:
+
+starting from $(u_2^{k = 0}, v_2^{k = 0}) = (u_2^n, v_2^n)$, find $(u_1^{k+1}, v_1^{k+1}) \ \in V_{1}$ and $(u_2^{k+1}, v_2^{k+1}) \ \in V_{2}$:
+\begin{equation}\label{eq::RRmod}
+\begin{aligned}
+& \begin{cases}
+\mathcal{L}^n (u_1^{k+1}, v_1^{k+1}) = \mathbf{f}^n \ \text{in} \ \Omega_1 \\
+\Tilde{D_1} \nabla_s u_1^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_1 \setminus \Gamma \\
+\Tilde{D_1} \displaystyle{\partial u_1^{k+1}\over\partial \mathbf{n}} = \beta_{uRR} \alpha_{uRR} \left( u_2^{k} - u_1^{k+1} \right) \ \text{on} \ \Gamma \\
+\Tilde{D_2} \nabla_s v_1^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_1 \setminus \Gamma \\
+\Tilde{D_2} \displaystyle{\partial v_1^{k+1}\over\partial \mathbf{n}} = \beta_{vRR} \alpha_{vRR} \left( v_2^{k} - v_1^{k+1} \right) \ \text{on} \ \Gamma
+\end{cases}
+\\[6pt]
+& \begin{cases}
+\mathcal{L}^n (u_2^{k+1}, v_2^{k+1}) = \mathbf{f}^n \ \text{in} \ \Omega_2 \\
+\Tilde{D_1} \nabla_s u_2^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_2 \\
+\Tilde{D_1} \displaystyle{\partial u_2^{k+1}\over\partial \mathbf{n}} = \beta_{uRR} \alpha_{uRR} \left( u_1^{k+1} - u_2^{k+1} \right) \ \text{on} \ \Gamma \\
+\Tilde{D_2} \nabla_s v_2^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_2 \setminus \Gamma\\
+\Tilde{D_2} \displaystyle{\partial v_2^{k+1}\over\partial \mathbf{n}} = \beta_{vRR} \alpha_{vRR} \left( v_1^{k+1} - v_2^{k+1} \right) \ \text{on} \ \Gamma.
+\end{cases}
+\end{aligned}\end{equation}
+for $k \geq 0$ up to convergence.
+
+We remark that in \eqref{eq::RRmod} the coefficients $\beta_{u/vRR}$ and $\alpha_{u/v RR}$ have physical meaning since they come from the model \eqref{eq:pluriModel}. This is in contrast with the model and method presented in Section \ref{sec:RRclassic}, where the Robin coefficients are arbitrary.
+
+Let $V_{i,h}$ denote the finite dimensional subspace of $H^1\left(\Omega_i\right)$, wih $\Omega_i$ being the sub-domain of the pluricellular system $\Omega$ corresponding to cell. We find solutions $\left(u_{h}^{n+1}, v_{h}^{n+1}\right)|_{\Omega_i}$ identified with $\left(u_{i,h}, v_{i,h}\right) \ \in V_{i,h}$ for each time step $t^{n+1}$, solving up to convergence the iteration step, whose Galerkin formulation is:
+\begin{equation}\begin{aligned}
+    a_{i,u}^{RR}(u_{i,h}^{k+1}, w_{i,h}) + b_{i,u}(v_{i,h}^{k+1}, w_{i,h}) + c_{i,u}^n(v_{i,h}^{k+1}, w_{i,h}) = f_{i,u}^{RR}(w_{i,h}) \ \forall w_{i,h} \in V_{i,h} \\
+    a_{i,v}^{RR}(v_{i,h}^{k+1}, w_{i,h}) + b_{i,v}(u_{i,h}^{k+1}, w_{i,h}) + c_{i,v}^n(v_{i,h}^{k+1}, w_{i,h}) = f_{i,v}^{RR}(w_{i,h}) \ \forall w_{i,h} \in V_{i,h}.
+\end{aligned}\end{equation}
+
+The bilinear forms used are equal to \eqref{eq:Gvarfmono} - \eqref{eq:au&avRR} for classic Robin-Robin algorithm. The only difference is in the right hand side \eqref{eq:fu&fvRR} in which has been neglected the weak normal derivative of the neighbour solutions, as follows:
+\begin{align}
+ f_{i,u}^{RR}(w_{i,h}) & = f_{i,u}(w_{i,h}) + \int_{\Gamma} \left(\beta_{uRR} \alpha_{uRR} \mathcal{I}_{i,j} u_{j,h}^{k} \mathcal{I}_{i,j}w_{j,h} \right), \\
+f_{i,v}^{RR}(w_{i,h}) & = f_{i,v}(w_{i,h}) + \int_{\Gamma} \left(\beta_{vRR} \alpha_{vRR} \mathcal{I}_{i,j} v_{j,h}^{k} \mathcal{I}_{i,j} w_{j,h} \right).
+\end{align}
+
+Consequently, the algebraic formulation of the new iterative method used is formulated similarly as in \eqref{eq:LinSysRR}, with time-dependent block matrix that need to be reassembled at each time-step. The right-hand sides depend on the previous solution found for the neighbouring cells and their contributions need to be interpolated by means of a interpolation matrix as in Robin-Robin classic method. We here explicit the whole iterative method for a two cells composed system.
+
+Starting from initial guess given by the previous time-step solution  $\begin{bmatrix} \mathbf{U}_2^{0} \\ \mathbf{V}_2^{0} \end{bmatrix} = \begin{bmatrix} \mathbf{U}_2^{n} \\ \mathbf{V}_2^{n} \end{bmatrix}$, solve problem for $i = 1$ to find $\begin{bmatrix} \mathbf{U}_1^{k+1} \\ \mathbf{V}_1^{k+1} \end{bmatrix}$:
+\begin{equation*}
+\begin{aligned}
+ \begin{bmatrix}
+    A_u^1 & B_u^1 + C_u^1\left(  \mathbf{U}_1^n\right) \\
+    B_v^1 & A_v^1 + C_v^1\left(  \mathbf{U}_1^n\right)
+    \end{bmatrix} \begin{bmatrix}
+    \mathbf{U}_1^{k+1} \\ \mathbf{V}_1^{k+1} \end{bmatrix} = \begin{bmatrix} F^1_u \left(\mathbf{U}_2^k\right) \\ F^1_v \left(\mathbf{V}_2^k\right)
+    \end{bmatrix}
+        \end{aligned}
+\end{equation*}
+and then solve problem for $ i = 2$ to find $\begin{bmatrix} \mathbf{U}_2^{k+1} \\ \mathbf{V}_2^{k+1} \end{bmatrix}$:
+\begin{equation*}
+    \begin{aligned}
+\begin{bmatrix}
+    A_u^2 & B_u^2 + C_u^2\left(  \mathbf{U}_2^n\right) \\
+    B_v^2 & A_v^2 + C_v^2\left(  \mathbf{U}_2^n\right)
+    \end{bmatrix} \begin{bmatrix}
+    \mathbf{U}_2^{k+1} \\ \mathbf{V}_2^{k+1} \end{bmatrix} = \begin{bmatrix} F^2_u \left(\mathbf{U}_1^k\right) \\ F^2_v \left(\mathbf{V}_2^k\right)
+    \end{bmatrix}
+\end{aligned}\end{equation*}
+for $k \geq 0$ up to convergence.
+
+Iterations end when the normalized residual of consecutive computed solutions is smaller than a proper tolerance or when a maximum number of iterations is performed and we update the new solution as:
+ $$\begin{bmatrix} \mathbf{U}_1^{n+1} \\ \mathbf{V}_1^{n+1} \end{bmatrix} = \begin{bmatrix} \mathbf{U}_1^{k+1} \\ \mathbf{V}_1^{k+1} \end{bmatrix}, \ \ \ \begin{bmatrix} \mathbf{U}_2^{n+1} \\ \mathbf{V}_2^{n+1} \end{bmatrix} = \begin{bmatrix} \mathbf{U}_2^{k+1} \\ \mathbf{V}_2^{k+1} \end{bmatrix}$$
+
+Matrices and vectors used are defined in the following way:
+\begin{equation}
+    \begin{aligned}
+    & \left[ A_u^i\right]_{j,l} & = a_{i,u}^{RR}(\phi_l, \phi_j), \ \ \ \left[ A_v^i\right]_{j,l} & = a_{i,v}^{RR}(\phi_l, \phi_j) \\
+    & \left[ B_u^i\right]_{j,l} & = b_{i,u}(\phi_l, \phi_j), \ \ \ \left[ B_v^i\right]_{j,l} & = b_{i,v}(\phi_l, \phi_j)\\
+    & \left[ C_u^i\right]_{j,l} & = c_{i,u}(\phi_l, \phi_j),\ \ \ \left[ C_v^i\right]_{j,l} & = c_{i,v}(\phi_l, \phi_j)\\
+    & \left[F_u^i\right]_{j} & = f_{i,u}^{RR}(\phi_j), \ \ \
+    \left[F_v^i\right]_{j} & = f_{i,v}^{RR}(\phi_j),
+    \end{aligned}
+\end{equation}
+being $\{\phi_l\}_{l = 1}^{N_h}$ the functional basis of $V_{i,h}$ finite dimensional space defined on each cell $\Omega_i$ with $i =1,2$.
+
+\subsection{Convergence check (Simona+Nicola+Teresa+Daniele)}
+\subsection{Reliability (Simona+Nicola+Teresa+Daniele)}
+\subsection{Eventuali sensitivity (Simona+Nicola+Teresa+Daniele)}
+
+\section{DD per il modello completo (Simona+Nicola+Teresa+Daniele)}
+
+\section{Conclusions and future developments (Simona+Daniele)}
+
+
+
+
+
+
+\bibliographystyle{siamplain}
+\bibliography{references}
+\end{document}
