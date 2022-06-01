@@ -1,0 +1,1687 @@
+\chapter{Pattern formation in a pluricellular system}\label{cap:3}
+ Previous studies on ROPs system focused the attention on one single cell only. Arabidopsis root is actually composed by a large number of cells and understanding how groups of cells communicate with one another during the development of multi-cellular organism acquires great importance. Moreover, one of the main factors influencing pattern formation is the hormone auxin, whose dynamics inside the cell is driven by communication between neighbouring cells and some of their (different) physical characteristics. For these reasons, extending the singular cell model into a pluricellular model is believed to lead to a more robust model, in order to better understand how the self-organized process of hair formation in the root epidermis happens. This work represents one of the first attempt on the topic, based on physical considerations and on other works on similar physical quantities as well as on modeling assumptions on the system.
+
+ In the first section we give a physical interpretation of the model under consideration, paying particular attention to the communication between neighboring cells and providing a physical meaning to the new parameters added to the ROPs system. We detail the numerical methods applied to the pluricellular model, developing an iterative algorithm inspired by a Robin-Robin Domain Decomposition (DD) method. To justify our implementation strategy, we also present a Robin-Robin DD method applied to a two cells system. Finally, we provide an extensive numerical assessment by applying the proposed model to different contexts in the result section. The first simulations serve as benchmark to tune all the new parameters added to the system, characterizing the communication channels between cells. Then, after the selection of a proper set of parameters, we validate the new method changing parameteres the ROPs activation and deactivation processes.
+
+\section{Physical model}\label{sec:PluriMod}
+% - big novità: più cellule insieme quindi nuove BC;
+% ->idea di prendere flusso proporzionale alla differenza delle soluzioni circostanti le cellule, per riequilibrare il sistema
+%  -> signiificato dei vari termini delle bc e idea fisica dietro ciascuno (beta alpha ecc) e bisogno di tunnarli ... quindi poi risultati sono giustificati per questo
+\begin{figure}
+  \centering
+  % \includegraphics[scale = 0.3]{cap3/4cellscheme.jpeg}
+  \includegraphics[scale = 0.3]{cap3/scheme.jpeg}
+  % \includegraphics[scale = 0.3]{cap3/scheme1.jpeg}
+  \caption{Sktetch of a four cells scheme with communicating flows.}
+  \label{fig:2cell}
+\end{figure}
+We consider the root-hair cell projection onto a 2D rectangular domain as in Chapter \ref{cap:2}. A system of four cells is schematically presented in Figure \ref{fig:2cell}. We can see that each cell has longitudinal and transverse boundaries in common with close cells.
+We recall the single cellular model, namely:
+\begin{equation} \label{eq:singModel}
+\left\lbrace
+\begin{matrix}
+  \begin{aligned}
+    & \partial_t u = \Tilde{D_1} \Delta_s u + \Tilde{a_1} u + \Tilde{b_1} v + \Tilde{c_1} u^2 v & \ \text{in} \ \Omega\\
+    & \partial_t v = \Tilde{D_2} \Delta_s v + \Tilde{a_2} v + \Tilde{b_2} u + \Tilde{c_2} u^2 v + f_2 & \ \text{in} \ \Omega \\
+    & \Tilde{D_1} \nabla_s u \cdot \mathbf{n} = 0 & \ \text{on} \ \partial \Omega \\
+    & \Tilde{D_2} \nabla_s v \cdot \mathbf{n} = 0 & \ \text{on} \ \partial \Omega.
+  \end{aligned}
+\end{matrix}
+\right.
+\end{equation}
+No-flux on $\partial \Omega$, namely Neumann homogeneous boundary conditions, characterizes the system behaviour along the cell boundary.
+% prima spieghiamo il significato fisico, poi come rappresentarlo matematicamente
+In the multi-cellular model, communication between cells is represented by allowed flux of ROPs, active and inactive, through localized channels along boundaries between neighboring cells.
+
+We define as neighbor of cell $\Omega_i$ the set of cells with index in $\mathcal{N}_i = \{ j : \partial \Omega_j  \cap \partial \Omega_i \neq \emptyset \}$. The flux of concentration of active and inactive ROPs $(u_i, v_i)$ is proportional to the difference of concentration $(u_j, v_j)$ in neighbouring cells for $j \ \in \ \mathcal{N}_i$.
+
+We formulate the new model still focusing on one single cell domain $\Omega_i$, taking into account the new flux generated from the discrepancy of concentrations with the neighboring cells. The new flux results in adding a non-homogeneous Neumann boundary condition on the common interfaces, as follows:
+\begin{equation} \label{eq:pluriModel}
+\left\lbrace
+\begin{matrix}
+  \begin{aligned}
+    & \partial_t u_i = \Tilde{D_1} \Delta_s u_i + \Tilde{a_1} u_i + \Tilde{b_1} v_i + \Tilde{c_1} (u_i)^2 v_i & \ \text{in} \ \Omega_i\\[6pt]
+    & \partial_t v_i = \Tilde{D_2} \Delta_s v_i + \Tilde{a_2} v_i + \Tilde{b_2} u_i + \Tilde{c_2} (u_i)^2 v_i + f_2 & \ \text{in} \ \Omega_i \\[6pt]
+    & \Tilde{D_1} \nabla_s u_i \cdot \mathbf{n} = 0 & \ on \ \partial \Omega_i \backslash \cup_{j \in \mathcal{N}_i} \Gamma_{j,i} \\[6pt]
+    & \Tilde{D_2} \nabla_s v_i \cdot \mathbf{n} = 0 & \ on \ \partial \Omega_i \backslash \cup_{j \in \mathcal{N}_i} \Gamma_{j,i} \\[6pt]
+    & \Tilde{D_1} \nabla_s u_i \cdot \mathbf{n} = \beta_{uRR} \ \alpha_{uRR} \left(u_j - u_i \right) & \ on \ \Gamma_{j,i} \ \forall j \in  \mathcal{N}_i \\[6pt]
+    & \Tilde{D_2} \nabla_s v_i \cdot \mathbf{n} = \beta_{vRR} \ \alpha_{vRR} \left(v_j - v_i \right) & \ on \ \Gamma_{j,i}\ \forall j \in  \mathcal{N}_i ,
+  \end{aligned}
+\end{matrix}
+\right.
+\end{equation}
+where we define as $(u_i, v_i)$ the concentrations of active and inactive ROPs restricted to cell $\Omega_i$: $(u_i, v_i): \Omega_i \times \left(0, T_{max} \right) \longrightarrow \mathds{R}^2$ and $\Gamma_{j,i}$ represents the common side between cell $\Omega_i$ and cell $\Omega_j \ \in \mathcal{N}_i $, therefore defined as: $\Gamma_{j,i} = \partial \Omega_i \cap \partial \Omega_j$.
+
+Each of the neighboring cells follows the same model for hair formation, meaning that system in \eqref{eq:pluriModel} holds $\forall \ i$ cells composing the pluricellular system. As a consequence, the newly defined boundary conditions is coupled with the solutions $(u_j, v_j)$ with $j \ \in \mathcal{N}_i$. Therefore, the pluricellular system requires a proper iterative method for setting correctly boundary conditions depending on solutions in the neighboring cells.
+
+Not communicating with other RH cells boundaries have as before no-flux. The new boundary conditions are characterized by a function and a coefficient for both active active ROPs $u$ and inactive ROPs $v$, having the same meaning:
+\begin{itemize}
+  \item $\beta_{u/v RR} \ [\frac{1}{\mu m^2}]$ are indicator functions defined on boundaries of cells, equal to $1$ where the communicating channels are open and $0$ where  no-flux is assumed;
+  \item $\alpha_{u/v RR} \ [\frac{1}{\mu m}]$ are transport efficiency coefficients, representing a sort of flux quantity allowed through channels.
+  \end{itemize}
+These channel parameters aim at representing the average active transport along the sides of confining cells, set equal to the flux of proteins from one cell to the neighbouring ones.
+
+We have no physical insight on previously cited functions modeling open channels for ROPs. A whole set of simulations for the proper tuning of parameters is required, in order to find a sufficiently plausible setting of the system.
+\section{Numerical treatment}
+% brutto mettere gli stessi titoli?
+% -> prima questione: trattarlo con uno schema iterativo simile robin robin algorithm of domain decomposition, in modo da accoppiare le soluzioni; quindi descrivere bene lo schema (dalla strong formulation); già partendo dalo schema semi implicit nel tempo
+The communication between cells requires a proper iterative algorithm in order to deal with the mutual interplay between confining cells.
+
+Every subdomain $\Omega_i$ of the pluricellular system $\Omega$ represents the single cell and the original system of equations in \eqref{eq:final} is solved in $\Omega_i$ for all $i = 1, ..., N$. We solve such systems by means of the semi-implicit method described in Section \ref{sec:SI method}. Let us consider the weak formulation restricted to $\Omega_i$, defining the functional space $V_i = \{ w_i \in \ H^1\left(\Omega_i\right)\}$, the finite element subspace $V_{i,h} \subset V_i $ and the time interval discretization used in Section \ref{sec:SI method}. In particular, we divide the time interval $\left[0, T_{max}\right]$ in $N_{max}$ time steps such that $t^n = n \Delta t$ with $\Delta t = T_{max} / N_{max}  $. We rewrite the full discretized formulation, identifying $u_{i,h}$ with $u_h|_{\Omega_i}$, as:
+
+given the initial state $(u_{i,h}^0, v_{i,h}^0) $, find $(u_{i,h}^{n+1}, v_{i,h}^{n+1}) \ \in V_{i,h} \times V_{i,h}$ such that
+\begin{equation} \label{eq:fullGalerkin}
+\left\lbrace
+\begin{matrix}
+\begin{aligned}
+  a_{i,u}(u_{i,h}^{n+1}, w_{i,h}) + b_{i,u}(v_{i,h}^{n+1}, w_{i,h}) + c_{i,u}(v_{i,h}^{n+1}, w_{i,h}) = f_{i,u}(w_{i,h}) \ \forall \ w_{i,h} \ \in V_{i,h} \\[6pt]
+ a_{i,v}(v_{i,h}^{n+1}, w_{i,h}) + b_{i,v}(u_{i,h}^{n+1}, w_{i,h}) + c_{i,v}(v_{i,h}^{n+1}, w_{i,h}) = f_{i,v}(w_{i,h}) \ \forall \ w_{i,h} \ \in V_{i,h},
+\end{aligned}
+\end{matrix}
+\right.
+\end{equation}
+$\forall n = 0, ... N_{max}$, where
+\begin{subequations} \label{eq:Gvarfmono}
+\begin{align}
+    a_{i,u}(u_{i,h}^{n+1}, w_{i,h}) = & \int_{\Omega_i} \left( \frac{1}{\Delta t} u_{i,h}^{n+1} w_{i,h} + \Tilde{D}_1 \nabla_s u_{i,h}^{n+1} \cdot w_{i,h} - \Tilde{a}_1 u_i^{n+1} w_{i,h} \right) \label{Gmono:au}\\ - & \int_{\partial \Omega_i}\left(\Tilde{D}_1 \nabla_s u_{i,h}^{n+1} \cdot \mathbf{n} w_{i,h}\right)  \nonumber\\
+    b_{i,u}(v_{i,h}^{n+1}, w_{i,h}) = & \int_{\Omega_i} \left(- \Tilde{b}_1 v_{i,h} w_{i,h} \right)  \label{Gmono:bu} \\
+    c_{i,u}(v_{i,h}^{n+1}, w_{i,h}) = & \int_{\Omega_i} \left(- \Tilde{c}_1 (u_{i,h}^{n})^2  v_{i,h}^{n+1} w_{i,h} \right) \label{Gmono:cu} \\[6pt]
+    a_{i,v}(v_{i,h}^{n+1}, w_{i,h}) = & \int_{\Omega_i} \left(\frac{1}{\Delta t} v_{i,h}^{n+1} w_{i,h} + \Tilde{D}_2 \nabla_s v_{i,h}^{n+1} \cdot w_{i,h} - \Tilde{a}_2 v_i^{n+1} w_{i,h} \right) \label{Gmono:av} \\ - &  \int_{\partial \Omega_i} \left( \Tilde{D}_1 \nabla_s u_{i,h}^{n+1} \cdot \mathbf{n} w_{i,h} \right) \nonumber\\
+    b_{i,v}(v_{i,h}^{n+1}, w_{i,h}) = &\int_{\Omega_i} \left( - \Tilde{b}_2 u_{i,h} w_{i,h} \right) \label{Gmono:bv}\\
+    c_{i,v}(v_{i,h}^{n+1}, w_{i,h}) =& \int_{\Omega_i} \left( - \Tilde{c}_2 (u_{i,h}^{n})^2  v_{i,h}^{n+1} w_{i,h} \right) \label{Gmono:cv}\\[6pt]
+    f_{i,u}(w_{i,h}) = & \int_{\Omega_i} \left( \frac{1}{\Delta t} u_{i,h}^n \ w_{i,h} \right) \label{Gmono:fu}\\
+    f_{i,v}(w_{i,h}) = & \int_{\Omega} \left( \frac{1}{\Delta t} v_{i,h}^n \ w_{i,h} + f_2 w_{i,h} \right). \label{Gmono:fv}
+\end{align}
+\end{subequations}
+
+The introduction of different boundary conditions will require to modify the bilinear forms \eqref{Gmono:au} and \eqref{Gmono:av} and to add contributions in the right hand sides \eqref{Gmono:fu} and \eqref{Gmono:fv}.
+
+To this aim, we synthetically rewrite the model problem \eqref{eq:fullGalerkin}, assuming generic boundary conditions, through a linear operator $\mathcal{L}$ in the following way:
+
+Given the initial state $(u_i^0, v_i^0)$, find $(u_i^{n+1}, v_i^{n+1}) \ \in \Omega_i$ such that:
+\begin{equation}\label{eq:modelpb}
+% \begin{cases}
+\mathcal{L}^n (u_i^{n+1}, v_i^{n+1}) = \mathbf{f}^n \ \text{in} \ \Omega_i
+% \Tilde{D_1} \nabla_s u_i^{n+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_i \\
+% \Tilde{D_2} \nabla_s v_i^{n+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_i
+% \end{cases}
+\end{equation}
+$\forall n = 0, ... N_{max}$.
+
+\subsection{The domain decomposition method}
+We briefly recall the domain decompostion method \cite{DD:QuarteroniValli}, one of the main mathematical tools used to solve boundary value problems into different subdomains, belonging or not to different physics. The domain decomposition method is based on partitioning the computational domain into subdomains, with or without overlapping parts, and introducing transmission conditions at common interfaces. The division of the domain can be driven by physical reason, e.g., one part of the domain is characterized by a different physical model than the other, such as in fluid-structure interaction problems \cite{CV:RR2, CV:RR3}; or it can be driven by optimization reasons, e.g, it could be easier to solve the same problem in more geometrically regular subdomains with respect in the original one, characterized instead by a non-standard shape.
+
+To understand the general procedure of the domain decompostion method, we consider a general differential problem of the form:
+\begin{equation} \label{eq:mono}
+  \mathcal{L} u = f \ \text{in} \ \Omega,
+\end{equation}
+where $\mathcal{L}$ is a partial differential operator, $f$ is a given datum and u is the unknown function. We partition the domain $\Omega$ into two disjoint domains $\Omega_1$ and $\Omega_2$ and we denote as $\Gamma$ the common boundary. Denoting by $u_i$ the restriction of $u$ to $\Omega_i$ for $i = 1,2$, it follows that:
+\begin{equation} \begin{aligned}
+  \mathcal{L} u_1 = f \ \text{in} \ \Omega_1\\
+  \mathcal{L} u_2 = f \ \text{in} \ \Omega_2 .
+\end{aligned}\end{equation}
+In order to guarantee the exact equivalence with \eqref{eq:mono}, we need to enforce transmission conditions between $u_1$ and $u_2$ across $\Gamma$. Depending on the physical problem under analysis, the usual conditions to impose are the continuity of the solutions and the continuity of normal fluxes (normal stress) at the boundaries \cite{DD:QuarteroniValli}: \begin{align}
+  u_1 & = u_2 \ \text{on} \ \Gamma \label{eq:DBC}
+  \\
+  \frac{\partial u_1}{\partial n_L} & = \frac{\partial u_2}{\partial n_L} \ \text{on} \ \Gamma, \label{eq:NBC}
+\end{align}
+with normal derivative in \eqref{eq:NBC} defined by the differential problem under analysis.
+
+Then, one may solve the multi-domain problem by iterative procedures. To this aim, we introduce a sequence of subproblems in $\Omega_1$ and $\Omega_2$ so that the two transmission conditions provide a Dirichlet \eqref{eq:DBC} or a Neumann \eqref{eq:NBC} boundary condition to impose on the internal boundary $\Gamma$. The assignment of the coupling conditions at the common interface is the key part of the domain decomposition method used. Indeed, for example, we distinguish Dirichlet-Neumann (DN) method, where continuity of solutions \eqref{eq:DBC} is imposed in the subproblem on $\Omega_1$ and continuity of fluxes \eqref{eq:NBC} on $\Omega_2$, while Neumann-Dirichlet (ND) method consists in the opposite impositions. In general, two sequence of functions $ \{u_1^k\}, \{u_2^k\}$ are generated starting from a initial guess $ \{u_1^0\}, \{u_2^0\}$ which will converge to $u_1$ and $u_2$, respectively. At convergence the solution is equivalent to the one obtained solving the monolithic system, with guaranteed continuity of solutions and normal stress at the common interface.
+
+% \towrite{in realtà pooi i DD method sono anche interpretabili coome dei precodizionatori su problemi monolitici ... ma secondo me va ancora più fuori tema tesi quindi non lo citerei. INoltre on so quanto vogliamo entrare in dettaglio, chiaramente si potrebbero "formulare" molto più nel dettaglio i metodi}
+
+One class of iterative procedures among domain decompostion methods which is of big interest for the model we are interested in is the Robin-Robin (RR) method. It is based on the Robin transmission conditions and generalizes the Dirichlet-Neumann approach. Robin boundary conditon is a linear combination of interface conditions \eqref{eq:DBC} and \eqref{eq:NBC}, with positive coefficients $\alpha_1, \alpha_2$ characterizing the RR scheme as follows:
+\begin{equation}\begin{aligned}
+  \frac{\partial u_1}{\partial n_L}  + \alpha_1 u_1 = \frac{\partial u_2}{\partial n_L} + \alpha_1 u_2 \ \text{on} \ \Gamma
+  \\
+  \frac{\partial u_2}{\partial n_L} + \alpha_2 u_2  =   \frac{\partial u_1}{\partial n_L}  + \alpha_2 u_1 \ \text{on} \ \Gamma.
+\end{aligned} \end{equation}
+At convergence of sequence $\{u_1^k\}, \{u_2^k\}$, a solution is found, equivalent to $u_1$ and $u_2$ respectively, continuous at the interface and with same fluxes on $\Gamma$.
+
+The RR family of partitioned procedure has been introduced with the aim of getting better convergence properties than with the DN or ND classical schemes. The velocity of convergence of RR method depends on the choice of coefficients $\alpha_1, \alpha_2$. Setting $\alpha_1$ and $\alpha_2$ properly one can recover DN and ND (for example, setting $\alpha_1 = 0$ and $\alpha_2 = \infty$ leads to Neumann-Dirichlet method). One main issue is thus the identification of suitable combinations of parameters $\alpha_1, \alpha_2$ to improve the convergence properties of the classical DN scheme \cite{hou:RR, CV:RRnew}. We decided not to focus on the choice of this parameters, since classic Robin-Robin method was chosen only as a reference method for the  implementation of a new model and we are not interested in optimizing its implementation. In the next subsection we present the RR algorithm for the boundary value problem \eqref{eq:modelpb}.
+
+\subsection{Classic Robin-Robin algorithm}\label{sec:RRclassic}
+We take as reference method a classic domain decomposition algorithm with Robin boundary conditions. Focusing on a pluricellular system composed by two cells, the whole domain $\Omega$ is naturally partitioned into the two non-overlapping subdomains, corresponding to the two cells $\Omega_1$ and $\Omega_2$, with a common interface $\Gamma$; inside each sub-domain the model problem \eqref{eq:modelpb} is solved with no-flux boundary condition on the external boundaries and, differently from the multi-cellular model in \eqref{eq:pluriModel}, free-flux and continuity of the solutions in the two domains is assumed on the common side. The two interface conditions are identified by two Robin type boundary conditions on $\Gamma$, one for each sub-domain. We refer to $\alpha_{u/v RR}$ as coefficient characterizing Robin boundary data. The $^n$ notation implies the solution is evaluated at time step $t^n = n \Delta t$, whereas $^k$ notation indicates the iteration of the iterative method. Robin-Robin domain decomposition algorithm is solved at every time-step and is formulated as follows:
+
+given the initial concentrations $(u_1^0, v_1^0)$ and $(u_2^0, v_2^0)$, at the n-th time step, find $(u_i^{n+1}, v_i^{n+1}) \ \in V_{i,h} \ \forall i = 1,2$ such that solve the iterative method:
+\begin{equation} \label{eq:RR}
+\begin{aligned}
+& \begin{cases}
+\mathcal{L}^n (u_1^{k+1}, v_1^{k+1}) = \mathbf{f}^n \ \text{in} \ \Omega_1 \\[6pt]
+\Tilde{D_1} \nabla_s u_1^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_1 \setminus \Gamma \\[6pt]
+\alpha_{uRR} u_1^{k+1} +\Tilde{D_1} \displaystyle{\partial u_1^{k+1} \over \partial \mathbf{n}} = \alpha_{uRR} u_2^{k} +\Tilde{D_1}\displaystyle{\partial u_2^{k}\over\partial \mathbf{n}}  \ \text{on} \ \Gamma \\[6pt]
+\Tilde{D_2} \nabla_s v_1^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_1 \setminus \Gamma\\[6pt]
+\alpha_{vRR} v_1^{k+1} +\Tilde{D_2} \displaystyle{\partial v_1^{k+1}\over\partial \mathbf{n}} = \alpha_{vRR} v_2^{k} +\Tilde{D_2} \displaystyle{\partial v_2^{k}\over\partial \mathbf{n}}  \ \text{on} \ \Gamma
+\end{cases}
+\\[6pt]
+& \begin{cases}
+\mathcal{L}^n (u_2^{k+1}, v_2^{k+1}) = \mathbf{f}^n \ \text{in} \ \Omega_2 \\[6pt]
+\Tilde{D_1} \nabla_s u_2^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_2 \setminus \Gamma \\[6pt]
+\alpha_{uRR} u_2^{k+1} + \Tilde{D_1} \displaystyle{\partial u_2^{k+1}\over\partial \mathbf{n}} = \alpha_{uRR} u_1^{k+1} + \Tilde{D_1} \displaystyle{\partial u_1^{k+1}\over\partial \mathbf{n}}  \ \text{on} \ \Gamma \\[6pt]
+\Tilde{D_2} \nabla_s v_2^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_2 \setminus \Gamma\\[6pt]
+\alpha_{vRR} v_2^{k+1} + \Tilde{D_2} \displaystyle{\partial v_2^{k+1}\over\partial \mathbf{n}} = \alpha_{vRR} v_1^{k+1} + \Tilde{D_2} \displaystyle{\partial v_1^{k+1}\over\partial \mathbf{n}}  \ \text{on} \ \Gamma
+\end{cases}
+\end{aligned}\end{equation}
+starting from $(u_2^{k = 0}, v_2^{k = 0}) = (u_1^n, v_1^n)$  for $k \geq 0$ until convergence and update $(u_i^{n+1}, v_i^{n+1}) = (u_i^{k+1}, v_i^{k+1})$.
+
+The solution $(u_i^{n+1}, v_i^{n+1})$ is updated with the solution found at the end of the iterations. From now on, in order to simplify the notation, we refer to $(u_i, v_i)$ as the unknowns $(u_i^{k+1}, v_i^{k+1})$ at each iteration and we omit the reference to the finite element space $V_h$.
+
+Robin boundary conditions in the system modify the bilinear form characterizing the Galerkin formulation. In particular, \eqref{Gmono:au} and \eqref{Gmono:av} become:
+\begin{equation*}\begin{aligned}
+    a_{i,u}(u_i, w) = & \int_{\Omega_i} \left( \frac{1}{\Delta t} u_i w + \Tilde{D}_1 \nabla_s u_i \cdot w - \Tilde{a}_1 u_i w \right) - \int_{\partial \Omega_i} \left(\Tilde{D}_1 \nabla_s u_i \cdot \mathbf{n} w \right) \\
+    = & \int_{\Omega_i} \left( \frac{1}{\Delta t} u_i w + \Tilde{D}_1 \nabla_s u_i \cdot w - \Tilde{a}_1 u_i w \right) - \int_{\Gamma} \left(\alpha_{uRR} u_j^{k} +\Tilde{D_1} \frac{\partial u_j^{k}}{\partial \mathbf{n}} - \alpha_{uRR} u_i \right) w
+    \\
+    = & \int_{\Omega_i} \left( \frac{1}{\Delta t} u_i w + \Tilde{D}_1 \nabla_s u_i \cdot w - \Tilde{a}_1 u_i w\right) + \int_{\Gamma} \left(\alpha_{uRR} u_i w \right)  - \int_{\Gamma} \left( \alpha_{uRR} u_j^k w + \Tilde{D_1} \frac{\partial u_j^{k}}{\partial \mathbf{n}} w \right) \\
+    = & \int_{\Omega_i} \left( \frac{1}{\Delta t} u_i w + \Tilde{D}_1 \nabla_s u_i \cdot w - \Tilde{a}_1 u_i w\right) + \int_{\Gamma} \left(\alpha_{uRR} u_i w \right)  - \int_{\Gamma} \left( \alpha_{uRR} u_j^k w \right) \\
+    + & \left( a_u(u_j, w) + b_u(v_j,w) + c_u(v_j, w)- f_u(w) \right),
+\\[6pt]
+    a_{i,v}(v_i, w) = & \int_{\Omega_i} \left( \frac{1}{\Delta t} v_i w + \Tilde{D}_2 \nabla_s v_i \cdot w - \Tilde{a}_2 v_i w \right) - \int_{\partial \Omega_i} \left(\Tilde{D}_2 \nabla_s v_i \cdot \mathbf{n} w \right) \\
+    = & \int_{\Omega_i} \left( \frac{1}{\Delta t} v_i w + \Tilde{D}_2 \nabla_s v_i \cdot w - \Tilde{a}_2 v_i w \right) - \int_{\Gamma} \left(\alpha_{vRR} v_j^{k} w +\Tilde{D_2} \frac{\partial v_j^{k}}{\partial \mathbf{n}} w - \alpha_{vRR} v_i w \right)
+    \\
+    = & \int_{\Omega_i} \left( \frac{1}{\Delta t} v_i w + \Tilde{D}_2 \nabla_s v_i \cdot w - \Tilde{a}_2 v_i w\right) + \int_{\Gamma} \left(\alpha_{vRR} v_i w \right)  - \int_{\Gamma} \left( \alpha_{vRR} v_j^k w + \Tilde{D_2} \frac{\partial v_j^{k}}{\partial \mathbf{n}} w \right) \\
+    = & \int_{\Omega_i} \left( \frac{1}{\Delta t} v_i w + \Tilde{D}_2 \nabla_s v_i \cdot w - \Tilde{a}_2 v_i w\right) + \int_{\Gamma} \left(\alpha_{vRR} v_i w \right)  - \int_{\Gamma} \left( \alpha_{vRR} v_j^k w \right) \\
+    + & \left( a_v(v_j, w) + b_v(u_j,w) + c_v(v_j, w)- f_v( w) \right).
+\end{aligned}\end{equation*}
+In the last lines, the weak normal derivative of $u_j$ and $v_j$ are substituted with the residual from the proper combination of the bilinear forms on domain $\Omega_j$ \cite{DD:QuarteroniValli}.
+As a consequence, we define new bilinear forms from \eqref{Gmono:au}, \eqref{Gmono:av}, \eqref{Gmono:fu} and  \eqref{Gmono:fv} , adding Robin-Robin algorithm contribute as follows:
+\begin{equation}\label{eq:au&avRR}
+\begin{aligned}
+    a_{i,u}^{RR}(u_{i,h}^{k+1}, w_{i,h}) = & \int_{\Omega_i} \left( \frac{1}{\Delta t} u_{i,h}^{k+1} w_{i,h} + \Tilde{D}_1 \nabla_s u_{i,h}^{k+1} \cdot w_{i,h} - \Tilde{a}_1 u_i^{k+1} w_{i,h} \right)  \\
+    & + \int_{\Gamma} \left(\alpha_{uRR} u_{i,h}^{k+1} w_{i,h} \right) \\
+    = & a_{i,u}(u_{i,h}^{k+1}, w_{i,h}) + \int_{\Gamma} \left(\alpha_{uRR} u_{i,h}^{k+1} w_{i,h} \right), \\
+    a_{i,v}^{RR}(v_{i,h}^{k+1}, w_{i,h}) = & \int_{\Omega_i} \left(\frac{1}{\Delta t} v_{i,h}^{k+1} w_{i,h} + \Tilde{D}_2 \nabla_s v_{i,h}^{k+1} \cdot w_{i,h} - \Tilde{a}_2 v_i^{k+1} w_{i,h} \right) \\
+     & + \int_{\Gamma} \left(\alpha_{vRR} v_{i,h}^{k+1} w_{i,h} \right) \\
+     = & a_{i,v}(v_{i,h}^{k+1}, w_{i,h}) + \int_{\Gamma} \left(\alpha_{vRR} v_{i,h}^{k+1} w_{i,h} \right),
+\end{aligned}
+\end{equation}
+
+\begin{equation} \label{eq:fu&fvRR}
+\begin{aligned}
+f_{i,u}^{RRc}(w_{i,h}) = & \int_{\Omega_i} \left( \frac{1}{\Delta t} u_{i,h}^n \ w_{i,h} \right)  + \int_{\Gamma} \left(\alpha_{uRR} u_{j,h}^{k} w_{i,h} \right) + \int_{\Gamma} \Tilde{D_1} \frac{\partial u_j^k}{\partial n} w_{i,h} \\
+= & f_{i,u}(w_{i,h}) + \int_{\Gamma} \left(\alpha_{uRR} u_{j,h}^{k} w_{i,h} \right) + \int_{\Gamma} \Tilde{D_1} \frac{\partial u_j^k}{\partial n} w_{i,h}, \\
+f_{i,v}^{RRc}(w_{i,h}) = & \int_{\Omega} \left( \frac{1}{\Delta t} v_{i,h}^n \ w_{i,h} + f_2 w_{i,h} \right) + \int_{\Gamma} \left(\alpha_{vRR} v_{j,h}^{k} w_{i,h} \right) + \int_{\Gamma} \Tilde{D_2} \frac{\partial v_j^k}{\partial n} w_{i,h} \\
+= & f_{i,v}(w_{i,h}) + \int_{\Gamma} \left(\alpha_{vRR} v_{j,h}^{k} w_{i,h} \right) + \int_{\Gamma} \Tilde{D_2} \frac{\partial v_j^k}{\partial n} w_{i,h},
+\end{aligned}
+\end{equation}
+implying that each weak normal derivative is computed in the residual form:
+\begin{equation}\label{eq:weak normal der}\begin{aligned}
+    \int_{\Gamma} \Tilde{D_1} \frac{\partial u_j^k}{\partial n} w_{j,h} = \left( a_u(u_j^k, w_{j,h}) + b_u(v_j^k,w_{j,h}) + c_u(v_j^k, w_{j,h})- f_u(w_{j,h}) \right), \\
+    \int_{\Gamma} \Tilde{D_2} \frac{\partial v_j^k}{\partial n} w_{j,h} = \left( a_v(v_j^k, w_{j,h}) + b_v(u_j^k,w_{j,h}) + c_v(v_j^k, w_{j,h})- f_v(w_{j,h}) \right).
+\end{aligned}\end{equation}
+We remark that in \eqref{eq:weak normal der} test functions $w_{j,h}$ and variables contributing to the integral $u_{j,h}, v_{j,h}$ are defined in the finite element space $V_{j,h}$, whereas $f_{u,i}, f_{v,i}$ in \eqref{eq:fu&fvRR} are linear functional of functions $w_{i,h} \ \in V_{i,h}$. The difficulty in dealing with variables from different functional spaces is solved through the use of a linear extension operator. We define $\mathcal{I}_{i,j}$ as the extension operator from finite element space $V_{i,h}$ to $V_{j,h}$: it extends by zero function from one space to the other. Formally then \eqref{eq:fu&fvRR} is:
+\begin{align}\label{eq:fu&fvRRInt}
+ f_{i,u}^{RRc}(w_{i,h}) & = f_{i,u}(w_{i,h}) + \int_{\Gamma} \left(\alpha_{uRR} \mathcal{I}_{i,j} u_{j,h}^{k} \mathcal{I}_{i,j}w_{j,h} \right) +  \left( a_u(\mathcal{I}_{i,j} u_j^k,\mathcal{I}_{i,j} w_{j,h}) \right. \nonumber
+\\ & \left. {} + b_u(\mathcal{I}_{i,j}v_j^k, \mathcal{I}_{i,j} w_{j,h}) + c_u(\mathcal{I}_{i,j} v_j^k, \mathcal{I}_{i,j} w_{j,h})- f_u(\mathcal{I}_{i,j} w_{j,h}) \right), \\
+f_{i,v}^{RRc}(w_{i,h}) & = f_{i,v}(w_{i,h}) + \int_{\Gamma} \left(\alpha_{vRR} \mathcal{I}_{i,j} v_{j,h}^{k} \mathcal{I}_{i,j} w_{j,h} \right) + \left( a_v(v_j^k, w_{j,h})  \right. \nonumber
+\\ & \left. {} + b_v(u_j^k,w_{j,h}) + c_v(v_j^k, w_{j,h})- f_v(w_{j,h}) \right).
+\end{align}
+
+We recover the algebraic formulation analogously as done in Section \ref{sec:num_cap2}, being:
+\begin{equation}
+        u_{i,h}^{k+1}(x,y) = \sum_{l=i}^{N_h} u_{i,l}^{k+1} \phi_l(x,y) \ , \ \ \ v_{i,h}^{k+1}(x,y) = \sum_{l=i}^{N_h} v_{i,l}^{k+1} \phi_l(x,y),
+\end{equation}
+We denote the corresponding vector of the finite element unknowns by $\left[\mathbf{U}_i^{k}, \mathbf{V}_i^{k}\right]$, being: $$    \left[\mathbf{U}_i^{k}\right]_l = u^k_{i,l}, \ \ \ \left[\mathbf{V}_i^{k}\right]_l = v^k_{i,l}$$.
+The RR iterative method in algebraic form for a 2 cells system is then:
+
+given $\begin{bmatrix} \mathbf{U}_2^{0} \\ \mathbf{V}_2^{0} \end{bmatrix} = \begin{bmatrix} \mathbf{U}_2^{n} \\ \mathbf{V}_2^{n} \end{bmatrix}$, find $\begin{bmatrix} \mathbf{U}_1^{k+1} \\ \mathbf{V}_1^{k+1} \end{bmatrix}$ and $\begin{bmatrix} \mathbf{U}_2^{k+1} \\ \mathbf{V}_2^{k+1} \end{bmatrix}$ such that:
+\begin{equation}\label{eq:LinSysRR}
+\begin{aligned}
+    \begin{bmatrix}
+    A_u^1 & B_u^1 + C_u^1\left(  \mathbf{U}_1^n\right) \\
+    B_v^1 & A_v^1 + C_v^1\left(  \mathbf{U}_1^n\right)
+    \end{bmatrix} \begin{bmatrix}
+    \mathbf{U}_1^{k+1} \\ \mathbf{V}_1^{k+1} \end{bmatrix} = \begin{bmatrix} F^1_u \\ F^1_v
+    \end{bmatrix}, \
+    \begin{bmatrix}
+    A_u^2 & B_u^2 + C_u^2\left(  \mathbf{U}_2^n\right) \\
+    B_v^2 & A_v^2 + C_v^2\left(  \mathbf{U}_2^n\right)
+    \end{bmatrix} \begin{bmatrix}
+    \mathbf{U}_2^{k+1} \\ \mathbf{V}_2^{k+1} \end{bmatrix} = \begin{bmatrix} F^2_u \\ F^2_v
+    \end{bmatrix}
+\end{aligned}\end{equation}
+for $k \geq 0$ up to convergence. Update
+\begin{equation*}
+  \begin{bmatrix} \mathbf{U}_1^{n+1} \\ \mathbf{V}_1^{n+1} \end{bmatrix} = \begin{bmatrix} \mathbf{U}_1^{k+1} \\ \mathbf{V}_1^{k+1} \end{bmatrix}, \ \ \ \begin{bmatrix} \mathbf{U}_2^{n+1} \\ \mathbf{V}_2^{n+1} \end{bmatrix} = \begin{bmatrix} \mathbf{U}_2^{k+1} \\ \mathbf{V}_2^{k+1} \end{bmatrix}
+\end{equation*}
+
+Each sub-domain block matrix depends on the previous time-step solution, therefore it has to be reassembled at each time-step. The right-hand sides depend on the previous iteration because of the interface boundary condition and have to be reassembled at every iteration of the domain decompostion method. Matrices and vectors are defined using the previous bilinear forms in \eqref{eq:au&avRR}, \eqref{eq:fu&fvRRInt} and \eqref{eq:Gvarfmono}.
+%  in the following way:
+%
+% \begin{equation}
+%     \begin{aligned}
+%     \left[ A_u^i\right]_{j,l} & = a_{i,u}^{RR}(\phi_l, \phi_j) \\
+%     \left[ A_v^i\right]_{j,l} & = a_{i,v}^{RR}(\phi_l, \phi_j) \\
+%     \left[ B_u^i\right]_{j,l} & = b_{i,u}(\phi_l, \phi_j)\\
+%     \left[ B_v^i\right]_{j,l} & = b_{i,v}(\phi_l, \phi_j)\\
+%     \left[ C_u^i\right]_{j,l} & = c_{i,u}(\phi_l, \phi_j)\\
+%     \left[ C_v^i\right]_{j,l} & = v_{i,v}(\phi_l, \phi_j)\\
+%     \left[F_u^i\right]_{j} & = f_{i,u}^{RR}(\phi_j) \\
+%     \left[F_v^i\right]_{j} & = f_{i,v}^{RR}(\phi_j) \\
+%     \end{aligned}
+% \end{equation}
+
+Some contributions at the right-hand side come from solution variables and test functions not belonging to the same functional space of the correlated solution. Therefore we properly interpolate such terms from one space to the other.
+ % those are actually multiplied for a interpolation matrix, corresponding to the algebraic form of the extension operator $\mathcal{I}_{1,2}$ and $\mathcal{I}_{2,1}$ cited before, going from space $V_{1,h}$ to $V_{2,h}$ and viceversa respectively.
+% \towrite{ se lo si vuole srivere più nel dettaglio si dovrebbero specificare i due contributi separati (quello base normale e quello dalla BC) }
+
+% This Robin-Robin iterative method applied to our time-dependent scheme was implemented in \verb|2cell_RR.edp| file.
+
+% -> allora da schema iterativo con già schem semi implicit, costruire la copleta galerkinf formulation e quindi sistemi da risolvere
+\subsection{A new iterative modeling algorithm}\label{sec:RRmodified}
+The model that we propose to make cells communicate can be regarded as a simplification of the classical domain decomposition scheme with Robin boundary conditions. We start for simplicity from a two cells problem and rewrite the common interface boundary conditions in \eqref{eq:RR} to recover the modelled open channels in \eqref{eq:pluriModel}. In the spirit of a block-Gauss-Seidel algorithm, we solve in sequence:
+\begin{equation} \label{eq:RR_final}
+\begin{aligned}
+& \begin{cases}
+\mathcal{L}^n (u_1^{k+1}, v_1^{k+1}) = \mathbf{f}^n \ \text{in} \ \Omega_1 \\
+\Tilde{D_1} \nabla_s u_1^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_1 \setminus \Gamma \\
+\Tilde{D_1} \displaystyle{\partial u_1^{k+1}\over\partial \mathbf{n}} = \alpha_{uRR} u_2^{k} - \alpha_{uRR} u_1^{k+1} \ \text{on} \ \Gamma \\
+\Tilde{D_2} \nabla_s v_1^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_1 \setminus \Gamma \\
+\Tilde{D_2} \displaystyle{\partial v_1^{k+1}\over\partial \mathbf{n}} = \alpha_{vRR} v_2^{k} -\alpha_{vRR} v_1^{k+1} \ \text{on} \ \Gamma
+\end{cases}
+\\[6pt]
+& \begin{cases}
+\mathcal{L}^n (u_2^{k+1}, v_2^{k+1}) = \mathbf{f}^n \ \text{in} \ \Omega_2 \\
+\Tilde{D_1} \nabla_s u_2^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_2 \setminus \Gamma \\
+\Tilde{D_1} \displaystyle{\partial u_2^{k+1}\over\partial \mathbf{n}} = \alpha_{uRR} u_1^{k+1} - \alpha_{uRR} u_2^{k+1} \ \text{on} \ \Gamma \\
+\Tilde{D_2} \nabla_s v_2^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_2 \setminus \Gamma\\
+\Tilde{D_2} \displaystyle{\partial v_2^{k+1}\over\partial \mathbf{n}} = \alpha_{vRR} v_1^{k+1} -\alpha_{vRR} v_2^{k+1} \ \text{on} \ \Gamma.
+\end{cases}
+\end{aligned}\end{equation}
+The flux imposed depends on the difference of the neighbouring solutions. As a consequence, we are imposing a not necessarily null Neumann boundary condition. Equation \eqref{eq:RR_final} defines a RR iterative method applied to two cells using proper parameters $\beta_{u/vRR}$ and $\alpha_{u/v RR}$ from the model formulated in Section \ref{sec:PluriMod}:
+
+starting from $(u_2^{k = 0}, v_2^{k = 0}) = (u_2^n, v_2^n)$, find $(u_1^{k+1}, v_1^{k+1}) \ \in V_{1}$ and $(u_2^{k+1}, v_2^{k+1}) \ \in V_{2}$:
+\begin{equation}\label{eq::RRmod}
+\begin{aligned}
+& \begin{cases}
+\mathcal{L}^n (u_1^{k+1}, v_1^{k+1}) = \mathbf{f}^n \ \text{in} \ \Omega_1 \\
+\Tilde{D_1} \nabla_s u_1^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_1 \setminus \Gamma \\
+\Tilde{D_1} \displaystyle{\partial u_1^{k+1}\over\partial \mathbf{n}} = \beta_{uRR} \alpha_{uRR} \left( u_2^{k} - u_1^{k+1} \right) \ \text{on} \ \Gamma \\
+\Tilde{D_2} \nabla_s v_1^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_1 \setminus \Gamma \\
+\Tilde{D_2} \displaystyle{\partial v_1^{k+1}\over\partial \mathbf{n}} = \beta_{vRR} \alpha_{vRR} \left( v_2^{k} - v_1^{k+1} \right) \ \text{on} \ \Gamma
+\end{cases}
+\\[6pt]
+& \begin{cases}
+\mathcal{L}^n (u_2^{k+1}, v_2^{k+1}) = \mathbf{f}^n \ \text{in} \ \Omega_2 \\
+\Tilde{D_1} \nabla_s u_2^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_2 \\
+\Tilde{D_1} \displaystyle{\partial u_2^{k+1}\over\partial \mathbf{n}} = \beta_{uRR} \alpha_{uRR} \left( u_1^{k+1} - u_2^{k+1} \right) \ \text{on} \ \Gamma \\
+\Tilde{D_2} \nabla_s v_2^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_2 \setminus \Gamma\\
+\Tilde{D_2} \displaystyle{\partial v_2^{k+1}\over\partial \mathbf{n}} = \beta_{vRR} \alpha_{vRR} \left( v_1^{k+1} - v_2^{k+1} \right) \ \text{on} \ \Gamma.
+\end{cases}
+\end{aligned}\end{equation}
+for $k \geq 0$ up to convergence.
+
+We remark that in \eqref{eq::RRmod} the coefficients $\beta_{u/vRR}$ and $\alpha_{u/v RR}$ have physical meaning since they come from the model \eqref{eq:pluriModel}. This is in contrast with the model and method presented in Section \ref{sec:RRclassic}, where the Robin coefficients are arbitrary.
+
+Let $V_{i,h}$ denote the finite dimensional subspace of $H^1\left(\Omega_i\right)$, wih $\Omega_i$ being the sub-domain of the pluricellular system $\Omega$ corresponding to cell. We find solutions $\left(u_{h}^{n+1}, v_{h}^{n+1}\right)|_{\Omega_i}$ identified with $\left(u_{i,h}, v_{i,h}\right) \ \in V_{i,h}$ for each time step $t^{n+1}$, solving up to convergence the iteration step, whose Galerkin formulation is:
+\begin{equation}\begin{aligned}
+    a_{i,u}^{RR}(u_{i,h}^{k+1}, w_{i,h}) + b_{i,u}(v_{i,h}^{k+1}, w_{i,h}) + c_{i,u}^n(v_{i,h}^{k+1}, w_{i,h}) = f_{i,u}^{RR}(w_{i,h}) \ \forall w_{i,h} \in V_{i,h} \\
+    a_{i,v}^{RR}(v_{i,h}^{k+1}, w_{i,h}) + b_{i,v}(u_{i,h}^{k+1}, w_{i,h}) + c_{i,v}^n(v_{i,h}^{k+1}, w_{i,h}) = f_{i,v}^{RR}(w_{i,h}) \ \forall w_{i,h} \in V_{i,h}.
+\end{aligned}\end{equation}
+
+The bilinear forms used are equal to \eqref{eq:Gvarfmono} - \eqref{eq:au&avRR} for classic Robin-Robin algorithm. The only difference is in the right hand side \eqref{eq:fu&fvRR} in which has been neglected the weak normal derivative of the neighbour solutions, as follows:
+\begin{align}
+ f_{i,u}^{RR}(w_{i,h}) & = f_{i,u}(w_{i,h}) + \int_{\Gamma} \left(\beta_{uRR} \alpha_{uRR} \mathcal{I}_{i,j} u_{j,h}^{k} \mathcal{I}_{i,j}w_{j,h} \right), \\
+f_{i,v}^{RR}(w_{i,h}) & = f_{i,v}(w_{i,h}) + \int_{\Gamma} \left(\beta_{vRR} \alpha_{vRR} \mathcal{I}_{i,j} v_{j,h}^{k} \mathcal{I}_{i,j} w_{j,h} \right).
+\end{align}
+
+Consequently, the algebraic formulation of the new iterative method used is formulated similarly as in \eqref{eq:LinSysRR}, with time-dependent block matrix that need to be reassembled at each time-step. The right-hand sides depend on the previous solution found for the neighbouring cells and their contributions need to be interpolated by means of a interpolation matrix as in Robin-Robin classic method. We here explicit the whole iterative method for a two cells composed system.
+
+Starting from initial guess given by the previous time-step solution  $\begin{bmatrix} \mathbf{U}_2^{0} \\ \mathbf{V}_2^{0} \end{bmatrix} = \begin{bmatrix} \mathbf{U}_2^{n} \\ \mathbf{V}_2^{n} \end{bmatrix}$, solve problem for $i = 1$ to find $\begin{bmatrix} \mathbf{U}_1^{k+1} \\ \mathbf{V}_1^{k+1} \end{bmatrix}$:
+\begin{equation*}
+\begin{aligned}
+ \begin{bmatrix}
+    A_u^1 & B_u^1 + C_u^1\left(  \mathbf{U}_1^n\right) \\
+    B_v^1 & A_v^1 + C_v^1\left(  \mathbf{U}_1^n\right)
+    \end{bmatrix} \begin{bmatrix}
+    \mathbf{U}_1^{k+1} \\ \mathbf{V}_1^{k+1} \end{bmatrix} = \begin{bmatrix} F^1_u \left(\mathbf{U}_2^k\right) \\ F^1_v \left(\mathbf{V}_2^k\right)
+    \end{bmatrix}
+        \end{aligned}
+\end{equation*}
+and then solve problem for $ i = 2$ to find $\begin{bmatrix} \mathbf{U}_2^{k+1} \\ \mathbf{V}_2^{k+1} \end{bmatrix}$:
+\begin{equation*}
+    \begin{aligned}
+\begin{bmatrix}
+    A_u^2 & B_u^2 + C_u^2\left(  \mathbf{U}_2^n\right) \\
+    B_v^2 & A_v^2 + C_v^2\left(  \mathbf{U}_2^n\right)
+    \end{bmatrix} \begin{bmatrix}
+    \mathbf{U}_2^{k+1} \\ \mathbf{V}_2^{k+1} \end{bmatrix} = \begin{bmatrix} F^2_u \left(\mathbf{U}_1^k\right) \\ F^2_v \left(\mathbf{V}_2^k\right)
+    \end{bmatrix}
+\end{aligned}\end{equation*}
+for $k \geq 0$ up to convergence.
+
+Iterations end when the normalized residual of consecutive computed solutions is smaller than a proper tolerance or when a maximum number of iterations is performed and we update the new solution as:
+ $$\begin{bmatrix} \mathbf{U}_1^{n+1} \\ \mathbf{V}_1^{n+1} \end{bmatrix} = \begin{bmatrix} \mathbf{U}_1^{k+1} \\ \mathbf{V}_1^{k+1} \end{bmatrix}, \ \ \ \begin{bmatrix} \mathbf{U}_2^{n+1} \\ \mathbf{V}_2^{n+1} \end{bmatrix} = \begin{bmatrix} \mathbf{U}_2^{k+1} \\ \mathbf{V}_2^{k+1} \end{bmatrix}$$
+
+Matrices and vectors used are defined in the following way:
+\begin{equation}
+    \begin{aligned}
+    & \left[ A_u^i\right]_{j,l} & = a_{i,u}^{RR}(\phi_l, \phi_j), \ \ \ \left[ A_v^i\right]_{j,l} & = a_{i,v}^{RR}(\phi_l, \phi_j) \\
+    & \left[ B_u^i\right]_{j,l} & = b_{i,u}(\phi_l, \phi_j), \ \ \ \left[ B_v^i\right]_{j,l} & = b_{i,v}(\phi_l, \phi_j)\\
+    & \left[ C_u^i\right]_{j,l} & = c_{i,u}(\phi_l, \phi_j),\ \ \ \left[ C_v^i\right]_{j,l} & = c_{i,v}(\phi_l, \phi_j)\\
+    & \left[F_u^i\right]_{j} & = f_{i,u}^{RR}(\phi_j), \ \ \
+    \left[F_v^i\right]_{j} & = f_{i,v}^{RR}(\phi_j),
+    \end{aligned}
+\end{equation}
+being $\{\phi_l\}_{l = 1}^{N_h}$ the functional basis of $V_{i,h}$ finite dimensional space defined on each cell $\Omega_i$ with $i =1,2$.
+
+A sketch of the procedure to be adopted to deal with a generic N cells pluricellular system using Robin-Robin modifed algorithm is schematically given in Algorithm \ref{alg:RRmod};
+% The Robin-Robin modified algorithm for a 2 cell system is implemented in \verb|2cell_RRmod.edp| and in \ref{alg:RRmod} is schematically given an overview of the sequence of element to solve and update for a generic N cells pluricellular system.
+% -> descrizione finale schematica della sequenza di cose da risolvere (aggiornare ecc. stile algo) non so se ha senso fare un mini schemino tipo algoritmo della sequenza di cose risolte sggiornate (che è poi quello che segue il codice)
+$r_i$ are different coefficients characterizing initial state of concentrations, necessary for having flux between communicating cells. For physical reasons, we choose same initial guesses in the direction of the auxin gradient.
+
+We have implemented a solver for a system of four cells.
+
+As expressed in \eqref{eq::RRmod}, the iterative procedure is formulated such that the pluricellular domain is solved sequentially, in the sense that the boundary conditions characterizing sub-domain $i$, depending on sub-domain solutions of $j \in \mathcal{N}_i$, are computed using the newly updated solutions. In view of a parallel implementation, the method can be reformulated such that the new boundary conditions are a function of the previous iteration solution.
+
+\begin{algorithm}[t]
+    \caption{Pluricellular system solver procedure: RR}
+    \label{alg:RRmod}
+    Given $N \geq 1$ cells, $r_i$
+    \begin{algorithmic}[1]
+    \STATE Initialization: $\forall i = 1, ..., N$
+    \STATE \verb|[U0i, V0i]| $\gets [r_i u_0, r_i v_0]$
+    \STATE \verb|[Uiprec, Viprec]| $\gets$  \verb|[U0i, V0i]|
+    % anche se in realtà init in tempo per tutti e quella prec solo da 2 a N ...
+    \WHILE{$t < T_{max}$}
+    \STATE{\verb|assemble| matrix for $\forall i = 1,..., N$}
+    \FOR{$iter < Niter$}
+    \STATE{$\forall i =1, ..., N$}
+    \STATE{compute BC contribute from $j \in \mathcal{N}_i$}
+    \STATE{\verb|interpolate| on $i$}
+    \STATE{update \verb|rhs|}
+    \STATE{\verb|solve| $\Omega_i$ problem \eqref{eq:pluriModel}}
+    \STATE{update residual, check tolerance, update $iter$}
+    \STATE \verb|[Uiprec, Viprec]| $\gets$  \verb|[Ui, Vi]|
+    \ENDFOR
+    \STATE \verb|[U0i, V0i]| $\gets$  \verb|[Ui, Vi]|
+    \ENDWHILE
+    \end{algorithmic}
+\end{algorithm}
+% , as follows:
+% \begin{equation}\label{eq:Pmode}
+%     \text{BC: } U_i^{k+1} = f(U_j^{k})_{j \in \mathcal{N}_i} \ \forall i \in \{1, ..., N\}.
+% \end{equation}
+In case we are solving a two cells system, when solving the boundary value problem in $\Omega_2$ at the new iteration $k+1$, we use data on common interface $\Gamma$ generated by $[U_1^k, V_1^k]$. Therefore two cells system problem \eqref{eq::RRmod} is reformulated in a block-Jacobi fashion as:
+
+starting from $(u_2^{k = 0}, v_2^{k = 0}) = (u_2^n, v_2^n)$, find $(u_1^{k+1}, v_1^{k+1}) \ \in V_{1,h}$ and $(u_2^{k+1}, v_2^{k+1}) \ \in V_{2,h}$:
+\begin{equation}\label{eq::RRmodP}
+\begin{aligned}
+& \begin{cases}
+\mathcal{L}^n (u_1^{k+1}, v_1^{k+1}) = \mathbf{f}^n \ \text{in} \ \Omega_1 \\
+\Tilde{D_1} \nabla_s u_1^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_1 \setminus \Gamma \\
+\Tilde{D_1} \displaystyle.{\partial u_1^{k+1}}{\partial \mathbf{n}} = \beta_{uRR} \alpha_{uRR} \left( u_2^{k} - u_1^{k+1} \right) \ \text{on} \ \Gamma \\
+\Tilde{D_2} \nabla_s v_1^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_1 \setminus \Gamma \\
+\Tilde{D_2} \displaystyle.{\partial v_1^{k+1}}{\partial \mathbf{n}} = \beta_{vRR} \alpha_{vRR} \left( v_2^{k} - v_1^{k+1} \right) \ \text{on} \ \Gamma
+\end{cases}
+\\
+& \begin{cases}
+\mathcal{L}^n (u_2^{k+1}, v_2^{k+1}) = \mathbf{f}^n \ \text{in} \ \Omega_2 \\
+\Tilde{D_1} \nabla_s u_2^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_2 \setminus \Gamma \\
+\Tilde{D_1} \displaystyle.{\partial u_2^{k+1}}{\partial \mathbf{n}} = \beta_{uRR} \alpha_{uRR} \left( u_1^{k} - u_2^{k+1} \right) \ \text{on} \ \Gamma \\
+\Tilde{D_2} \nabla_s v_2^{k+1} \cdot \mathbf{n} = 0 \ \text{on} \ \partial \Omega_2 \setminus \Gamma\\
+\Tilde{D_2} \displaystyle.{\partial v_2^{k+1}}{\partial \mathbf{n}} = \beta_{vRR} \alpha_{vRR} \left( v_1^{k} - v_2^{k+1} \right) \ \text{on} \ \Gamma
+\end{cases}
+\end{aligned}\end{equation}
+ for $k \geq 0$ up to convergence.
+% Nota: differenza not parallel mode e parallel mode (o meglio not parallelizable e parallelizable). Nel primo caso ogni volta che si è trovata una nuova soluzione la si usa per calcolare le condizioni al bordo del problema successivo risolto (es: se ricolvo il problema su cella 1 e quindi trovo $U_1^{k+1}$, quando poi risolvo il problema sulla cella 2 nella BC uso $U_1^{k+1}$ e non quella alla iterazione precedente).
+% Invece in parallelizable mode, anche se ho già trovato la nuova soluzione, uso sempre quella dell'iterazione precedente. In sintesi
+% \begin{equation}
+%     \text{BC: } U_1^{k+1} = f(U_2^{k}) , U_2^{k+1} = f(U_1^{k})
+% \end{equation}
+
+\section{Numerical assessment}\label{cap3:results}
+We here show some of the results obtained applying the iterative procedures in Section \ref{sec:RRmodified}. At first we properly tune the parameteres $\beta_{uRR}, \beta_{vRR}$ and $\alpha_{uRR}, \alpha_{vRR}$ characterizing the channels. Then, we underline the importance of a communication model to suitably simulate pluricellular systems through various results.
+
+All simulations, if not differently stated, are solved under Table \ref{tab:setprm} - Set C of parameters and space dependent auxin distribution in \eqref{eq:alpha_exp}. For a two cell system, $\Omega_1$ corresponds to the lower cell and $\Omega_2$ to the upper one. For a four cells system, the lower left cells is the first one and the other ones are numbered clockwise.
+
+\subsection{Stagnant cells reference solution}\label{sec:refRR}
+Since the multi-cellular model is a simplification of the actual physics governing the communication of cells, we provide a reference solution. This have a clear physical meaning of what happens between cells and pattern obtained can be compared with the different choices we did to model the presence of channels. In this way we can tune channel parameters and make considerations on the obtained result.
+% Actually at the interface we are forcing difference between solutions being equal to difference between fluxes:
+% \begin{equation}
+%   \begin{aligned}
+%   \Tilde{D_1} \left( \frac{\partial u_2}{\partial \mathbf{n}} -  \frac{\partial u_1 }{\partial \mathbf{n}} \right) & = \alpha_{uRR} \left(u_1 - u_2 \right)  \ \text{on} \ \Gamma \\
+%     \Tilde{D_2} \left( \frac{\partial v_2}{\partial \mathbf{n}} -  \frac{\partial v_1 }{\partial \mathbf{n}} \right) & = \alpha_{vRR} \left(v_1 - v_2 \right)  \ \text{on} \ \Gamma \\
+%   \end{aligned}
+% \end{equation}
+% 2022-04-08_15-59-28 rifacendo ...,
+% ROBIN ROBIN CLASSICO TOLTO, HA UN PB
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 100s$\label{RR1}]{\includegraphics[scale=0.15]{cap3/2022-01-10_19-04-00/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 200s$\label{RR2}]{\includegraphics[scale=0.15]{cap3/2022-01-10_19-04-00/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 300s$\label{RR3}]{\includegraphics[scale=0.15]{cap3/2022-01-10_19-04-00/frame.0150.png}}
+%     \quad
+%     \subfloat[$t = 400s$\label{RR4}]{\includegraphics[scale=0.15]{cap3/2022-01-10_19-04-00/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 700s$\label{RR5}]{\includegraphics[scale=0.15]{cap3/2022-01-10_19-04-00/frame.0350.png}}
+%     \quad
+%     \subfloat[$t = 1000s$\label{RR6}]{\includegraphics[scale=0.15]{cap3/2022-01-10_19-04-00/frame.0499.png}}
+%     \quad
+%     \subfloat[]{\includegraphics[scale=0.5]{cap3/2022-01-10_19-04-00/legenda.png}}
+%     \caption[2cell RR classic Active ROPs]{Active ROPs $u$ evolution obtained with classic Robin-Robin solver.}
+%     \label{fig:RR}
+% \end{figure}
+% In particular, the first one we present in Figure \ref{fig:RR} is the solution obtained with classic Robin-Robin algorithm. This should correspond to a solution with continuity of variables and fluxes at the interface, therefore letting free-flux condition along all the border in common between the two cells.
+
+The reference solution is obtained solving the modified Robin-Robin algorithm, having channels of communication characterized by $\beta_{uRR} = \beta_{vRR} = 0 $, which corresponds to no open channels between cells and therefore to a no-flux boundary condition between close cells. The two airtight, stagnant cells together with the time evolution of the concentrations of are visualized in Figure \ref{fig:beta0}.
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 100s$\label{beta01}]{\includegraphics[scale=0.15]{cap3/2022-01-13_12-09-56/frame.0050.png}}
+    \quad
+    \subfloat[$t = 200s$\label{beta02}]{\includegraphics[scale=0.15]{cap3/2022-01-13_12-09-56/frame.0100.png}}
+    \quad
+    \subfloat[$t = 300s$\label{beta03}]{\includegraphics[scale=0.15]{cap3/2022-01-13_12-09-56/frame.0150.png}}
+    \quad
+    \subfloat[$t = 400s$\label{beta04}]{\includegraphics[scale=0.15]{cap3/2022-01-13_12-09-56/frame.0200.png}}
+    \quad
+    \subfloat[$t = 600s$\label{beta05}]{\includegraphics[scale=0.15]{cap3/2022-01-13_12-09-56/frame.0300.png}}
+    \quad
+    \subfloat[$t = 1000s$\label{beta06}]{\includegraphics[scale=0.15]{cap3/2022-01-13_12-09-56/frame.0499.png}}
+    \quad
+    \subfloat[\label{beta0leg}]{\includegraphics[scale=0.5]{cap3/2022-01-13_12-09-56/legenda.png}}
+    \caption[2cell RR modified Active ROPs - $\beta_{uRR} = \beta_{vRR} = 0 $]{Active ROPs $u$ evolution obtained with RR algorithm solver with $\beta_{uRR} = \beta_{vRR} = 0 $.}
+    \label{fig:beta0}
+\end{figure}
+
+We can observe that if there is no influence and communication between cells and spot formation is driven only by the gradient of auxin (\ref{cap:2}).
+ % There can be recalled the 1 cells solution with no-flux boundary condion on all sides in Figure \ref{fig:1cellUevolution}
+
+\subsection{Tuning channels parameters}
+In this section, we illustrate different simulations in order to tune the parameters $\beta_{uRR}, \beta_{vRR}$ and $\alpha_{uRR}, \alpha_{vRR}$ used in \eqref{eq:pluriModel}. Setting properly the communication between cells is crucial for correctly simulating spot formation.
+In order to synthetically represent channels for a 2 cells system we rewrite $\beta_{uRR}, \beta_{vRR}$ functions as follows:
+\begin{equation}\label{eq:beta}\begin{aligned}
+    \beta_{uRR} & = \mathbb{1} \Big \{ \frac{L_x}{2} - a_x - \epsilon_x \leq x \leq \frac{L_x}{2} - a_x \Big\}
+    + \mathbb{1} \Big\{\frac{L_x}{2} + a_x \leq x \leq \frac{L_x}{2} + a_x + \epsilon_x \Big\} \\
+    \beta_{vRR} & = \mathbb{1} \Big\{ \frac{L_x}{2} - a_x - \epsilon_x \leq x \leq \frac{L_x}{2} - a_x \Big\}
+    + \mathbb{1} \Big\{\frac{L_x}{2} + a_x \leq x \leq \frac{L_x}{2} + a_x + \epsilon_x \Big\},
+\end{aligned}\end{equation}
+where $\mathbb{1}\{A\}$ is the characteristic function of a generic set $A$.
+We are assuming as reasonable that concentrations of active and inactive ROPs have the same channels of communication. The new introduced parameters have two different meanings:
+\begin{itemize}
+  \item $a_x$ is the distance at which two open channels are localized, symmetrically from the middle point of the side $\Gamma$.
+  \item $\epsilon_x$ is the amplitude of the open channels.
+\end{itemize}
+
+We fixed $\epsilon_x = 1$ and $\alpha_{uRR} = \alpha_{vRR}= 1$ and let $a_x$ vary. We choose as initial state of the concentrations
+\begin{equation} \label{eq:initstate}
+  \left[ U_1^0, V_1^0 \right] = 1.5 \left[u^0,v^0 \right], \ \ \ \left[ U_2^0, V_2^0 \right] = \left[u^0,v^0 \right].
+\end{equation}
+As a consequence, a sensitive difference in the sub-domains is expected and this may lead to non-null flux of ROPs thanks to the new boundary conditions defined in \eqref{eq::RRmod}.
+
+For $a_x = 5$ (Figure \ref{fig:a5}), $a_x = 20$ (Figure \ref{fig:a20}) and $a_x = 30$ (Figure \ref{fig:a30}) we do not observe sensitive difference with respect to the stagnant cells obtained with $\beta_{uRR} = \beta_{vRR} = 0 $ in Figure \ref{fig:beta0}; apart from the first few seconds, the patterns obtained are similar one to the other.
+We observe the formation of small spots from the breakup of an interior homoclinic stripe and how they evolve slowly in time to a steady-state two-spot pattern. The main responsible of the breakup of the stripe is assumed to be the auxin gradient, as stated and demonstrated through some analysis and numerical results in \cite{intra2}.
+
+It is important to notice, as in previous works on singular cell system (see e.g.,\cite{intra2}), that even if the problem is homogeneous along $y$ direction, the system is not able to maintain the stability. The stripe formed is sensitive to a transverse instability since it is located close to the left-hand boundary, where the influence of the auxin gradient is stronger \cite{intra2}.
+
+% although a homoclinic-type transverse interior stripe is formed, it quickly
+% collapses
+
+% interior stripe is more sensitive
+% to a transverse instability if it is located closer to the left-hand boundary, where the
+% inﬂuence of the auxin gradient is the strongest.
+
+% with a second stripe quickly emerging further toward the interior. Then, as these
+% structures move away from each other, both stripes break up into two half-spots
+
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 25s$\label{1a5}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-17-25/screen25.png}}
+%     \quad
+%     \subfloat[$t = 100s$ .\label{2a5}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-17-25/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 1000s$ .\label{3a5}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-17-25/frame.0499.png}}
+%     \caption[Tuning channel prm - $a = 5 $]{Active ROPs $u$ evolution obtained with RRmod algorithm solver with $a = 5 $.}
+%     \label{fig:a5}
+% \end{figure}
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 25s$\label{1a5}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-17-25/screen25.png}}
+    \quad
+    \subfloat[$t = 100s$\label{2a5}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-17-25/frame.0050.png}}
+    \quad
+    \subfloat[$t = 1000s$\label{3a5}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-17-25/frame.0499.png}}
+    \quad
+    \subfloat[\label{lega5}]{\includegraphics[scale=0.5]{cap3/2022-01-17_15-17-25/legenda.png}}
+    \caption[Tuning channel prm - $a_x = 5 $]{Active ROPs $u$ evolution obtained with RR algorithm solver with $a_x = 5 $.}
+    \label{fig:a5}
+\end{figure}
+% 2022-01-17_15-13-10 a = 20
+% $a_x = 20$ e initial state $U_1^0 = 1.5 u^0, U_2^0 = u^0$
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 25s$\label{1a20}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-13-10/screen25.png}}
+%     \quad
+%     \subfloat[$t = 100s$ .\label{2a20}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-13-10/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 1000s$ .\label{3a20}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-13-10/frame.0499.png}}
+%     \caption[Tuning channel prm - $a = 20 $]{Active ROPs $u$ evolution obtained with RRmod algorithm solver with $a = 20 $.}
+%     \label{fig:a20}
+% \end{figure}
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 25s$\label{1a20}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-13-10/screen25.png}}
+    \quad
+    \subfloat[$t = 100s$\label{2a20}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-13-10/frame.0050.png}}
+    \quad
+    \subfloat[$t = 1000s$\label{3a20}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-13-10/frame.0499.png}}
+    \quad
+    \subfloat[\label{lega20}]{\includegraphics[scale=0.5]{cap3/2022-01-17_15-17-25/legenda.png}}
+    \caption[Tuning channel prm - $a_x = 20 $]{Active ROPs $u$ evolution obtained with RR algorithm solver with $a_x = 20 $.}
+    \label{fig:a20}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 25s$\label{1a30}]{\includegraphics[scale=0.15]{cap3/2022-03-07_09-57-59/screen25.png}}
+    \quad
+    \subfloat[$t = 100s$\label{2a30}]{\includegraphics[scale=0.15]{cap3/2022-03-07_09-57-59/frame.0050.png}}
+    \quad
+    \subfloat[$t = 1000s$\label{3a30}]{\includegraphics[scale=0.15]{cap3/2022-03-07_09-57-59/frame.0499.png}}
+    \quad
+    \subfloat[\label{lega30}]{\includegraphics[scale=0.5]{cap3/2022-03-07_09-57-59/legenda.png}}
+    \caption[Tuning channel prm - $a_x = 30 $]{Active ROPs $u$ evolution obtained with RR algorithm solver with $a_x = 30 $.}
+    \label{fig:a30}
+\end{figure}
+% 2022-01-17_18-17-44 a = 34
+% $a_x = 34$ e initial state $U_1^0 = 1.5 u^0, U_2^0 = u^0$
+\begin{figure}[H]
+    \centering
+    % \subfloat[$t = 25s$\label{1a34}]{\includegraphics[scale=0.15]{cap3/2022-01-17_18-17-44/frame.0012.png}}
+    \subfloat[$t = 25s$\label{1a34}]{\includegraphics[scale=0.15]{cap3/2022-01-17_18-17-44/screen25.png}}
+    \quad
+    \subfloat[$t = 50s$\label{2a34}]{\includegraphics[scale=0.15]{cap3/2022-01-17_18-17-44/frame.0025.png}}
+    \quad
+    \subfloat[$t = 100s$\label{3a34}]{\includegraphics[scale=0.15]{cap3/2022-01-17_18-17-44/frame.0050.png}}
+    \quad
+    \subfloat[$t = 200s$\label{4a34}]{\includegraphics[scale=0.15]{cap3/2022-01-17_18-17-44/frame.0100.png}}
+    \quad
+    \subfloat[$t = 400s$\label{5a34}]{\includegraphics[scale=0.15]{cap3/2022-01-17_18-17-44/frame.0200.png}}
+    \quad
+    \subfloat[$t = 1000s$\label{6a34}]{\includegraphics[scale=0.15]{cap3/2022-01-17_18-17-44/frame.0499.png}}
+    \quad
+    \subfloat[\label{lega34}]{\includegraphics[scale=0.5]{cap3/2022-01-17_18-17-44/legenda.png}}
+    \caption[Tuning channel prm - $a_x = 34 $]{Active ROPs $u$ evolution obtained with RR algorithm solver with $a_x = 34 $.}
+    \label{fig:a34}
+\end{figure}
+Using instead $a_x = 34$, we observe a considerable difference in the evolution of spots (see Figure \ref{fig:a34}). Still a stripe-like state is formed at the boundary, but since the channel is located precisely where the stripe is formed, i.e., where the maximum of auxin is located, the homoclinic stripe collapses very soon and in a different way. The transverse dependence of solutions caused by the break up of the stripe leads to the generation of a flux of ROPs. The relevant flux of ROPs is placed where a channel is open and it let communication between cells to influence their dynamics. The system evolve to the formation of a unique spot moving to the right.
+
+As a secon test, we tested the sensitivity of the model with respect to the channel length, i.e., increasing $\epsilon_x$, may cause a relevant change in results. Figure \ref{fig:a5epsi5} shows few frames obtained with conditions:
+\begin{itemize}
+  \item $\alpha_{RR} = 1$,
+  \item initial state as in \eqref{eq:initstate},
+  \item $\epsilon_x = 5$, $a_x = 5$.
+\end{itemize}
+
+% 2022-01-16_09-51-08 ε = 5 a = 5 alpha_RR = 1 (anche aumentando epsilon cmq a più influente, troppo vicino al centro)
+% $\epsilon = 5, a_x = 5, \alpha_{RR} = 1$  e initial state $U_1^0 = 1.5 u^0, U_2^0 = u^0$
+% \begin{figure}[H]
+%     \centering
+%     % \subfloat[$t = 25s$\label{1a5epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-51-08/frame.0025.png}}
+%     \subfloat[$t = 25s$\label{1a5epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-51-08/screen25.png}}
+%     \quad
+%     \subfloat[$t = 100s$ .\label{2a5epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-51-08/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 1000s$ .\label{3a5epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-51-08/frame.0499.png}}
+%     \caption[Tuning channel prm - $a_x = 5, \epsilon_x = 5$]{Active ROPs $u$ evolution obtained with RR algorithm solver with $a_x = 5, \epsilon_x = 5$.}
+%     \label{fig:a5epsi5}
+% \end{figure}
+% 2022-03-18_14-50-57 NP mode
+\begin{figure}[H]
+    \centering
+    % \subfloat[$t = 25s$\label{1a5epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-51-08/frame.0025.png}}
+    \subfloat[$t = 25s$\label{1a5epsi5}]{\includegraphics[scale=0.15]{cap3/2022-03-18_14-50-57/screen25.png}}
+    \quad
+    \subfloat[$t = 100s$\label{2a5epsi5}]{\includegraphics[scale=0.15]{cap3/2022-03-18_14-50-57/frame.0100.png}}
+    \quad
+    \subfloat[$t = 500s$\label{3a5epsi5}]{\includegraphics[scale=0.15]{cap3/2022-03-18_14-50-57/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.5]{cap3/2022-03-18_14-50-57/legenda.png}}
+    \caption[Tuning channel prm - $a_x = 5, \epsilon_x = 5$]{Active ROPs $u$ evolution obtained with RR algorithm solver with $a_x = 5, \epsilon_x = 5$.}
+    \label{fig:a5epsi5}
+\end{figure}
+We do not observe relevant changes because channels are located too far from the area where auxin maximum is located and where therefore gradient has a relevant value.
+
+Instead, by setting $\epsilon_x = 5$ and $a_x = 30$, the open channel covers the exact position in which the formation of the instabilities occurs (see Figure \ref{fig:a30epsi5}). Thus, we observe a non-negligible flux of ROPs. Not being isolated, the two cells together form a common spot moving to the right.
+% 2022-01-16_11-41-50
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 25s$ \label{1a30epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_11-41-50/screen25.png}}
+    \quad
+    \subfloat[$t = 50s$ \label{2a30epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_11-41-50/frame.0025.png}}
+    \quad
+    \subfloat[$t = 100s$ \label{3a30epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_11-41-50/frame.0050.png}}
+    \quad
+    \subfloat[$t = 200s$ \label{4a30epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_11-41-50/frame.0100.png}}
+    \quad
+    \subfloat[$t = 400s$ \label{5a30epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_11-41-50/frame.0200.png}}
+    \quad
+    \subfloat[$t = 1000s$ \label{6a30epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_11-41-50/frame.0499.png}}
+    \quad
+    \subfloat[\label{lega30epsi5}]{\includegraphics[scale=0.5]{cap3/2022-01-16_11-41-50/legenda.png}}
+    \caption[Tuning channel prm - $a_x = 30, \epsilon_x = 5$]{Active ROPs $u$ evolution obtained with RR algorithm solver with $a_x = 30, \epsilon_x = 5$.}
+    \label{fig:a30epsi5}
+\end{figure}
+
+In Section \ref{sec:PluriMod} we explained that parameter $\alpha_{uRR}$ and $\alpha_{vRR}$ quantify the transport efficiency between cells. We show here how this coefficient is relevant and how different values affect the final solution. This parameter seems to be stictly related to the generation of patches away from the common interface and to guarantee a more similar behaviour between the two cells in location of high concentrations zone of ROPs. A smaller transport efficiency coefficient would cooperate less. Indeed, comparing simulation characterized by $\alpha_{uRR} = \alpha_{vRR} = 1$ found in Figure \ref{fig:a34} with results in Figure \ref{fig:a34alpha35} where $\alpha_{uRR} = \alpha_{vRR} = 35 / 2$, we observe a more symmetric spot formation in the second case.
+% 2022-01-16_09-41-47
+% \towrite{questa tolta perchè rispetto al'interpretazione che diamo del coeff non aiuta}
+% initial state $U_1^0 = 1.5 u^0, U_2^0 = u^0$, $\epsilon_x = 1,  a_x = 30, \alpha_{RR} = 35/2$, stesso canale (cioè $\beta_{RR}$) di \ref{fig:a30}, ma efficienza trasporto minore; si vede che compensa perchè inizio consente più trasporto, quando sono diverse maggiormente
+% \towrite{questo commento lo avevamo pensato ma le figure non sostengono tanto l'idea, diciamo che cambiano molto gli spot- direi quello che ho detto}
+% \begin{figure}[H]
+%     \centering
+%     % \subfloat[$t = 25s$\label{1a30alpha5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-41-47/frame.0025.png}}
+%     \subfloat[$t = 25s$\label{1a30alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-41-47/screen25.png}}
+%     \quad
+%     \subfloat[$t = 50s$ .\label{2a30alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-41-47/frame.0025.png}}
+%     \quad
+%     \subfloat[$t = 100s$ .\label{3a30alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-41-47/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 200s$ .\label{4a30alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-41-47/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 400s$ .\label{5a30alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-41-47/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 1000s$ .\label{6a30alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-41-47/frame.0499.png}}
+%     \caption[Tuning channel prm - $a = 30, \alpha_{RR} = \frac{35}{2}$]{Active ROPs $u$ evolution obtained with RR algorithm solver with $a = 30, \alpha_{RR} = \frac{35}{2}$.}
+%     \label{fig:a30alpha35}
+% \end{figure}
+
+% 2022-01-18_09-42-23
+% initial state $U_1^0 = 1.5 u^0, U_2^0 = u^0$, $\epsilon_x = 1,  a_x = 34, \alpha_{RR} = 35/2$  (vs \ref{fig:a34}
+% \begin{figure}[H]
+%     \centering
+%     % \subfloat[$t = 25s$\label{1a30epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-18_09-42-23 /frame.0025.png}}
+%     \subfloat[$t = 25s$\label{1a34alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-18_09-42-23/screen25.png}}
+%     \quad
+%     \subfloat[$t = 50s$ .\label{2a34alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-18_09-42-23/frame.0025.png}}
+%     \quad
+%     \subfloat[$t = 100s$ .\label{3a34alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-18_09-42-23/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 200s$ .\label{4a34alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-18_09-42-23/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 400s$ .\label{5a34alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-18_09-42-23/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 1000s$ .\label{6a34alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-18_09-42-23/frame.0499.png}}
+%     \caption[Tuning channel prm - $a = 34, \alpha_{RR} = \frac{35}{2}$]{Active ROPs $u$ evolution obtained with RR algorithm solver with $a = 34, \alpha_{RR} = \frac{35}{2}$.}
+%     \label{fig:a34alpha35}
+% \end{figure}
+\begin{figure}[H]
+    \centering
+    % \subfloat[$t = 25s$\label{1a30epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-18_09-42-23 /frame.0025.png}}
+    \subfloat[$t = 25s$ \label{1a34alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-18_09-42-23/zoom25.png}}
+    \quad
+    \subfloat[$t = 50s$ \label{2a34alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-18_09-42-23/frame.0025.png}}
+    \quad
+    \subfloat[$t = 100s$ \label{3a34alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-18_09-42-23/frame.0050.png}}
+    \quad
+    \subfloat[$t = 200s$ \label{4a34alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-18_09-42-23/frame.0100.png}}
+    \quad
+    \subfloat[$t = 400s$ \label{5a34alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-18_09-42-23/frame.0200.png}}
+    \quad
+    \subfloat[$t = 1000s$ \label{6a34alpha35}]{\includegraphics[scale=0.15]{cap3/2022-01-18_09-42-23/frame.0499.png}}
+    \quad
+    \subfloat[\label{lega34alpha35}]{\includegraphics[scale=0.5]{cap3/2022-01-18_09-42-23/legenda.png}}
+    \caption[Tuning channel prm - $a_x = 34, \alpha_{RR} = \frac{35}{2}$]{Active ROPs $u$ evolution obtained with RR algorithm solver with $a_x = 34, \alpha_{RR} = \frac{35}{2}$.}
+    \label{fig:a34alpha35}
+\end{figure}
+
+open channels represented by functions \eqref{eq:beta} are a simplified representation of how channels of communications for ROPs are distributed. Indeed from a biological point of view, it is not really known where channels are located and what is the actual amplitude and frequency along the common side $\Gamma$. We could assume more realistic and precise channels, defined as follows:
+\begin{equation}\begin{aligned}
+    \beta_{uRR} & = \mathbb{1} \Big\{ a_x \leq x \leq a_x + \epsilon_x \Big\} + \mathbb{1} \Big\{ 2a_x +\epsilon_x \leq x \leq 2a_x + 2\epsilon_x \Big\}  \\
+    & + \mathbb{1} \Big\{ 3a_x +2\epsilon_x \leq x \leq 3a_x + 3\epsilon_x \Big\} + \mathbb{1} \Big\{ 4a_x +3\epsilon_x \leq x \leq 4a_x + 4\epsilon_x \Big\}. \\
+    \beta_{vRR} & = \mathbb{1} \Big\{ a_x \leq x \leq a_x + \epsilon_x \Big\} + \mathbb{1} \Big\{ 2a_x +\epsilon_x \leq x \leq 2a_x + 2\epsilon_x \Big\}  \\
+    & + \mathbb{1} \Big\{ 3a_x +2\epsilon_x \leq x \leq 3a_x + 3\epsilon_x \Big\} + \mathbb{1} \Big\{ 4a_x +3\epsilon_x \leq x \leq 4a_x + 4\epsilon_x \Big\}.
+\end{aligned}\end{equation}
+
+In Figure \ref{fig:multich} we compare the solutions obtained with sparse channels, characterized by $\epsilon_x = 1, a_x = 5$ and $\alpha_{uRR} = \alpha_{vRR} = 5/2$, against those obtained in Figure \ref{fig:a30epsi5} with two single channels defined as in formula \eqref{eq:beta} with $\epsilon_x = 5, a_x = 30$.
+% 2022-01-19_10-37-49
+% $\epsilon_x = 1, a_x = 5, alpha_{RR} = 5/2$ ma ripetuti (vd figura)
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 50s$]{\includegraphics[scale=0.12]{cap3/2022-01-19_10-37-49/frame.0025.png}}
+    \quad
+    \subfloat[$t = 100s$]{\includegraphics[scale=0.12]{cap3/2022-01-19_10-37-49/frame.0050.png}}
+    \quad
+    \subfloat[$t = 500s$]{\includegraphics[scale=0.12]{cap3/2022-01-19_10-37-49/frame.0250.png}}
+    \quad
+    \subfloat[$t = 50s$]{\includegraphics[scale=0.12]{cap3/2022-01-16_11-41-50/frame.0025.png}}
+    \quad
+    \subfloat[$t = 100s$]{\includegraphics[scale=0.12]{cap3/2022-01-16_11-41-50/frame.0050.png}}
+    \quad
+    \subfloat[$t = 500s$]{\includegraphics[scale=0.12]{cap3/2022-01-16_11-41-50/frame.0250.png}}
+    \quad
+    \subfloat[$1^{st}$ line legend\label{legmultich}]{\includegraphics[scale=0.5]{cap3/2022-01-19_10-37-49/legenda.png}}
+    \quad
+    \subfloat[$2^{nd}$ line legend]{\includegraphics[scale=0.5]{cap3/2022-01-16_11-41-50/legenda.png}}
+    \caption[Tuning channel prm - Smaller sparse channels]{Active ROPs $u$ evolution obtained with RR algorithm solver with smaller sparse channels on the top against Figure \ref{fig:a30epsi5} channels on the bottom.}
+    \label{fig:multich}
+\end{figure}
+
+From this similar results we can infer that the simplified version of channels is a good approximation of the communication between cells and it is not necessary to have such precise functions $\beta_{uRR}$ and $\beta_{vRR}$ to obtain relevant contributions.
+
+To sum up the considerations made on the proposed results, we point out that the most relevant information for channels definition is their location with respect to auxin distribution, maximum and gradient in particular. The amplitude of open channels $\epsilon_x$ seems less relevant in defining the evolution of the system. Finally, increasing $\alpha_{uRR}$ and $\alpha_{vRR}$ leads to a effective communication, thus yieldind symmetric patterning.
+
+\subsection{Parallelizable versus not-parallelizable mode}
+At the end of Section \ref{sec:RRmodified} we stated the difference between a parallelizable and a not-parallelizable algorithm. The two procedures differ also in terms of mathematical formulation. We have implemented also the parallelized version of the proposed method. Actually, we observe, under same settings of parameters, considerably different solutions using the two different methods (see in Figure \ref{fig:NPvsP2}). In particular, the more relevant the open channels, i.e., the more close to the maximum of auxin, the more the simulations evolve in completely different ways. Indeed, even small numerical differences are propagated and amplified in time because of sensitivity of active dissipative system we deal with.
+
+In Figure \ref{fig:NPvsP2} ROPs system solved with the parallel mode (P) is shown in the first row, under parameters set C for ROPs and $a_x = 30, \epsilon_x = 5, \alpha_{uRR} = \alpha_{vRR}= 1$ for channels; the same system is solved with not parallel algorithm (NP) and the corresponding results are shown in the second row of Figure \ref{fig:NPvsP2}.
+
+% 2022-03-05_10-04-34 parall mode, canale in mezzo vs
+% 2022-03-05_10-06-30 not parall mode, canale in mezzo
+% Confronto con un canale poco influente nella comunicazione tra la cellule -> vediamo che vengono infatti praticamente identici (li avevo anche confrontati frame per frame)
+% \begin{equation}\begin{aligned}
+%     \beta_{u/vRR} = \mathbb{1}\{ \frac{L_x}{4}\leq x \leq \frac{3L_x}{4}\}
+% \end{aligned}\end{equation}
+% \towrite{da rifare il Paralle mode perchè persi i vtk di U, per un canale non utile (se serve ma mi sembra di aver capito che non ci serva)}
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 100s$\label{1notP1}]{\includegraphics[scale=0.11]{cap3/2022-03-05_10-06-30/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 200s$\label{2notP1}]{\includegraphics[scale=0.11]{cap3/2022-03-05_10-06-30/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 400s$\label{3notP1}]{\includegraphics[scale=0.11]{cap3/2022-03-05_10-06-30/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 1000s$\label{4notP1}]{\includegraphics[scale=0.11]{cap3/2022-03-05_10-06-30/frame.0499.png}}
+%     \quad
+%     \subfloat[$t = 100s$ .\label{1P1}]{\includegraphics[scale=0.11]{cap3/2022-03-05_10-04-34/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 200s$ .\label{2P1}]{\includegraphics[scale=0.11]{cap3/2022-03-05_10-04-34/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 400s$ .\label{3P1}]{\includegraphics[scale=0.11]{cap3/2022-03-05_10-04-34/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 1000s$ .\label{4P1}]{\includegraphics[scale=0.11]{cap3/2022-03-05_10-04-34/frame.0499.png}}
+%     \caption[NP vs P mode - irrelevant channel]{Active ROPs $u$ solution with RRmod algorithm not-parallelizable against parallelizable mode, with irrelevant channel.}
+%     \label{fig:NPvsP1}
+% \end{figure}
+
+% canale \ref{fig:a30epsi5} -> sono completamente diversi, i canali sono influenti
+% 2022-03-04_16-45-12 parall vs 2022-01-16_11-41-50 not parall ma canale a caso ... in mezzo
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 100s$\label{1notP2}]{\includegraphics[scale=0.11]{cap3/2022-01-16_11-41-50/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 200s$\label{2notP2}]{\includegraphics[scale=0.11]{cap3/2022-01-16_11-41-50/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 400s$\label{3notP2}]{\includegraphics[scale=0.11]{cap3/2022-01-16_11-41-50/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 1000s$\label{4notP2}]{\includegraphics[scale=0.11]{cap3/2022-01-16_11-41-50/frame.0499.png}}
+%     \quad
+%     \subfloat[$t = 100s$ .\label{1P2}]{\includegraphics[scale=0.11]{cap3/2022-03-04_16-45-12/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 200s$ .\label{2P2}]{\includegraphics[scale=0.11]{cap3/2022-03-04_16-45-12/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 400s$ .\label{3P2}]{\includegraphics[scale=0.11]{cap3/2022-03-04_16-45-12/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 1000s$ .\label{4P2}]{\includegraphics[scale=0.11]{cap3/2022-03-04_16-45-12/frame.0499.png}}
+%     \caption[NP vs P mode - relevant channel]{Active ROPs $u$ solution with RRmod algorithm not-parallelizable against parallelizable mode, with relevant channel.}
+%     \label{fig:NPvsP2}
+% \end{figure}
+\begin{figure}[H]
+    \centering
+    % \subfloat[\label{legnotP2}]{\includegraphics[scale=0.5]{cap3/2022-01-16_11-41-50/legenda.png}}
+    % \quad
+    \subfloat[P: $t = 100s$\label{1P2}]{\includegraphics[scale=0.11]{cap3/2022-03-04_16-45-12/frame.0050.png}}
+    \quad
+    \subfloat[$t = 200s$\label{2P2}]{\includegraphics[scale=0.11]{cap3/2022-03-04_16-45-12/frame.0100.png}}
+    \quad
+    \subfloat[$t = 400s$\label{3P2}]{\includegraphics[scale=0.11]{cap3/2022-03-04_16-45-12/frame.0200.png}}
+    \quad
+    \subfloat[$t = 1000s$\label{4P2}]{\includegraphics[scale=0.11]{cap3/2022-03-04_16-45-12/frame.0499.png}}
+    \quad
+    \subfloat[NP: $t = 100s$\label{1notP2}]{\includegraphics[scale=0.11]{cap3/2022-01-16_11-41-50/frame.0050.png}}
+    \quad
+    \subfloat[$t = 200s$\label{2notP2}]{\includegraphics[scale=0.11]{cap3/2022-01-16_11-41-50/frame.0100.png}}
+    \quad
+    \subfloat[$t = 400s$\label{3notP2}]{\includegraphics[scale=0.11]{cap3/2022-01-16_11-41-50/frame.0200.png}}
+    \quad
+    \subfloat[$t = 1000s$\label{4notP2}]{\includegraphics[scale=0.11]{cap3/2022-01-16_11-41-50/frame.0499.png}}
+    \quad
+    \subfloat[\label{legP2}]{\includegraphics[scale=0.5]{cap3/2022-03-04_16-45-12/legenda.png}}
+    \caption[P vs NP mode - relevant channel]{Active ROPs $u$ solution with RR algorithm parallelizable against not-parallelizable mode, with relevant channel.}
+    \label{fig:NPvsP2}
+\end{figure}
+
+% - tentativi con canali strani: per ora non li ho caricati, perchè in realtà sono tentativi su cui non saprei bene cosa dire e che confronti fare. Alcuni presentano più "aperture" sul bordo e sembra velocizzino lo spostamento dello spot. poco significativi se vogliamo dire che i $\beta_{RR}$ che abbiamo utilizzato sono una "media" dei canali attivi e che quindi non ci interessa fare tanti piccoli canalini aperti, sarebbe eccessivo.
+
+% uno fa vedere che velocizza perchè così lo spot si muove e non è localizzata solo all'inizio l'influenza del canale aperto tipo slide 29-30 o prima 28
+% 2022-01-19_10-37-49 canale 28
+
+% 2022-01-14_19-30-12 canale 29 (slide 30 è solo Tmax che fa vedere che va a destra lo spot ..)
+
+
+% - tolto perchè inutile, semplicemente va a specchio, ovvio ...
+% grad auxina diverso 2 cell:  utile perchè poi in altri tentativi (con 4 cellule) abbiamo usato un gradiente invertito. confronto con \eqref{fig:a30epsi5}, viene uguale specchiato -> prova importanza grad ? dubbi su che interpetazione dare su formazione spot rispetto al gradiente. nei paper diceva che si allineavano mentre qua al massimo si muovo nella direzione del gradiente di auxina, credo. ma forse ho capito male.
+%
+% % 2022-01-24_10-26-37
+% canale $\epsilon = 5, a_x = 30, \alpha_{RR} = 1$ come ini \eqref{fig:a30epsi5}, ma auxin $\alpha = k_{20} e^{nu\frac{x-L_x}{L_x}}$
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 25s$\label{1gradINV}]{\includegraphics[scale=0.15]{cap3/2022-01-24_10-26-37/frame.0025.png}}
+%     % \subfloat[$t = 25s$\label{1gradINV}]{\includegraphics[scale=0.15]{cap3/2022-01-24_10-26-37/screen25.png}}
+%     \quad
+%     \subfloat[$t = 50s$ .\label{2gradINV}]{\includegraphics[scale=0.15]{cap3/2022-01-24_10-26-37/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 100s$ .\label{3gradINV}]{\includegraphics[scale=0.15]{cap3/2022-01-24_10-26-37/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 200s$ .\label{4gradINV}]{\includegraphics[scale=0.15]{cap3/2022-01-24_10-26-37/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 400s$ .\label{5gradINV}]{\includegraphics[scale=0.15]{cap3/2022-01-24_10-26-37/frame.0400.png}}
+%     \quad
+%     \subfloat[$t = 500s$ .\label{6gradINV}]{\includegraphics[scale=0.15]{cap3/2022-01-24_10-26-37/frame.0499.png}}
+%     \caption[2cell solver with inverse auxin gradient]{Active ROPs $u$ evolution obtained with RR algorithm solver with $\alpha = k_{20} e^{nu\frac{x-L_x}{L_x}}$.}
+%     \label{fig:gradINV}
+% \end{figure}
+
+\subsection{Overall auxin level k20}\label{sec:k20}
+The break-up instability for active ROPs spot under different values of the overall auxin level $k_{20}$ was studied in other works. We have chosen to focus on the different values of $k_{20}$ studied in \cite{intra1_R, intra2}. We prove how this parameter characterizing the system remains relevant to determine spot formation in a two cell system. The overall auxin level determined multiple-spot locations and showed instabilities. As a consequence, in previous works it was studied as a bifurcation parameter. The presented numerical simulations confirms this feature.
+
+In Figure \ref{fig:k20_04} we observe that a small change in the auxin level brings a considerable different spot formation. In this simulation we have settled $a_x = 34$ and $\epsilon_x = 1$.
+% usano il canale di \ref{fig:a34}
+
+% 2022-01-18_10-31-50 k2 0.4
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 25s$\label{1k20_04}]{\includegraphics[scale=0.15]{cap3/2022-01-18_10-31-50/frame.0025.png}}
+%     \quad
+%     \subfloat[$t = 50s$ .\label{2k20_04}]{\includegraphics[scale=0.15]{cap3/2022-01-18_10-31-50/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 100s$ .\label{3k20_04}]{\includegraphics[scale=0.15]{cap3/2022-01-18_10-31-50/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 200s$ .\label{4k20_04}]{\includegraphics[scale=0.15]{cap3/2022-01-18_10-31-50/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 300s$ .\label{5k20_04}]{\includegraphics[scale=0.15]{cap3/2022-01-18_10-31-50/frame.0300.png}}
+%     \quad
+%     \subfloat[$t = 500s$ .\label{6k20_04}]{\includegraphics[scale=0.15]{cap3/2022-01-18_10-31-50/frame.0499.png}}
+%     \caption[Modifying prm overall auxin - $k_{20} = 0.4$]{Active ROPs $u$ evolution with RR algorithm solver with $k_{20} = 0.4$.}
+%     \label{fig:k20_04}
+% \end{figure}
+\begin{figure}[t]
+    \centering
+    \subfloat[$k_{20} = 0.5$: $t = 50s$ \label{k20_05:50s}]{\includegraphics[scale=0.11]{cap3/2022-01-17_18-17-44/frame.0025.png}}
+    \quad
+    \subfloat[$t = 100s$]{\includegraphics[scale=0.11]{cap3/2022-01-17_18-17-44/frame.0050.png}}
+    \quad
+    \subfloat[$t = 200s$]{\includegraphics[scale=0.11]{cap3/2022-01-17_18-17-44/frame.0100.png}}
+    \quad
+    \subfloat[$t = 500s$]{\includegraphics[scale=0.11]{cap3/2022-01-17_18-17-44/frame.0250.png}}
+    \quad
+    \subfloat[$k_{20} = 0.4$: $t = 50s$]{\includegraphics[scale=0.11]{cap3/2022-01-18_10-31-50/frame.0050.png}}
+    \quad
+    \subfloat[$t = 100s$]{\includegraphics[scale=0.11]{cap3/2022-01-18_10-31-50/frame.0100.png}}
+    \quad
+    \subfloat[$t = 200s$]{\includegraphics[scale=0.11]{cap3/2022-01-18_10-31-50/frame.0200.png}}
+    \quad
+    \subfloat[$t = 500s$]{\includegraphics[scale=0.11]{cap3/2022-01-18_10-31-50/frame.0499.png}}
+    % \quad
+    % \subfloat[$t = 1000s$ .\label{lega34}]{\includegraphics[scale=0.5]{cap3/2022-01-17_18-17-44/legenda.png}}
+    \caption[Modifying prm overall auxin - $k_{20} = 0.5$ vs $k_{20} = 0.4$]{Active ROPs $u$ evolution with RR algorithm solver with $k_{20} = 0.5$ (top row) and $k_{20} = 0.4$ (bottom row).}
+    \label{fig:k20_04}
+\end{figure}
+% 2022-01-18_10-37-07 k2 = 0.0013 PB TROPPO BASSO, TOLTO
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 25s$\label{1k20_0013}]{\includegraphics[scale=0.15]{cap3/2022-01-18_10-37-07/screen0.png}}
+%     \quad
+%     \subfloat[$t = 50s$ .\label{2k20_0013}]{\includegraphics[scale=0.15]{cap3/2022-01-18_10-37-07/screen10.png}}
+%     \quad
+%     \subfloat[$t = 5000s$ .\label{3k20_0013}]{\includegraphics[scale=0.15]{cap3/2022-01-18_10-37-07/screen25.png}}
+%     \caption[Modifying prm overall auxin - $k_{20} = 0.0013$]{Active ROPs $u$ evolution with RR algorithm solver with $k_{20} = 0.0013$.}
+%     \label{fig:k20_0013}
+% \end{figure}
+
+Results shown in Figure \ref{fig:k20_039} and \ref{fig:k20_1.3562} are obtained setting channels with $a_x = 30$ and $\epsilon_x = 5$; comparing the figures with Figure \ref{fig:a30epsi5}, we recognize the influence of auxin in spot formation and evolution. The more interesting feature is shown in Figure \ref{fig:k20_1.3562}, where one can appreciate the advective power of auxin in trasporting active ROPs spot. By considering a bigger value for k20, the influence of the auxin gradient is stronger and this is demonstrated not only in the break-up of the initial stripe into multiple spots (as happened before), but also in the bending of the spot and subsequent breakup into a similar peanut-shaped spot.
+
+Other interesting results are obtained starting from a non-homogeneous initial state, precisely from the spot obtained at final time $t = 1000s$ of Figure \ref{fig:a34}, with same channel setting, and changing $k_{20}$ to 1.3562. This sudden change in the overall auxin level leads to the formation of bending spots and to the subsequent break-up in multiple spots, considerably different from the evolution obtained for $k_{20} = 0.5$. The two evolutions are presented in Figure \ref{fig:lk20_1.3562}.
+
+% interior stripe is more sensitive
+% to a transverse instability if it is located closer to the left-hand boundary, where the
+% inﬂuence of the auxin gradient is the strongest.
+
+% with a second stripe quickly emerging further toward the interior. Then, as these
+% structures move away from each other, both stripes break up into two half-spots
+
+% questi hanno lo stesso canale di \ref{fig:a30epsi5} (non so perchè l'ho cambiato, devo rifarli tutti con uno unico?)
+% 2022-01-20_10-24-17 k2 = 0.39
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 50s$\label{1k20_039}]{\includegraphics[scale=0.15]{cap3/2022-01-20_10-24-17/frame.0025.png}}
+%     \quad
+%     \subfloat[$t = 100s$ .\label{2k20_039}]{\includegraphics[scale=0.15]{cap3/2022-01-20_10-24-17/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 200s$ .\label{3k20_039}]{\includegraphics[scale=0.15]{cap3/2022-01-20_10-24-17/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 400s$ .\label{4k20_039}]{\includegraphics[scale=0.15]{cap3/2022-01-20_10-24-17/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 600s$ .\label{5k20_039}]{\includegraphics[scale=0.15]{cap3/2022-01-20_10-24-17/frame.0300.png}}
+%     \quad
+%     \subfloat[$t = 1000s$ .\label{6k20_039}]{\includegraphics[scale=0.15]{cap3/2022-01-20_10-24-17/frame.0499.png}}
+%     \caption[Modifying prm overall auxin - $k_{20} = 0.39$]{Active ROPs $u$ evolution with RR algorithm solver with $k_{20} = 0.39$.}
+%     \label{fig:k20_039}
+% \end{figure}
+\begin{figure}[H]
+    \centering
+    \subfloat[$k_{20}=0.39$: $t=50s$ \label{1k20_039}]{\includegraphics[scale=0.12]{cap3/2022-01-20_10-24-17/frame.0025.png}}
+    \quad
+    \subfloat[$t=100s$\label{2k20_039}]{\includegraphics[scale=0.11]{cap3/2022-01-20_10-24-17/frame.0050.png}}
+    \quad
+    \subfloat[$t=200s$\label{3k20_039}]{\includegraphics[scale=0.11]{cap3/2022-01-20_10-24-17/frame.0100.png}}
+    \quad
+    \subfloat[$t=1000s$ \label{6k20_039}]{\includegraphics[scale=0.11]{cap3/2022-01-20_10-24-17/frame.0499.png}}
+    \quad
+    \subfloat[$k_{20}=0.5$: $t=50s$]{\includegraphics[scale=0.11]{cap3/2022-01-16_11-41-50/frame.0025.png}}
+    \quad
+    \subfloat[$t=100s$]{\includegraphics[scale=0.11]{cap3/2022-01-16_11-41-50/frame.0050.png}}
+    \quad
+    \subfloat[$t=200s$]{\includegraphics[scale=0.11]{cap3/2022-01-16_11-41-50/frame.0100.png}}
+    \quad
+    \subfloat[$t=1000s$]{\includegraphics[scale=0.11]{cap3/2022-01-16_11-41-50/frame.0499.png}}
+    \quad
+    \subfloat[$k_{20}=0.39$ legend \label{legk20_039}]{\includegraphics[scale=0.5]{cap3/2022-01-20_10-24-17/legenda.png}}
+    \quad
+    \subfloat[$k_{20}=0.5$ legend]{\includegraphics[scale=0.5]{cap3/2022-01-16_11-41-50/legenda.png}}
+    \caption[Modifying prm overall auxin - $k_{20} = 0.39$ vs $k_{20} = 0.5$]{Active ROPs $u$ evolution with RR algorithm solver with $k_{20} = 0.39$ (top row) and $k_{20} = 0.5$ (bottom row).}
+    \label{fig:k20_039}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 25s$\label{1k20_1.3562}]{\includegraphics[scale=0.11]{cap3/2022-01-20_10-31-16/frame.0025.png}}
+    \quad
+    \subfloat[$t = 50s$\label{2k20_1.3562}]{\includegraphics[scale=0.11]{cap3/2022-01-20_10-31-16/frame.0050.png}}
+    \quad
+    \subfloat[$t = 100s$\label{3k20_1.3562}]{\includegraphics[scale=0.11]{cap3/2022-01-20_10-31-16/frame.0100.png}}
+    \quad
+    \subfloat[$t = 200s$ \label{4k20_1.3562}]{\includegraphics[scale=0.11]{cap3/2022-01-20_10-31-16/frame.0200.png}}
+    \quad
+    \subfloat[$t = 300s$ \label{5k20_1.3562}]{\includegraphics[scale=0.11]{cap3/2022-01-20_10-31-16/frame.0300.png}}
+    \quad
+    \subfloat[$t = 500s$ \label{6k20_1.3562}]{\includegraphics[scale=0.11]{cap3/2022-01-20_10-31-16/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.4]{cap3/2022-01-20_10-31-16/legenda.png}}
+    \caption[Modifying prm overall auxin - $k_{20} = 1.3562$]{Active ROPs $u$ evolution with RR algorithm solver with $k_{20} = 1.3562$.}
+    \label{fig:k20_1.3562}
+\end{figure}
+
+% 2022-01-19_12-08-30 k2 = 1.3562  from 0s→1975s
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 0s$\label{l1k20_1.3562}]{\includegraphics[scale=0.15]{cap3/2022-01-19_12-08-30/frame.0000.png}}
+%     \quad
+%     \subfloat[$t = 98s$ .\label{l2k20_1.3562}]{\includegraphics[scale=0.15]{cap3/2022-01-19_12-08-30/frame.0025.png}}
+%     \quad
+%     \subfloat[$t = 197s$ .\label{l3k20_1.3562}]{\includegraphics[scale=0.15]{cap3/2022-01-19_12-08-30/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 395s$ .\label{l4k20_1.3562}]{\includegraphics[scale=0.15]{cap3/2022-01-19_12-08-30/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 791s$ .\label{l5k20_1.3562}]{\includegraphics[scale=0.15]{cap3/2022-01-19_12-08-30/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 1975s$ .\label{l6k20_1.3562}]{\includegraphics[scale=0.15]{cap3/2022-01-19_12-08-30/frame.0499.png}}
+%     \caption[Modifying prm overall auxin - $k_{20} = 1.3562$ with not hom. U0]{Active ROPs $u$ evolution with RR algorithm solver with $k_{20} = 1.3562$, different start.}
+%     \label{fig:lk20_1.3562}
+% \end{figure}
+\begin{figure}[H]
+    \centering
+    \subfloat[$k_{20} = 1.3562$: $t = 0s$\label{l1k20_1.3562}]{\includegraphics[scale=0.13]{cap3/2022-01-19_12-08-30/frame.0000.png}}
+    \quad
+    \subfloat[$t = 98s$\label{l2k20_1.3562}]{\includegraphics[scale=0.13]{cap3/2022-01-19_12-08-30/frame.0025.png}}
+    \quad
+    \subfloat[$t = 197s$\label{l3k20_1.3562}]{\includegraphics[scale=0.13]{cap3/2022-01-19_12-08-30/frame.0050.png}}
+    \quad
+    \subfloat[$t = 395s$\label{l4k20_1.3562}]{\includegraphics[scale=0.13]{cap3/2022-01-19_12-08-30/frame.0100.png}}
+    \quad
+    \subfloat[$t = 791s$\label{l5k20_1.3562}]{\includegraphics[scale=0.13]{cap3/2022-01-19_12-08-30/frame.0200.png}}
+    \quad
+    \subfloat[$t = 1975s$ .\label{l6k20_1.3562}]{\includegraphics[scale=0.13]{cap3/2022-01-19_12-08-30/frame.0499.png}}
+    \quad
+    \subfloat[$k_{20} = 0.5$: $t = 0s$\label{l1k20_05}]{\includegraphics[scale=0.13]{cap3/2022-01-19_10-28-16/frame.0000.png}}
+    \quad
+    \subfloat[$t = 100s$\label{l2k20_05}]{\includegraphics[scale=0.13]{cap3/2022-01-19_10-28-16/frame.0010.png}}
+    \quad
+    \subfloat[$t = 200s$\label{l3k20_05}]{\includegraphics[scale=0.13]{cap3/2022-01-19_10-28-16/frame.0020.png}}
+    \quad
+    \subfloat[$t = 400s$\label{l4k20_05}]{\includegraphics[scale=0.13]{cap3/2022-01-19_10-28-16/frame.0040.png}}
+    \quad
+    \subfloat[$t = 800s$\label{l5k20_05}]{\includegraphics[scale=0.13]{cap3/2022-01-19_10-28-16/frame.0080.png}}
+    \quad
+    \subfloat[$t = 4999s$\label{l6k20_05}]{\includegraphics[scale=0.13]{cap3/2022-01-19_10-28-16/frame.0499.png}}
+    \quad
+    \subfloat[$k_{20} = 1.3562$ legend]{\includegraphics[scale=0.4]{cap3/2022-01-19_12-08-30/legenda.png}}
+    \quad
+    \subfloat[$k_{20} = 0.5$ legend]{\includegraphics[scale=0.4]{cap3/2022-01-19_10-28-16/legenda.png}}
+    \caption[Not homogeneous U0- $k_{20} = 1.3562$ vs $k_{20} = 0.5$]{Active ROPs $u$ evolution with RR algorithm solver with $k_{20} = 1.3562$ (top rows) and $k_{20} = 0.5$ (bottom rows), different start.}
+    \label{fig:lk20_1.3562}
+\end{figure}
+
+% As k2 is
+% increased, there is a bifurcation into states which have increasing numbers of spots,
+% which correspond to either wild type (where there would be a unique interior spot) or
+% various multiple hair mutant types in which auxin is increased to much higher levels.
+
+% 2022-01-19_10-28-16 k2 = 0.5   from 0s→5000s
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 0s$\label{l1k20_05}]{\includegraphics[scale=0.15]{cap3/2022-01-19_10-28-16/frame.0000.png}}
+%     \quad
+%     \subfloat[$t = 250s$ .\label{l2k20_05}]{\includegraphics[scale=0.15]{cap3/2022-01-19_10-28-16/frame.0025.png}}
+%     \quad
+%     \subfloat[$t = 500s$ .\label{l3k20_05}]{\includegraphics[scale=0.15]{cap3/2022-01-19_10-28-16/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 1000s$ .\label{l4k20_05}]{\includegraphics[scale=0.15]{cap3/2022-01-19_10-28-16/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 2000s$ .\label{l5k20_05}]{\includegraphics[scale=0.15]{cap3/2022-01-19_10-28-16/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 4999s$ .\label{l6k20_05}]{\includegraphics[scale=0.15]{cap3/2022-01-19_10-28-16/frame.0499.png}}
+%     \caption[Modifying prm overall auxin - $k_{20} = 0.5$ with not hom. U0]{Active ROPs $u$ evolution with RR algorithm solver with $k_{20} = 0.5$, different start.}
+%     \label{fig:lk20_05}
+% \end{figure}
+
+% \subsection{Different initializations}
+% tolte
+% - initial state diversi, utile perchè rappresenta la prova che maggior flusso è dato da una maggiore differenza tra le due soluzioni all'inizio, poi comunque tendono a bilanciarsi(anche con canali in mezzo irrilevanti che prima non comportavano differenze col caso $\beta_{RR} = 0$)
+%
+% canale \ref{fig:a5epsi5}
+% % 2022-03-06_16-16-26
+% $\epsilon_x = 5, a_x = 5, \alpha_{RR} = 1, u^0_1 = 2.5 u^0, u^0_2 = u^0$
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 25s$\label{1diffI}]{\includegraphics[scale=0.15]{cap3/2022-03-06_16-16-26/frame.0025.png}}
+%     \quad
+%     \subfloat[$t = 50s$ .\label{2diffI}]{\includegraphics[scale=0.15]{cap3/2022-03-06_16-16-26/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 100s$ .\label{3diffI}]{\includegraphics[scale=0.15]{cap3/2022-03-06_16-16-26/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 200s$ .\label{4diffI}]{\includegraphics[scale=0.15]{cap3/2022-03-06_16-16-26/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 300s$ .\label{5diffI}]{\includegraphics[scale=0.15]{cap3/2022-03-06_16-16-26/frame.0300.png}}
+%     \quad
+%     \subfloat[$t = 500s$ .\label{6diffI}]{\includegraphics[scale=0.15]{cap3/2022-03-06_16-16-26/frame.0499.png}}
+%     \caption[2cell solver with RR - bigger initial difference]{Active ROPs $u$ evolution with RR algorithm solver with bigger initial difference}
+%     \label{fig:diffI}
+% \end{figure}
+% % 2022-01-24_09-49-16
+% diverso coefficiente di trasporto, $\epsilon_x = 5, a_x = 5, \alpha_{RR} = 7/2, u^0_1 = 2.5 u^0, u^0_2 = u^0$
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 25s$\label{1diffI_aRR}]{\includegraphics[scale=0.15]{cap3/2022-01-24_09-49-16/frame.0025.png}}
+%     \quad
+%     \subfloat[$t = 50s$ .\label{2diffI_aRR}]{\includegraphics[scale=0.15]{cap3/2022-01-24_09-49-16/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 100s$ .\label{3diffI_aRR}]{\includegraphics[scale=0.15]{cap3/2022-01-24_09-49-16/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 200s$ .\label{4diffI_aRR}]{\includegraphics[scale=0.15]{cap3/2022-01-24_09-49-16/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 300s$ .\label{5diffI_aRR}]{\includegraphics[scale=0.15]{cap3/2022-01-24_09-49-16/frame.0300.png}}
+%     \quad
+%     \subfloat[$t = 500s$ .\label{6diffI_aRR}]{\includegraphics[scale=0.15]{cap3/2022-01-24_09-49-16/frame.0499.png}}
+%     \caption[2cell solver with RR - bigger initial difference]{Active ROPs $u$ evolution with RR algorithm solver with bigger initial difference}
+%     \label{fig:diffI_alphaRR}
+% \end{figure}
+%
+% Tra questi due risultati, anche se hanno coefficiente di trasporto diversi, non vedo grandi differenze di range o di grandezza degli spot (non vorrei aver dato ad $\alpha_{RR}$ un significato fisico sbagliato in \ref{sec:PluriMod}). Non so se ha senso presentarli entrambi o solo il primo che mostra l'importanza della inizializzazione.
+
+\subsection{Time-dependent auxin distribution}
+% % 2022-03-28_10-45-47 incorso
+\begin{figure}[t]
+    \centering
+    \subfloat[$t = 230s$ .\label{4auxT100}]{\includegraphics[scale=0.12]{cap3/2022-03-28_10-45-47/frame.0115.png}}
+    \quad
+    \subfloat[$t = 250s$ .\label{5auxT100}]{\includegraphics[scale=0.12]{cap3/2022-03-28_10-45-47/frame.0125.png}}
+    \quad
+    \subfloat[$t = 270s$ .\label{6auxT100}]{\includegraphics[scale=0.12]{cap3/2022-03-28_10-45-47/frame.0135.png}}
+    \quad
+    \subfloat[$t = 430s$\label{7auxT100}]{\includegraphics[scale=0.12]{cap3/2022-03-28_10-45-47/frame.0215.png}}
+    \quad
+    \subfloat[$t = 450s$ .\label{8auxT100}]{\includegraphics[scale=0.12]{cap3/2022-03-28_10-45-47/frame.0225.png}}
+    \quad
+    \subfloat[$t = 470s$ ]{\includegraphics[scale=0.12]{cap3/2022-03-28_10-45-47/frame.0235.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.4]{cap3/2022-03-28_10-45-47/legenda.png}}
+    \caption[RR with time dependent auxin - period $T_{pa} = 100s$]{Active ROPs $u$ evolution with exponential auxin and sinusoidal time-dependence with period $T_{pa} = 100s$.}
+    \label{fig:auxT100}
+\end{figure}
+
+We present some results assuming time dependence for auxin distribution. These simulations can be conceived as intermediate steps before the more realistic results of Chapter \ref{cap:4}, where auxin is determined through its tranport model. We extract from other works realistic auxin distributions and we test our interpretation on the built pluricellular system.
+
+\textbf{Periodic auxin}
+
+At first we show results for a periodic overall auxin level characterized by a period $T_{pa} [s]$ in the following way:
+\begin{equation}
+  k_{20} \alpha(x,t) = k_{20} e^{-\nu \frac{x}{L_x}} \sin\left(\frac{2\pi t}{T_{pa}}\right) + k_{20} ,
+\end{equation}
+so that auxin distribution $\alpha(x,t)$ takes values from $k_{20}$ to $2 k_{20}$.
+
+A two cell system is initialized with
+\begin{equation*}
+ \left[ U_1^0, V_1^0 \right] = 1.5 \left[u^0,v^0 \right], \ \ \ \left[ U_2^0, V_2^0 \right] = \left[u^0,v^0 \right],
+\end{equation*}
+using the same channels settings as fot the test case in Figure \ref{fig:a30epsi5}.
+
+For the two test cases in Figures \ref{fig:auxT100} and \ref{fig:auxT200}, we select a period $T_{pa} = 100s$ and $T_{pa} = 200s$, respectively. Both the figures show that moving spots have not enough time to form since auxin gradient changes too quickly; still it is interesting to note how spot formation follows a periodicity in stripe generation and subsequent breakup.  Indeed we can see in both the figures by comparing the first with the second row that location of active ROPs is periodically the same. For example, the frame at $t = 516s$ in Figure \ref{8auxT200} is replicated similarly after $200s$, i.e, at $t= 716s$, in Figure \ref{12auxT200}. The feature of periodic "half-spot" formation confirms that auxin gradient is a key factor in determining hotspots. Similar considerations hold for Figure \ref{fig:auxT100}.
+
+% % 2022-04-06_18-01-48 period = 200s
+\begin{figure}[t]
+    \centering
+    \subfloat[$t = 450s$ \label{5auxT200}]{\includegraphics[scale=0.11]{cap3/2022-04-06_18-01-48/img.0225.png}}
+    \quad
+    \subfloat[$t = 490s$\label{7auxT200}]{\includegraphics[scale=0.11]{cap3/2022-04-06_18-01-48/img.0245.png}}
+    \quad
+    \subfloat[$t = 516s$ \label{8auxT200}]{\includegraphics[scale=0.11]{cap3/2022-04-06_18-01-48/img.0258.png}}
+    \quad
+    \subfloat[$t = 530s$ \label{9auxT200}]{\includegraphics[scale=0.11]{cap3/2022-04-06_18-01-48/img.0265.png}}
+    \quad
+    \subfloat[$t = 650s$ \label{10auxT200}]{\includegraphics[scale=0.11]{cap3/2022-04-06_18-01-48/img.0325.png}}
+    \quad
+    \subfloat[$t = 690s$ \label{11auxT200}]{\includegraphics[scale=0.11]{cap3/2022-04-06_18-01-48/img.0345.png}}
+    \quad
+    \subfloat[$t = 716s$ \label{12auxT200}]{\includegraphics[scale=0.11]{cap3/2022-04-06_18-01-48/img.0358.png}}
+    \quad
+    \subfloat[$t = 730s$ \label{13auxT200}]{\includegraphics[scale=0.11]{cap3/2022-04-06_18-01-48/img.0365.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.4]{cap3/2022-04-06_18-01-48/legenda.png}}
+    \caption[RR with time dependent auxin - period $T_{pa} = 200s$]{Active ROPs $u$ evolution with exponential auxin and sinusoidal time-dependence with period $T_{pa} = 200s$.}
+    \label{fig:auxT200}
+\end{figure}
+
+% 2022-01-26_11-50-29 period = 60*40 (40 min)
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 272s$\label{1auxT40m}]{\includegraphics[scale=0.11]{cap3/2022-01-26_11-50-29/frame.0068.png}}
+%     \quad
+%     \subfloat[$t = 300s$ .\label{2auxT40m}]{\includegraphics[scale=0.11]{cap3/2022-01-26_11-50-29/frame.0075.png}}
+%     \quad
+%     \subfloat[$t = 320s$ .\label{3auxT40m}]{\includegraphics[scale=0.11]{cap3/2022-01-26_11-50-29/frame.0080.png}}
+%     \quad
+%     \subfloat[$t = 360s$ .\label{4auxT40m}]{\includegraphics[scale=0.11]{cap3/2022-01-26_11-50-29/frame.0090.png}}
+%     \quad
+%     \subfloat[$t = 400s$ .\label{5auxT40m}]{\includegraphics[scale=0.11]{cap3/2022-01-26_11-50-29/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 500s$ .\label{6auxT40m}]{\includegraphics[scale=0.11]{cap3/2022-01-26_11-50-29/frame.0125.png}}
+%     \quad
+%     \subfloat[$t = 1001s$ .\label{7uxT40m}]{\includegraphics[scale=0.11]{cap3/2022-01-26_11-50-29/frame.0250.png}}
+%     \quad
+%     \subfloat[$t = 1999s$ .\label{8auxT40m}]{\includegraphics[scale=0.11]{cap3/2022-01-26_11-50-29/frame.0499.png}}
+%     \caption[RR with time dependent auxina - periodic $T_{pa} = 40 min$]{Active ROPs $u$ evolution with exponential auxin with sinusoidal time-dependency, $T_{pa} = 40 min$.}
+%     \label{fig:auxT40m}
+% \end{figure}
+
+% 2022-03-18_16-43-47 - 2022-03-20_16-25-28
+A more interesting test is obtained using $T_{pa} = 40 min = 2400 s$. The exponential dependence on space of auxin still brings a homoclinc stripe in correspondance to the auxin maximum and open channel.
+
+There is a first time-scale associated to the usual quick break-up instability and then a second longer time-scale associated with the slowly drifting of the spots where the auxin gradient is smaller. The period is sufficiently higher than the first time-scale and thus patches are able to form.  The two spots formed seem to rest in a certain position and their amplitude oscillates with auxin values. The simulation gives us a proof of the biological stability of the pattern formation mechanism.
+\begin{figure}[t]
+    \centering
+    \subfloat[$t = 208s$\label{1LauxT40m}]{\includegraphics[scale=0.11]{cap3/2022-03-18_16-43-47/frame.0026.png}}
+    \quad
+    \subfloat[$t = 400s$\label{2LauxT40m}]{\includegraphics[scale=0.11]{cap3/2022-03-18_16-43-47/frame.0050.png}}
+    \quad
+    \subfloat[$t = 801s$\label{3LauxT40m}]{\includegraphics[scale=0.11]{cap3/2022-03-18_16-43-47/frame.0100.png}}
+    \quad
+    \subfloat[$t = 1001s$\label{4LuxT40m}]{\includegraphics[scale=0.11]{cap3/2022-03-18_16-43-47/frame.0125.png}}
+    \quad
+    \subfloat[$t = 1507s$\label{5LauxT40m}]{\includegraphics[scale=0.11]{cap3/2022-03-18_16-43-47/frame.0188.png}}
+    \quad
+    \subfloat[$t = 2003s$\label{6LauxT40m}]{\includegraphics[scale=0.11]{cap3/2022-03-18_16-43-47/frame.0250.png}}
+    \quad
+    \subfloat[$t = 3005s$\label{7LauxT40m}]{\includegraphics[scale=0.11]{cap3/2022-03-18_16-43-47/frame.0375.png}}
+    \quad
+    \subfloat[$t = 4000s$\label{8LuxT40m}]{\includegraphics[scale=0.11]{cap3/2022-03-18_16-43-47/frame.0499.png}}
+    \quad
+    \subfloat[$t = 5000s$\label{9LauxT40m}]{\includegraphics[scale=0.11]{cap3/2022-03-20_16-25-28/frame.0250.png}}
+    \quad
+    \subfloat[$t = 6000s$\label{10LuxT40m}]{\includegraphics[scale=0.11]{cap3/2022-03-20_16-25-28/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.5]{cap3/2022-03-18_16-43-47/legenda.png}}
+    \caption[RR with time dependent auxin - periodic $T_{pa} = 40 min$]{Active ROPs $u$ evolution with exponential auxin with sinusoidal time-dependence, $T_{pa} = 40 min$.}
+    \label{fig:LauxT40m}
+\end{figure}
+
+% 2022-03-20_16-05-30
+\textbf{Auxin with maximum value smooth change}
+
+Driven by numerous studies in \cite{intra2} over dependence of pattern formation on $k_{20}$ parameter and by results in Section \ref{sec:k20}, we tested the multi-cellular method with a smooth change in overall auxin level, following the variation law:
+\begin{equation*}
+  k_{20} \alpha(x,t) = k_{20} \left[\frac{2}{\pi} arctan(t - \Tilde{T}) + \frac{3}{2}\right] exp\left(- \nu \frac{x}{L_x}\right).
+\end{equation*}
+The idea was to start with a small auxin concentration in the cell equal to $k_{20} = 0.5$ and to increase it asymptotically close to the highest value we tested for $k_{20}$ (see Figure \ref{fig:k20_1.3562}).
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 25s$]{\includegraphics[scale=0.12]{cap3/2022-03-20_16-05-30/img.0025.png}}
+%     \quad
+%     \subfloat[$t = 50s$]{\includegraphics[scale=0.12]{cap3/2022-03-20_16-05-30/img.0050.png}}
+%     \quad
+%     % \subfloat[$t = 100s$]{\includegraphics[scale=0.12]{cap3/2022-03-20_16-05-30/img.0100.png}}
+%     \quad
+%     \subfloat[$t = 500s$]{\includegraphics[scale=0.12]{cap3/2022-03-20_16-05-30/img.0499.png}}
+%     \quad
+%     \subfloat[]{\includegraphics[scale=0.5]{cap3/2022-03-20_16-05-30/legenda.png}}
+%     \caption[Time dependent prm homogeneous auxin - $k_{20} ~ arctan(t)$]{Active ROPs $u$ evolution with RR algorithm solver with $k_{20} \alpha(t) = \frac{2}{\pi} k_{20} arctan(x - \Tilde{T}) + \frac{3}{2}k_{20}$.}
+%     \label{fig:Harctan}
+% \end{figure}
+% Taking auxin distribution homogeneous, being $\nu = 0$, change in time of auxin concentration is not enough to lead to a pattern formation (see Figure \ref{fig:Harctan}).
+
+ Taking auxin exponential distribution with $\nu = 1.5$, a spot driving to the right is formed. Comparing the result in Figure \ref{fig:NHarctan} with the one in Figure \ref{fig:lk20_1.3562}, the milder change in auxin level brings a different evolution in the breakups of spots. A bigger unique spot is formed in the first $50 s$ similar to Figure \ref{k20_05:50s}, the following frame at time $t = 100s$ shows a more bended spot and after $t = \Tilde{T} = 200s$ the simulation results start to recall the one in Figure \ref{fig:k20_1.3562}. After more time steps, the increase in the overall auxin level brings multiple patches from the breakup of the peanut shaped one.
+ % 2022-04-10_01-05-49 rifatta che era sbagliata
+\begin{figure}[H]
+     \centering
+     \subfloat[$t = 50s$]{\includegraphics[scale=0.11]{cap3/2022-04-10_01-05-49/frame.0025.png}}
+     \quad
+     \subfloat[$t = 100s$]{\includegraphics[scale=0.11]{cap3/2022-04-10_01-05-49/frame.0050.png}}
+     \quad
+     \subfloat[$t = 200s$]{\includegraphics[scale=0.11]{cap3/2022-04-10_01-05-49/frame.0100.png}}
+     \quad
+     \subfloat[$t = 220s$]{\includegraphics[scale=0.11]{cap3/2022-04-10_01-05-49/frame.0110.png}}
+     \quad
+     \subfloat[$t = 250s$]{\includegraphics[scale=0.11]{cap3/2022-04-10_01-05-49/frame.0125.png}}
+     \quad
+     \subfloat[$t = 500s$]{\includegraphics[scale=0.11]{cap3/2022-04-10_01-05-49/frame.0250.png}}
+     \quad
+     \subfloat[$t = 600s$]{\includegraphics[scale=0.11]{cap3/2022-04-10_01-05-49/frame.0300.png}}
+     \quad
+     \subfloat[$t = 800s$]{\includegraphics[scale=0.11]{cap3/2022-04-10_01-05-49/frame.0400.png}}
+     \quad
+     \subfloat[]{\includegraphics[scale=0.5]{cap3/2022-04-10_01-05-49/legenda.png}}
+     \caption[Time dependent prm homogeneous auxin - $k_{20} ~ arctan(x,t)$]{Active ROPs $u$ evolution with RR solver with $k_{20} \alpha(x,t) = k_{20} \left[\frac{2}{\pi} arctan(t - \Tilde{T}) + \frac{3}{2}\right] exp(- \nu \frac{x}{L_x})$, with $\Tilde{T} = 200s$.}
+     \label{fig:NHarctan}
+ \end{figure}
+
+ \textbf{Auxin with maximum position moving}
+
+Other works and some results in the previous section highlight the importance of the location of the maximum and of the gradient of the auxin \cite{article:Veronica, intra2}. Actually the position may change in time, because of other morphogenetic processes involved in root-hair initiation. This lead us to test, as a first approximated attempt, the behaviour of the system under moving maximum position of the auxin gradient. We keep a smooth dependence in space defining the auxin distribution as follows:
+\begin{equation*}
+  k_{20} \alpha(x,t) = k_{20} exp\left( -\nu \frac{x-x_0(t)}{L_x}\right) \mathbb{1}\left(x \geq x_0(t)\right) + k_{20} exp\left(\nu \frac{x-x_0}{L_x} \right) \mathbb{1}(x\leq x_0(t)),
+\end{equation*}
+$x_0(t)$ being time-dependant.
+
+We simulate the system up to $T_{max} = 4000s$, with auxin maximum position moving from the left to the right and representing itself again at the left boundary every interval of $1000s$. In particular maximum coordinate is defined as follows:
+\begin{equation*}
+  x_0(t) = \frac{L_x}{\Tilde{T}} (t\% \Tilde{T}).
+\end{equation*}
+In order to give a better idea, the gradient of auxin that crosses the cell system for the first interval of $1000s$ is presented in Figure \ref{fig:A1}.
+% In Figure \ref{fig:Amax1} frames of the simulation obtained with $x_0(t) =  \frac{L_x}{T_{max}} * t$ are presented and the differences with fixed maximum simulation in figure \ref{fig:a30epsi5} seem to be the spot moving faster and the higher values of active concentration reached.
+
+The appearance of maximum auxin, probably influenced also by the open channels, increases the spot formation in the system and confirms the relevance in the location with respect to space and time of the auxin gradient. The hotspots interact with one another and alternate different behaviours, unifying in one single and then dividing in smaller spots.
+% 2022-04-02_10-18-15 rifacendo ... ho trovato la differenza! questo prima era il Parall mode
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 25s$\label{1A1}]{\includegraphics[scale=0.15]{cap3/2022-01-27_09-25-20/screenA25.png}}
+    % \quad
+    % \subfloat[$t = 50s$\label{2A1}]{\includegraphics[scale=0.15]{cap3/2022-01-27_09-25-20/screenA50.png}}
+    % \quad
+    % \subfloat[$t = 100s$\label{3A1}]{\includegraphics[scale=0.15]{cap3/2022-01-27_09-25-20/screenA100.png}}
+    \quad
+    \subfloat[$t = 200s$\label{4A1}]{\includegraphics[scale=0.15]{cap3/2022-01-27_09-25-20/screenA200.png}}
+    \quad
+    % \subfloat[$t = 400s$\label{5A1}]{\includegraphics[scale=0.15]{cap3/2022-01-27_09-25-20/screenA200.png}}
+    % \quad
+    \subfloat[$t = 1000s$\label{6A1}]{\includegraphics[scale=0.15]{cap3/2022-01-27_09-25-20/screenA1000.png}}
+    \caption[Time dependent auxin - moving max]{Evolution of the auxin distribution with maximum time-dependent position $x_0(t) = \frac{L_x}{\Tilde{T}} (t\% \Tilde{T})$.}
+    \label{fig:A1}
+\end{figure}
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 25s$\label{1Amax1}]{\includegraphics[scale=0.12]{cap3/2022-04-02_10-18-15/img.0012.png}}
+%     \quad
+%     \subfloat[$t = 50s$\label{2Amax1}]{\includegraphics[scale=0.12]{cap3/2022-04-02_10-18-15/img.0025.png}}
+%     \quad
+%     \subfloat[$t = 100s$\label{3Amax1}]{\includegraphics[scale=0.12]{cap3/2022-04-02_10-18-15/img.0050.png}}
+%     \quad
+%     \subfloat[$t = 200s$\label{4Amax1}]{\includegraphics[scale=0.12]{cap3/2022-04-02_10-18-15/img.0100.png}}
+%     \quad
+%     \subfloat[$t = 400s$\label{5Amax1}]{\includegraphics[scale=0.12]{cap3/2022-04-02_10-18-15/img.0200.png}}
+%     \quad
+%     \subfloat[$t = 1000s$\label{6Amax1}]{\includegraphics[scale=0.12]{cap3/2022-04-02_10-18-15/img.0499.png}}
+%     \quad
+%     \subfloat[]{\includegraphics[scale=0.5]{cap3/2022-04-02_10-18-15/legenda.png}}
+%     \caption[RR with time dependent auxina - moving max]{Active ROPs $u$ evolution with exponential auxin with maximum position time-dependent $x_0(t) = \frac{L_x}{T_{max}} * t$.}
+%     \label{fig:Amax1}
+% \end{figure}
+  % 2022-03-20_10-53-03
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 48s$]{\includegraphics[scale=0.1]{cap3/2022-03-20_10-53-03/frame.0006.png}}
+    \quad
+    \subfloat[$t = 104s$]{\includegraphics[scale=0.1]{cap3/2022-03-20_10-53-03/frame.0013.png}}
+    \quad
+    \subfloat[$t = 256s$]{\includegraphics[scale=0.1]{cap3/2022-03-20_10-53-03/frame.0032.png}}
+    \quad
+    \subfloat[$t = 504s$]{\includegraphics[scale=0.1]{cap3/2022-03-20_10-53-03/frame.0063.png}}
+    \quad
+    \subfloat[$t = 1001s$]{\includegraphics[scale=0.1]{cap3/2022-03-20_10-53-03/frame.0125.png}}
+    \quad
+    \subfloat[$t = 1290s$]{\includegraphics[scale=0.1]{cap3/2022-03-20_10-53-03/frame.0156.png}}
+    \quad
+    \subfloat[$t = 1498s$]{\includegraphics[scale=0.1]{cap3/2022-03-20_10-53-03/frame.0187.png}}
+    \quad
+    \subfloat[$t = 2003s$]{\includegraphics[scale=0.1]{cap3/2022-03-20_10-53-03/frame.0250.png}}
+    \quad
+    \subfloat[$t = 2500s$]{\includegraphics[scale=0.1]{cap3/2022-03-20_10-53-03/frame.0312.png}}
+    % \quad
+    % \subfloat[$t = 3006s$]{\includegraphics[scale=0.1]{cap3/2022-03-20_10-53-03/frame.0375.png}}
+    \quad
+    \subfloat[$t = 4000s$]{\includegraphics[scale=0.1]{cap3/2022-03-20_10-53-03/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.5]{cap3/2022-03-20_10-53-03/legenda.png}}
+    \caption[RR with time dependent auxin - moving max]{Active ROPs $u$ evolution with exponential auxin with maximum position time-dependent $x_0(t) = \frac{L_x}{\Tilde{T}} (t\% \Tilde{T})$.}
+    \label{fig:Amax3}
+\end{figure}
+
+\subsection{Four cell system}
+Finally, we implement a solver for a more complex multi-cellular system, in order to investigate the influence of a model of communication between cells both longitudinally and transversally.
+The new functions identifying open channels for inter-cellular communication are defined as follows:
+\begin{equation}\begin{aligned}
+   \beta_{u/vRR} & = \mathbb{1} \Big\{ \frac{L_x}{2} - a_x - \epsilon_x \leq x \leq \frac{L_x}{2} - a_x \Big\} + \mathbb{1} \Big\{ \frac{L_x}{2}+a_x \leq x \leq \frac{L_x}{2} + a_x+\epsilon_x \Big\} \\
+   & + \mathbb{1} \Big\{ \frac{3L_x}{2}-a_x-\epsilon_x \leq x \leq \frac{3L_x}{2} - a_x \Big\}
+   + \mathbb{1} \Big\{ \frac{3L_x}{2}+_x \leq x \leq \frac{3L_x}{2} + a_x+\epsilon_x \Big\} \\
+   & + \mathbb{1} \Big\{ \frac{L_y}{2}-a_y-\epsilon_y \leq y \leq \frac{L_y}{2} - a_y \Big\} + \mathbb{1} \Big\{ \frac{3L_y}{2}-a_y-\epsilon_y \leq y \leq \frac{3L_y}{2} - a_y \Big\} \\
+   & + \mathbb{1} \Big\{ \frac{L_y}{2}+a_y \leq y \leq \frac{L_y}{2} + a_y +\epsilon_y \Big\} + \mathbb{1} \Big\{ \frac{3L_y}{2}+a_y \leq y \leq \frac{3L_y}{2} + a_y +\epsilon_y \Big\},
+\end{aligned}\end{equation}
+with $a_y$ and $\epsilon_y$ having an analogous meaning for vertical borders as for $a_x$ and $\epsilon_x$ for horizontal borders, respectively.
+
+In Figure \ref{fig:4cbeta0} the reference solution corresponding to a full no-flux boundary condition on all borders is presented. It was obtained setting the initial state to:
+\begin{equation}\label{eq:initstate4} \begin{aligned}
+    \left[ U_1^0, V_1^0 \right] = \left[ U_2^0, V_2^0 \right] & = 1.5 \left[u^0,v^0 \right] \\
+    \left[ U_3^0, V_3^0 \right] = \left[ U_2^0, V_2^0 \right] & = \left[u^0,v^0 \right],
+\end{aligned} \end{equation}
+while the auxin distribution is defined as in \eqref{eq:alpha_exp} under Table \ref{tab:setprm} - Set C of parameters.
+
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 0s  $\label{14cbeta0}]{\includegraphics[scale=0.15]{cap3/2022-01-22_12-35-26/frame.0000.png}}
+    \quad
+    \subfloat[$t = 50s$\label{24cbeta0}]{\includegraphics[scale=0.15]{cap3/2022-01-22_12-35-26/frame.0050.png}}
+    \quad
+    \subfloat[$t = 100s$\label{34cbeta0}]{\includegraphics[scale=0.15]{cap3/2022-01-22_12-35-26/frame.0100.png}}
+    \quad
+    \subfloat[$t = 499s$\label{44cbeta0}]{\includegraphics[scale=0.15]{cap3/2022-01-22_12-35-26/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.4]{cap3/2022-01-22_12-35-26/legenda.png}}
+    \caption[4cell RR Active ROPs - $\beta_{RR} = 0 $]{Active ROPs $u$ evolution with RR algorithm solver on 4 cells system with $\beta_{RR} = 0 $.}
+    \label{fig:4cbeta0}
+\end{figure}
+% 2022-01-22_18-30-11
+We replicate the no-flux reference solution with a different auxin distribution in order to have a possible comparison for other attempts with open transverse channels located where we have the maximum value for the auxin. We therefore set the auxin distribution as follows:
+\begin{equation*}
+  k_{20} \alpha(x) = k_{20} exp\left(-\nu \frac{x-x_0}{L_x}\right) \mathbb{1}(x\geq x_0) + k_{20} exp\left(\nu \frac{x-x_0}{L_x}\right) \mathbb{1}(x\leq x_0),
+\end{equation*}
+being $x_0 =  L_x = 70 \mu m$.
+
+% 2022-03-21_08-49-35
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 50s$]{\includegraphics[scale=0.15]{cap3/2022-03-21_08-49-35/frame.0050.png}}
+    \quad
+    \subfloat[$t = 100s$]{\includegraphics[scale=0.15]{cap3/2022-03-21_08-49-35/frame.0100.png}}
+    \quad
+    \subfloat[$t = 200s$]{\includegraphics[scale=0.15]{cap3/2022-03-21_08-49-35/frame.0200.png}}
+    \quad
+    \subfloat[$t = 499s$]{\includegraphics[scale=0.15]{cap3/2022-03-21_08-49-35/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.4]{cap3/2022-03-21_08-49-35/legenda.png}}
+    \caption[4cell RR Active ROPs - mid gradient, no-flux BC]{Active ROPs $u$ evolution with RR algorithm solver on 4 cells system with $\alpha$ maximum in $x = 70 \mu m$ and no-flux boundary condition: $\beta_{uRR} = \beta_{vRR} = 0$.}
+    \label{fig:4c_gradmid_beta0}
+\end{figure}
+Figure \ref{fig:4c_gradmid_beta0} confirms the influence of auxin gradient in the location of the front formed and in the subsequent break-up instability of the stripe into spots.
+% slide 54-55-56 (non so se ha senso, test che si può citare).  bella in slide 56 che c'è come da un lato gradiente di auxina che vorrebbe formare pallocchi a sinistra dall'altro però il trasporto al bordo (same init dovrebbe far vedere il caso senza trasporto perchè sono uguali). può aver senso fare vedere un confronto tra i due
+% però per 4 cells slide 69 ha canali diversi bah su y
+
+% 2022-01-26_09-42-40
+In Figure \ref{fig:4c_gradmid_sameI} results obtained with channels characterized by parameters $\epsilon_x = 5,  a_x = 30,  \epsilon_y = 1$ and $a_y = 10$ are presented, without difference in the initialization of variables:
+\begin{equation*}\begin{aligned}
+  U_1^0 & = U_2^0 = U_3^0 = U_4^0 = u^0 \\
+  V_1^0 & = V_2^0 = V_3^0 = V_4^0 = v^0.
+\end{aligned}\end{equation*}
+
+\begin{figure}[t]
+    \centering
+    \subfloat[$t = 50s  $\label{14c_gradmid_sameI}]{\includegraphics[scale=0.15]{cap3/2022-01-26_09-42-40/frame.0050.png}}
+    \quad
+    \subfloat[$t = 100s$ .\label{24c_gradmid_sameI}]{\includegraphics[scale=0.15]{cap3/2022-01-26_09-42-40/frame.0100.png}}
+    \quad
+    \subfloat[$t = 200s$ .\label{34c_gradmid_sameI}]{\includegraphics[scale=0.15]{cap3/2022-01-26_09-42-40/frame.0200.png}}
+    \quad
+    \subfloat[$t = 499s$ .\label{44c_gradmid_sameI}]{\includegraphics[scale=0.15]{cap3/2022-01-26_09-42-40/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.4]{cap3/2022-01-26_09-42-40/legenda.png}}
+    \caption[4cell RR Active ROPs - mid gradient, same initial state]{Active ROPs $u$ evolution with RR algorithm solver on 4 cells system with $\alpha$ maximum in $x = 70 \mu m$ and same initial state.}
+    \label{fig:4c_gradmid_sameI}
+\end{figure}
+We focus on this simulation in order to underline one feature of this RD system. The whole setting is symmetric with respect to the $y$ axis, therefore the solution obtained should still be valid reflecting it. The solution here is not symmetric as expected because the slightly imperfection, in evolution is propagated and leads to different patterns between the right and left side of the four cells.
+% 2022-01-23_16-53-21
+% \towrite{io: forse questo rispetto a quelli dopo mette evvidenza dell'importanza solita de gradiente e max di auxina su dove si collocano gli spot.  lo si può confrontare con \ref{fig:4c_gradmid_beta0} molto diverso, strano ...
+% I risultati in \ref{fig:4c_gradD_sameI} e \ref{fig:4c_gradD_diffI} a confronto fanno vedere come sia influente l'inizializzazione, ovvero flusso dalle cellule di sinistra a quelle di destra e incrementa l'instabolità e la formazione di spot? .}
+
+A completely different result is obtained with the difference in the initial concentrations of ROPs, as in \eqref{eq:initstate4}; the discrepancy generates flux between neighboring cells in the direction of the auxin gradient.
+\begin{figure}[t]
+    \centering
+    \subfloat[$t = 50s  $\label{14c_gradmid_diffI}]{\includegraphics[scale=0.15]{cap3/2022-01-23_16-53-21/frame.0050.png}}
+    \quad
+    \subfloat[$t = 100s$ .\label{24c_gradmid_diffI}]{\includegraphics[scale=0.15]{cap3/2022-01-23_16-53-21/frame.0100.png}}
+    \quad
+    \subfloat[$t = 200s$ .\label{34c_gradmid_diffI}]{\includegraphics[scale=0.15]{cap3/2022-01-23_16-53-21/frame.0200.png}}
+    \quad
+    \subfloat[$t = 499s$ .\label{44c_gradmid_diffI}]{\includegraphics[scale=0.15]{cap3/2022-01-23_16-53-21/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.4]{cap3/2022-01-23_16-53-21/legenda.png}}
+    \caption[4cell RR Active ROPs - mid gradient, different initial state]{Active ROPs $u$ evolution with RR algorithm solver on 4 cells system with $\alpha$ maximum in $x = 70 \mu m$ and different initial state.}
+    \label{fig:4c_gradmid_diffI}
+\end{figure}
+Results in Figure \ref{fig:4c_gradmid_diffI}, obtained with openened channels and initial different concentrations, show a more symmetric and unified pattern formation, which is more feasible with respect to the one obtained whe  neglecting cells communications presented in Figure \ref{fig:4c_gradmid_beta0}. Even if the system is homogeneus with respect to line $y = 30$ at the beginning, the spot formed at the end does not maintian this symmetry. A possible reason is the gradient in $y$ direction because of open channels; it makes the upper and lower part evolve differently.
+% \towrite{non sicura di questo commento. da rivedere}
+
+We then set the system with auxin maximum located at the right border, as follows:
+\begin{equation*}
+  k_{20} \alpha(x) = k_{20} exp\left(\nu \frac{x-x_0}{L_x} \right) \mathbb{1}(x\leq x_0) \ \ \text{, with} \ \ x_0 = 2 L_x,
+\end{equation*}
+and we keep the initialization as in \eqref{eq:initstate4}.
+% As expected, without difference in the initial concentrations no flux between left and right cells is generated and spots are formed mainly due to the immediate influence of auxin gradient; in Figure \ref{fig:4c_gradD_sameI} is shown that a front is formed at the extreme right side and then it breaks into spots driving towards auxin minimum.
+% same initial state:  $ U_1^0 = U_2^0 = U_3^0 = U_4^0 = u^0 $
+% 2022-03-07_09-46-14 grad a destra same init da confrontare con dopo
+% QUESTO DECISO DI TOGLIERLO
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 50s  $\label{14c_gradD_sameI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_09-46-14/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 100s$ .\label{24c_gradD_sameI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_09-46-14/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 200s$ .\label{34c_gradD_sameI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_09-46-14/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 499s$ .\label{44c_gradD_sameI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_09-46-14/frame.0499.png}}
+%     \caption[4cell RR Active ROPs - inverse gradient, same initial state]{Active ROPs $u$ evolution with RR algorithm solver on 4 cells system with $\alpha$ maximum in $x = 140 \mu m$ and same initial state.}
+%     \label{fig:4c_gradD_sameI}
+% \end{figure}
+% different intial state: $ U_1^0 = U_2^0 = 2 u^0, U_3^0 = U_4^0 = u^0 $
+% % 2022-03-07_09-47-49 grad a destra init u1 = u2 = 2 u0
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 50s  $\label{14c_gradD_diffI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_09-47-49/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 100s$ .\label{24c_gradD_diffI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_09-47-49/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 200s$ .\label{34c_gradD_diffI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_09-47-49/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 499s$ .\label{44c_gradD_diffI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_09-47-49/frame.0499.png}}
+%     \caption[4cell RR Active ROPs - inverse gradient, different initial state]{Active ROPs $u$ evolution with RR algorithm solver on 4 cells system with $\alpha$ maximum in $x = 140 \mu m$ and different initial state.}
+%     \label{fig:4c_gradD_diffI}
+% \end{figure}
+%
+% 2022-03-07_13-07-00 sto facendo con inti meno diversa ovvero u1 = u2 = 1.5 u0
+% Different pattern formation is generated with different initial concentrations in direction of the auxin gradient, as in \eqref{eq:initstate4}.
+Figure \ref{fig:4c_gradD_diffI} shows that active ROPs are formed both because of gradient of auxin and because of fluxes between neighboring cells. Indeed, on one hand we again observe patches at the extreme right side where auxin maximum is located. On the other hand, at the transverse interface, auxin level is low and one should not expect spontaneous spot formation. Still, the difference at the beginning generates a gradient of ROPs along the $x$ direction that cooperates with auxin and induces new hotspots at the interface of the cells.
+
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 50s  $\label{14c_gradD_diffI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_13-07-00/frame.0050.png}}
+    \quad
+    \subfloat[$t = 100s$ .\label{24c_gradD_diffI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_13-07-00/frame.0100.png}}
+    \quad
+    \subfloat[$t = 200s$ .\label{34c_gradD_diffI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_13-07-00/frame.0200.png}}
+    \quad
+    \subfloat[$t = 499s$ .\label{44c_gradD_diffI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_13-07-00/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.4]{cap3/2022-03-07_13-07-00/legenda.png}}
+    \caption[4cell RR Active ROPs - inverse gradient, different initial state]{Active ROPs $u$ evolution with RR algorithm solver on 4 cells system with $\alpha$ maximum in $x = 140 \mu m$ and different initial state.}
+    \label{fig:4c_gradD_diffI}
+\end{figure}
+This is a first result that sustains the idea that a self-generated spot formation of ROPs may be induced not only by a gradient of auxin, but also by a gradient of ROPs itself.
+% 2022-03-07_13-09-39 same init ma canale in mezzo più largo eps y = 3
+% Same initial state but bigger channel in y direction: $\epsilon_y = 3$ TOLTO
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 50s  $\label{14c_chanY_sameI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_13-09-39/frame.0050.png}}
+%     \quad
+%     \subfloat[$t = 100s$ .\label{24c_chanY_sameI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_13-09-39/frame.0100.png}}
+%     \quad
+%     \subfloat[$t = 200s$ .\label{34c_chanY_sameI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_13-09-39/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 499s$ .\label{44c_chanY_sameI}]{\includegraphics[scale=0.15]{cap3/2022-03-07_13-09-39/frame.0499.png}}
+%     \caption[4cell RR Active ROPs - with $\epsilon_y = 3$, inverse gradient, different initial state]{Active ROPs $u$ evolution with RR algorithm solver on 4 cells system with $\alpha$ maximum in $x = 140 \mu m$, same initial state and $\epsilon_y = 3$.}
+%     \label{fig:4c_chanY_sameI}
+% \end{figure}
+%
+% \towrite{Confrontandolo con \ref{fig:4c_gradD_sameI} sembra che essendoci un canale più ampio in direzione y, qua è più difficile che si creino gli spot così ben definti come prima o più semplicemente c'è la stessa dinamica ma leggermente in ritardo qua.
+%
+% forse ha senso farlo con canale più ampio e diff init? salterei questo ultimo. perchè non dice tanto di nuovo.
+% }
+% 2022-03-06_16-32-46 grad a destra same init ma canale fatto sbagliato solo a sinistra x
+% 2022-03-06_16-33-54 grad a destra init u1 = u2 = 2 u0 ma canale sbagliato solo a sinistra x ...
+% canale εx = 5,ax = 30, alpha_RR = 1, εy = 1,ay = 10
+
+\textbf{Auxin with moving maximum position}
+
+We finally present for the multi-cellular system composed by four cells the results obtained by setting the system with initial state as defined in \eqref{eq:initstate4} and under the following auxin distribution:
+\begin{equation*}
+  k_{20} \alpha(x,t) = k_{20} exp\left(-\nu\frac{x-x_0}{L_x}\right)  \mathbb{1}(x\geq x_0) + k_{20} exp\left(\nu \frac{x-x_0}{L_x}\right) \mathbb{1}(x\leq x_0),
+\end{equation*}
+with maximum position $x_0(t) = \frac{2 L_x}{T_{max}} t$. The idea behind this attempts is similar to the ones presented before with a two cells system. Auxin distribution may change in time because of other biological precesses. Other works stated the relevance of maximum location \cite{article:Veronica}. Here we impose an auxin gradient that crosses the system, with maximum moving from the extreme left side towards the right side.
+
+In order to appreciate the dynamics observed, the simulation has to be compared with results under fixed auxin distribution, having maximum at $x = 70 \mu m$ or at the right side, presented in Figures \ref{fig:4c_gradmid_diffI} and \ref{fig:4c_gradD_diffI} respectively.
+
+Firstly, in Figure \ref{fig:4cTmax} auxin gradient influence on pattern formation is confirmed: it defines where stripes or patches locate and the velocity spots travel. A second stripe and subsequent spots emerge from homogeneous null concentration, after auxin maximum reaches the interface, probably thanks to the influence of open channels. The interplay between multi-cellular structural communication modelled and auxin distribution brings an instability of the system and patches are formed at the boundaries and transported through the system.
+
+This result confirms the need to consider properly cell communication together with intra-cellular dynamic, in order to devise a complete model for root-hair initiation in a multi-cellular system.
+
+We present in Tables \ref{table:summaryRes} and \ref{table:4c_summaryRes} a scheme of the results in order to give to the reader an overview of the motivations and main conclusions of each test.
+% Channels are characterized by usual parameters:
+% $$\epsilon_x = 5,  a_x = 30,  \epsilon_y = 1, a_y = 10$$
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 50s$\label{14cTmax}]{\includegraphics[scale=0.15]{cap3/2022-01-27_09-42-34/frame.0025.png}}
+    \quad
+    \subfloat[$t = 100s$\label{24cTmax}]{\includegraphics[scale=0.15]{cap3/2022-01-27_09-42-34/frame.0050.png}}
+    \quad
+    \subfloat[$t = 200s$\label{34cTmax}]{\includegraphics[scale=0.15]{cap3/2022-01-27_09-42-34/frame.0100.png}}
+    \quad
+    \subfloat[$t = 400s$\label{44cTmax}]{\includegraphics[scale=0.15]{cap3/2022-01-27_09-42-34/frame.0200.png}}
+    % \quad
+    % \subfloat[$t = 500s$ .\label{44cTmax}]{\includegraphics[scale=0.15]{cap3/2022-01-27_09-42-34/frame.0250.png}}
+    \quad
+    \subfloat[$t = 524s$]{\includegraphics[scale=0.15]{cap3/2022-01-27_09-42-34/frame.0262.png}}
+    \quad
+    \subfloat[$t = 600s$]{\includegraphics[scale=0.15]{cap3/2022-01-27_09-42-34/frame.0300.png}}
+    \quad
+    \subfloat[$t = 750s$]{\includegraphics[scale=0.15]{cap3/2022-01-27_09-42-34/frame.0375.png}}
+    \quad
+    \subfloat[$t = 999s$]{\includegraphics[scale=0.15]{cap3/2022-01-27_09-42-34/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.5]{cap3/2022-01-27_09-42-34/legenda.png}}
+    \caption[4cell RR Active ROPs - auxin time-dependent]{Active ROPs $u$ evolution with RR algorithm solver on 4 cells system with auxin maximum moving to the right.}
+    \label{fig:4cTmax}
+\end{figure}
+
+\begin{table}[H]
+  \caption*{\textbf{Table summarizing presented results}}
+    \begin{tabular}{|p{3cm} |l l p{3cm}|}
+    \hline
+%    \rowcolor{bluepoli!40}
+    \textbf{Experiment} & \textbf{Motivations} & \textbf{Main conclusions} & \textbf{Figures} \T\B \\
+    \hline \hline
+    % \textbf{E1} - RRclassic & Simulate free-flux & Too loose boundaries & \ref{fig:RR}  \T\B\\
+    % \hline
+    \textbf{E1} & Simulate no-flux & \parbox[t]{4cm}{Stagnant cells \\ behaviour \T\B} & \ref{fig:beta0}  \T\B\\
+    \hline
+    \textbf{E2} - vary $a_x$ & \parbox[t]{4cm}{Tuning channels \\ parameters} & \parbox[t]{4cm}{Importance of channel \\ location w.r.t \\ auxin gradient \T\B} & \ref{fig:a5} - \ref{fig:a20} -\ref{fig:a30} - \ref{fig:a34}  \T\B\\
+    \hline
+    \textbf{E3} - vary $\epsilon_x$ & \parbox[t]{4cm}{Tuning channels \\ parameters} & \parbox[t]{4cm}{Amplitude of channels \\ is less relevant} & \ref{fig:a5epsi5} - \ref{fig:a30epsi5} \T\B\\
+    \hline
+    \textbf{E4} - increase $\alpha_{u,vRR}$ & \parbox[t]{4cm}{Tuning channels \\ parameters} & Symmetry increase & \ref{fig:a34alpha35} \T\B\\
+    \hline
+    \textbf{E5} & \parbox[t]{4cm}{Test detailed \\ sparse channels} & \parbox[t]{4cm}{Check good approximation of simple channels \T\B} & \ref{fig:multich} \T\B\\
+    \hline
+    \textbf{E6} & \parbox[t]{4cm}{Test P mode \\ vs NP mode} & \parbox[t]{4cm}{Considerable \\ difference with \\ relevant channels \T\B} & \ref{fig:NPvsP2} \T\B\\
+    \hline
+    \textbf{E7} - $k_{20}$ & \parbox[t]{3cm}{Observe dependence of system on $k_{20}$} & \parbox[t]{4cm}{Increase of multiple spots and auxin advection power at borders \T\B} & \ref{fig:k20_04} - \ref{fig:k20_039} - \ref{fig:k20_1.3562} - \ref{fig:lk20_1.3562}\T\B\\
+    \hline
+    \textbf{E8} auxin time-dep & \parbox[t]{4cm}{Simulate \\ periodic auxin: \\ $T_{pa} = 100s, 200s $} & \parbox[t]{4cm}{Too small period} & \ref{fig:auxT100} - \ref{fig:auxT200} \T\B\\
+    \hline
+    \textbf{E9} auxin time-dep & \parbox[t]{4cm}{Simulate \\ periodic auxin: \\ $T_{pa} = 40 min$} & \parbox[t]{4cm} {Realistic driving spot} & \ref{fig:LauxT40m} \T\B\\
+    \hline
+    \textbf{E10} auxin time-dep & \parbox[t]{4cm}{Simulate \\ soften change in $k_{20}$} & \parbox[t]{4cm}{Show a similar bending and breking spots} & \ref{fig:NHarctan} \T\B\\
+    \hline
+    \textbf{E11} auxin time-dep & \parbox[t]{4cm}{Simulate moving \\ auxin maximum \\ postion periodically \T\B} & \parbox[t]{4cm}{Multiple spots  periodically break} & \ref{fig:Amax3} \T\B\\
+    % \hline
+    % \textbf{E12} auxin time-dep & \parbox[t]{4cm}{Validate \\ interpretation of RR \\ vs monolithic problem \T\B} & \parbox[t]{4cm}{Different evolution \\ caused by \\ imperfections} & \ref{fig:mono} \T\B\\
+    \hline
+    \end{tabular}
+    \\[10pt]
+    \caption[Table summarizing RR results on 2 cells system]{}
+    \label{table:summaryRes}
+\end{table}
+
+\begin{table}[H]
+  \caption*{\textbf{Table summarizing presented results}}
+    \begin{tabular}{|p{3cm} |l l p{3cm}|}
+    \hline
+%    \rowcolor{bluepoli!40}
+    \textbf{Experiment} & \textbf{Motivations} & \textbf{Main conclusions} & \textbf{Figures} \T\B \\
+    \hline \hline
+    \textbf{E12} 4cells & \parbox[t]{4cm}{Simulate no-flux with right maximum auxin  \T\B} & \parbox[t]{4cm}{Stable spots form from break stripe  \T\B} & \ref{fig:4cbeta0} \T\B\\
+    \hline
+    \textbf{E13} 4cells & \parbox[t]{4cm}{Simulate no-flux with middle maximum \\ auxin} & \parbox[t]{4cm}{Spot location \\ depend on maximum location; no communication brings irregular spots \T\B} & \ref{fig:4c_gradmid_beta0} \T\B\\
+    \hline
+    \textbf{E14} 4cells & \parbox[t]{4cm}{Middle maximum \\ auxin with open \\ channels \T\B} & \parbox[t]{4cm}{Initial state gradient influence spot; symmetry issues \T\B} & \ref{fig:4c_gradmid_sameI} - \ref{fig:4c_gradmid_diffI} \T\B\\
+    \hline
+    \textbf{E15} 4cells & \parbox[t]{4cm}{Right auxin maximum with open channels \T\B} & \parbox[t]{4cm}{Both ROP flux and auxin gradient cooperate in spot formation \T\B} & \ref{fig:4c_gradD_diffI} \T\B\\
+    \hline
+    \textbf{E16} 4cells & Moving maximum auxin  & \parbox[t]{4cm}{Gradient of auxin and of ROPs influence spot appearence \T\B} & \ref{fig:4cTmax} \T\B\\
+    \hline
+    \end{tabular}
+    \\[10pt]
+    \caption[Table summarizing RR results on 4 cells system]{}
+    \label{table:4c_summaryRes}
+\end{table}
+
+% DUBBI
+% - RR classico, non lo nomino .. o si come confronto? prima e dopo interpolate totalmente diveros ... check slide 18
+% - beta nullo per confronto (no canali aperti)? slide 22 2cell-DD study
+% - risultati intermedi (presentazione 2cell-DD study slide 8-9-10; 12-16 forse sbagliate per vecchio uso interpolate)
+% - tentativi alpha neg e U,Vbar
+% -  slide 24: canali in mezzo poco significativi
+% - 2cell geomtric ... ma su sloide 59 aveva fatto un lungo discorso che poco ricordo, forse che essendoci differenza allora trasporto allora pallocchi di più
+% - esagonali: carini ma auxina doveva essere fatta radiale quindi poco senso slide 70-71-72
+
+
+% try PRM for two cell
+% - varia a -> far vedere che sensibilmente cambia se ...
+% - varia epsilon -> meno impo ...
+% - varia alphaRR -> impo per significato fisico quindi che ha senso tunnarlo; confronta a parità di canali per far vedere cosa succede aumentandolo o no e dove
+% - tentativi con canali strani: poco significativi se vogliamo dire che quei beta sono una "media" dei canali attivi; uno fa vedere che velocizza perchè così lo spot si muove e non è localizzata solo all'inizio l'influenza del canale aperto (forse quello carino ...) tipo slide 29-30 o prima 28
+% - mode parall. vs mode normale: confronto? (di fatto sono leggermente diversi, ce lo aspettiamo per sensibilità del sistema ma bah)
+% - varia k20 con 2 cell: leggeri cambiamenti, forse ha senso perchè nel paper viene citato quel prm e è una validazione del fatto che ancora fisicamente ha valore nel nostro setting nuovo (~) slide 34-36. slide 35 sbagliata. nei paper k2 lo faceva variare partendoda una striscia e osserva la formazione di più spot (allineari con asse x ..), noi emh no. dopo abbiamo fatto così cioè cambiato k2 solo da un certo time in poi: carine slide 39 dove si vedono più spot come negli altri paper (confronti, non saprei poi "fisicamente" cosa rappresentano)
+% - 4 cells: tentativo intermedio beta = 0 slide 52, confrono parall e non slide 53 (confronti intermedi forse non necessarissimi)
+% - 4 cells, auxina diversa slide 54-55-56 (non so se ha senso, test che si può citare). strana la cosa dell'ibrido parall e non totalmente diverso. bella in 56 che c'è come da un lato gradiente di auxina che vorrebbe formare pallocchi a sinistra dall'altro eprò ul trasporto al bordo (same init dovrebbe far vedere il caso senza trasporto perchè sono uguali)
+% - slide 57: diversi init utile perchè rappresenta la prova che maggior flusso è dato dalla differenza tra le due soluzioni (anche con canali in mezzo)
+% - grad auxina diverso 2 cell: slide 61 vedi che viene uguale nella'ltro verso -> prova importanza grad ?
+% - auxina tempo dep: ? slide 62-64 periodici non chiara però se sensati e interpretazione (periodo ...); corrisponderebbero a formazioni periodiche di spot
+% - auxina tempo dep con max che si sposta -> giustificati da paper veronica e altro? slide 65  slide 68 carino che poi si vede formarsi spot dove prima sembrava non ci fosse più ROP, slide 69 ha canali diversi bah su y
+
+
+% COMMENTI IMPO
+% the role of the gradient seems just to be that of controlling the location of the
+% localised pattern, through a slow-time-scale patch-drift equation. The method we have applied
+% shows that the gradient indirectly plays a role on transverse instability via the location points.
+% In addition, the role of the gradient seems just to be that of controlling the location of the
+% localised pattern, through a slow-time-scale patch-drift equation. The method we have applied
+% shows that the gradient indirectly plays a role on transverse instability via the location points.
+% That is, the gradient controls location and is also strongly involved in specifying then number
+% of transverse unstable modes. (già messo in cap1)

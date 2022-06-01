@@ -1,0 +1,188 @@
+\chapter{Introduction}\label{cap:intro}
+This thesis develops a model and some numerical methods for biological systems. The specific target of the study is a system describing initiation of hair-like protrusions in the epidermal cells of the roots of the model plant Arabidopsis thaliana, studied at sub-cellular level.
+Arabidopsis is a model genetic organism topic of an internationally coordinated project, providing large collections of mutants available for analysis \cite{intra1_R:Arabook}. The study of root-hairs (RH) is agriculturally important for understanding nutrient anchorage and uptake of plants, in order optimize absorption.
+
+In the following chapter we provide a description of the biological field of interests for this thesis. Firstly we adress the attention to the root-hair initiation process and to the proteins involved in location of sources for this protuberance. Hair formation is related to the activation and deactivation of some proteins involved. We summarize the mechanism of activation and deactivation through a Reaction-Diffusion (RD) model, detailing all parameters and coefficients involved. In particular, we focus on hormone auxin role in this process and on its transport model through cells. We present previous analysis made over the RD system and motivate the objective of this thesis.
+
+\section{Biological background} \label{sec:bio}
+We provide a brief overview on the biological background our model and studies are inserted in.
+During the development of multicellular organisms, it is of big interest and importance how boundaries are formed between neighboring groups of cells, divided according to their distinct functions, in order to control organ and body growth and functions \cite{Vero:4_celldivision}. At the organ level, three distinct morphological zones can  be identified in the Arabidopsis primary root: the merismatic zone, where new cells are formed in the meristem, located close to the root tip; the elongation zone, where cells after a number of divisions move through and rapidly increase in size, mainly in length; and the mature zone, where cells stop growing and the RHs are produced \cite{Vero:7_root, Vero:8_meristem}. In Figure \ref{fig:root} a schematic representation of the described different morphological zones is given.
+% \begin{figure}
+%   \includegraphics[scale=0.5]{cap1/vero.png}
+%   \caption{synthetic rappresentation of for the Arabidopsis root: DZ, differentiation zone; EZ, elongation zone; MZ, meristematic zone.}
+%   \label{}
+% \end{figure}
+\begin{figure}[H]
+    \centering
+    \subfloat[\label{1root}]{\includegraphics[scale=0.3]{cap1/vero.png}}
+    \quad
+    \subfloat[\label{2root}]{\includegraphics[scale=0.35]{cap1/band_growth.png}}
+    \caption[Arabidopsis root scheme]{Synthetic rappresentation of the Arabidopsis root: differentiation zone (DZ); elongation zone (EZ); meristematic zone (MZ). Figure reproduced from \cite{vero:auxintrasnport, plant:Band_multi}.}
+    \label{fig:root}
+\end{figure}
+All the different steps of growth are initiated, influenced, activated or deactivated by different hormones, regulating both cell division in the root meristem and cell elongation in the elongation zone.
+In particular, hormones' distributions within plants tissues affect plants growth \cite{Vero:4_celldivision, intra2:12_GTP}. For example, in regions where cells undergo a rapid expansion, such as the meristem or the elongation zone, hormone gradients can arise due to the interplay between dilution, diffusion, production, decay, and receptors binding \cite{Vero:6_signal}.
+Therefore, characterizing growth regulation is a key point in order to understand deeply the dynamics of particular kind of specialized proteins and hormones,together with their mutual regulation both within and between cells. Regarding this, type differentiation and position strongly suggest the presence of cell-to-cell communications, which are important for formation and separation of cells.
+
+% (VERONICA CONCLUSIONS)
+% Here, we infer that a well-defined and tightly controlled minimum of the
+% hormone auxin acts as a signal to establish the position of the
+% transition zone by controlling the developmental switch from
+% cell division to cell differentiation. We provide the mechanistic
+% and genetic basis of how another hormone, cytokinin, controls
+% and positions this auxin minimum, thus regulating root size.
+
+%  paper growth
+%  h ormone and development distributions (1). within Although plant many tissuesstudies affect plant havegrowth
+%  inves-
+% tigated the influence of nonuniform distributions of the hormone
+% auxin, gradients in other hormones also govern plant growth (2,
+% 3). In some regions of the plant, cells undergo rapid expansion
+% that dilutes their contents, including hormones. In these regions,
+% organ-scale hormone gradients can arise due to the interplay
+% between dilution, diffusion, production, decay, and receptor
+% binding. Such complex dynamics govern in particular the distri-
+% bution of the plant hormone gibberellin, which is involved in
+% a diverse range of developmental processes including germina-
+% tion, organ development, and growth
+% ... Understanding how gibberellin and DELLA are distributed
+% within a plant organ would be key to characterizing growth regula-
+% tion.
+
+\subsection{Root hairs initiation}\label{sec:RH initiation}
+Root hairs are protuberances that outgrow from root epidermal surfaces; example of mutants with multiple RH sites are shown in Figure \ref{fig:RH}, togetehr with a scetch of tissue organisation. In Arabidopsis, these protuberances can grow up to more than 1mm in length and approximately 10–20$\mu m$ in diameter \cite{intra1_R:Arabook}.
+\begin{figure}[H]
+    \centering
+    \subfloat[\label{1RH}]{\includegraphics[scale=0.3]{cap1/phd_RH1.png}}
+    \quad
+    \subfloat[\label{2RH}]{\includegraphics[scale=0.42]{cap1/phd120_RH.png}}
+    \quad
+    \subfloat[\label{3RH}]{\includegraphics[scale=0.3]{cap1/phd_1.png}}
+    \caption[Root-hairs initiation]{ (\ref{1RH}) A mutant RH cell; asteriscs show multiple sites of RH initiation in a single root hair cell. Figure reproduced from \cite{phd:120} - (\ref{2RH}) hair-forming cell with three RH initiation locations. Figure taken from \cite{phd:120} - (\ref{3RH}) schematic rappresention of a plant root with tissue organisation. Figure reproduced from \cite{jones}.}
+    \label{fig:RH}
+\end{figure}
+
+A single hair is formed in each root hair cell, at a set distance equal to 20$\%$ the way along the cell from its basal end (i.e., the end closest to root tip) \cite{phd:119_root}.
+
+The precursor for a strong symmetry-breaking is the formation of a single localized patch of activated small guanine nucleotide-binding proteins (small G-proteins). These type of proteins are known collectively as Ras homologous (Rho) of plants, synthetically called ROPs \cite{phd:17_GTP, intra2}. Their role is transmission of chemical signals in and out a cell, in order to effect a number of changes inside the cell \cite{phd:67_hill}. ROPs represent indeed an example of the receptors, controlling a wide variety of cellular processes and contributing strongly to crucial cellular level tasks such as morphogenesis, movement, wound healing, division and, of particular interest here, cell polarity generation \cite{phd:102_rop}. Working as molecular “connectors”, these proteins shift between active and inactive states, regulating both the initiations process of root-hairs and the direction of the tip growth.
+
+\subsection{Pattern formation}
+A big range of examples of pattern structures formation in open systems belongs to completely different fields of applications \cite{phd:4_pattern}. As a result, the factors regulating and influencing pattern formation have been observed on several physical scales and theoretically explained. Nonetheless, biology brings up a yet larger variety of interesting models and morphogenesis processes that have been explained using pattern formation theory. In our specific system, we refer to spots or stripes, collectively called patches, a collection of structures where the active ROP is found at elevated concentration inside the cell. The formation of a patch of small G-proteins ROPs is the first visible sign that a root hair cell has initialized its formation process on the cell membrane \cite{intra1_R:13_pattern}. Their spatial location and change in time is the main output of interest of our model \cite{intra2:4_victor, payne, intra2:12_GTP}.
+
+Still not completely understood, the spatio-temporal dynamics of those spots and stripes can be recovered through RD models. From a biological context, cells appear to be influenced by long-range gradients that indicate morphogens where to be placed, where to concentrate the most and therefore where to locate patches \cite{intra:Krup}. In addition, the high concentration zones are pre-determined also by positional information coming from boundaries (\cite{jones}). All these considerations over factors influencing ROPs pattern formation have been studied at sub-cellular level and summarized in a partial differential model \eqref{eq:FM}.
+
+\section{A ROPs physical model}
+We focus on the root-hair initiation stage mechanism. ROPs localization starts to produce a protuberance, which leads to the softening of the cell wall and therefore to hair formation. There are three main forms ROPs can be found: active, when it is bound to GTP regulator protein, inactive when it is bound to GDP regulator protein and free, when it does not appear in the growth path region. ROPs can switch between these states, cycling from  the GTP-bound  active form, attached to the cell membrane, to the GDP-bound therefore inactive form, which lie in the cytoplasm  \cite{phd:67_hill, intra2:12_GTP}.
+% (qua si potrebbe mettere la sua \cite{phdthesis:victor} figura, non mi faceva impazzire, co n scritto sotto eventualmente tutta la descrizione che lui fa delle frecce)
+
+\begin{figure}
+  \centering
+  \includegraphics[scale = 0.4]{cap1/ROPprocess.png}
+  \caption{Scheme taken from \cite{phdthesis:victor} of the binding process and cycling between active- and inactive- state of ROPs}
+  \label{fig:process}
+\end{figure}
+
+The Figure \ref{fig:process} illustrates the biochemical process whereby active ROPs and free ROPs classes are able to become either inactive or get unbound, together with other processes necessary for the cell membrane softening and sequent RH formation \cite{phd:97_airop}.
+
+\subsection{The ROPs Reaction-Diffusion model system} \label{sec:intromodel}
+
+The mathematical form chosen to model this biological process is a Reaction-Diffusion system of equations. Indeed, diffusion and reaction when acting together, show symmetry breaking of systems and are typically used for describing the process of interaction in which an active agent is inhibited by another one, diffusing more slowly \cite{phd:97_airop}; A. Turing proposed an interaction between two chemical agents, having time and space dependent concentrations \cite{phd:131_turing}. This kind of systems has been widely studied; in particular, Schnakenberg model \cite{vic:Schnak}, one of the most widely studied models undergoing Turing-like pattern formation schemes, can display features considered biologically relevant. The initiation process  model, discussed in Section \ref{sec:RH initiation}, was proposed by Payne \& Grierson \cite{payne} in the form of a reaction-diffusion system for inactive (free) and active (membrane bound) ROPs \cite{intra2:15_Schnak}.
+
+% \towrite{questo da alleggerire, visto che poi riprendiamo tutto}
+% We approximate the long thin RH cell by a 2D rectangular domain $\Omega \equiv \left[0,L_x\right] \times  \left[0,L_y\right]$, with $L_x \gg L_y , L_y = \sqrt{L_x^2 / s }$, being $s $ high aspect ratio $s = \left(L_x / L_y \right)^2 = 5.5$. We denote with $u\left(\mathbf{X}, T\right)$ the concentration of active ROP and with $v\left(\mathbf{X}, T\right)$ the concentration of inactive ROP, evaluated at time $T > 0 $ and in point $\mathbf{X} = \left(x,y\right) \in \Omega $; we distinguish between membrane and cytoplasm through separated diffusion constants $D_1$ and $D_2$, for the bound-active and unbound-inactive ROPs respectively.
+% \towritre{fino a qua}
+Guanine nucleotide Exchange Factors (GEFs) and GTPase-Activating Proteins (GAPs) regulate the activity of ROPs to control cellular functions. GEFs turn on signaling by catalyzing the exchange from G-protein-bound GDP(inactive-state) to GTP (active-state), whereas GAPs terminate signaling by inducing GTP hydrolysis. Therefore the rate at which ROPs are activated and deactived depends on GEF and GAPs proteins.
+% Fundamental parameters characterizing the model are:
+% \begin{itemize}
+%     \item the constant rate for deactivation of active ROPs, $k_{GAP} = c$;
+%     \item the rate of activation of inactive ROPs, $k_{GEF}$;
+%     \item the rate of production of inactive ROP, $b$;
+%     \item the constant rate at which active ROP is recycled or used up for cell membrane softening and subsequent hair formation, $r$.
+% \end{itemize}
+% The second parameter is the one that requires more attention to be modeled. In particular,
+
+The rate of activation of inactive ROPs induced by GEF of each Rho species is modelled by a Hill function \cite{phd:67_hill}:
+\begin{equation}\label{eq:hill}
+    k_{GEF} = k_1 + \frac{k_2 U^q}{1+k_3 U ^q}
+\end{equation}
+where $k_1$ is the activation rate, $k_2$ represents autocalatytic acceleration, $k_3$ is a saturation coefficient and the power q is typically chosen equal to 2 to preserve the nonlinearity of the model. Payne \& Grierson \cite{payne} took a simplified version of \eqref{eq:hill} by taking $k_3 = 0$ and allowing only one species of ROP to be modelled \cite{phd:67_hill}. In plants, although there are several different kinds of ROPs, their activation is not thought to involve cross talk, therefore this simplification is justified. Inactive ROP is activated at rate $k_{GEF}$, therefore the activation step is assumed to be proportional to $k_{GEF} v = k_1 v + k_2 u^2 v$.
+
+Experimental evidence suggests a longitudinal spatially decaying gradient of auxin which Payne \& Grierson postulate modulates the autocatalytic step. According to this assumption, we suppose that parameter $k_2$ is spatially dependent in the following way:
+\begin{equation}
+    k_2 = k_{20} \alpha \left(x, y\right),
+\end{equation}
+where $k_{20}$ measures the overall auxin level within the cell and $\alpha$ is a smooth function that represents the spatial distribution of auxin, normalized, meaning that:
+\begin{equation}\label{eq:jones auxina}
+    \alpha(0,y) = 1, \ \frac{\partial \alpha}{\partial x} < 0.
+\end{equation}
+% Under all previous assumptions, we obtain the following reaction-diffusion system of equations:
+% \begin{equation} \label{eq:Fundamental model}\begin{aligned}
+% \left\lbrace
+% \begin{matrix}
+% \partial_t u = & D_1 \Delta_s u + k_{20} \alpha(x,y)u^2 v - \left(c+r\right) u + k_1 v  & \ in \ \Omega\\
+%     \partial_t v = & D_2 \Delta_s v - k_{20} \alpha(x,y) u^2 v - k_1 v + c u + b   & \ in \ \Omega.
+% \end{matrix}
+% \right.
+% \end{aligned}\end{equation}
+%
+% We have defined $\Delta_s = \partial_{xx} + s \partial_{yy}$  and, from now on, spatial derivates operators will be scaled similarly according to the aspect ratio $s$. In this model Neumann homogeneous boundary conditions are imposed:
+% \begin{equation*}
+%     D_1 \nabla_s u \cdot \mathbf{n} = 0, \ \ \ D_2 \nabla_s v \cdot \mathbf{n} = 0 \ on \ \partial \Omega
+% \end{equation*}
+The RD model suppose that ROPs do not diffuse through the cell wall. We will deal with more complex boundary conditions in Chapter \ref{cap:3}. The system modelled so far is for a ROP bounding on-and-off switching fluctuation. This process is assumed to take place on the cell membrane and RH cells are flanked by non-RH cells. As far as we know, no ROP exchanges have been reported,  \cite{intra1_R:Arabook}, thus homogeneous Neumann boundary conditions are assumed everywhere.
+
+\section{Auxin}
+The key feature of the previously described mechanism is that the activation step is postulated to be dependent on the concentration of the plant hormone auxin. Auxin is a plant hormone involved in a large number of physiological processes and its spatial distribution is critical for plant morphogenesis \cite{vero:auxintrasnport, farcot:14, plant:Mironova}; for example, it stimulates growth and regulates fruit setting, budding, side branching and the formation of flower parts \cite{Vero:31_auxinpolarity, vero:auxintrasnport}. Root-hairs outgrowth is one of the processes stimulated by auxin. Measurements of auxin through sensors are impossible to obtain; still a difference between the location of auxin in- and out-pumps in RH cell and non-RH cells has been observed. Thus it is supposed in \cite{jones} that there is a decreasing gradient of auxin from the apical end of each RH cell, as stated in \eqref{eq:jones auxina}.
+
+A simple transport process is assumed to govern the auxin flux through a RH cell, which postulates that auxin diffuses within cells with rate $D_{\alpha} = 10^2 \mu m^2/s$, much faster than ROPs. This implies that ROPs and auxin speeds belong to different time-scales \cite{plant:Alim}. In many studies of ROPs model auxin dynamics have been neglected, considering its spatial distribution to be at steady state and therefore time independent \cite{intra2, intra1_R, intra:Krup}.
+
+There are various proofs that this simplification can be considered qualitatively reasonable. For example, in \cite{phdthesis:victor} it was shown that qualitative results are insensitive to different piecewise smooth non-increasing functional forms of $\alpha $ such as \eqref{eq:jones auxina}, for the same difference $\alpha(0) - \alpha(1)$. At the beginning of our simulations we have followed similar assumptions, considering auxin distribution at steady-state and only space dependent.
+% In the last attempts of \ref{cap3:results} we considered also a time dependent auxin distribution and finally in \ref{cap:4} we instead considered a full dynamic system for auxin.
+
+
+\subsection{Auxin transport model} \label{sec:auxtra}
+Actually, auxin distribution in tissues is complex and little is known about specific details of its flow within a cell. Various works underline the role of auxin gradient in developmental biology and how it is influenced by active transport between neighboring cells \cite{Mironova:6, Mironova:7}. There are different gens responsible for polar transport of auxin, known as carriers proteins: PIN-FORMED(PIN) in efflux, AUX/LAX in influx and MDR/PG in both \cite{phdthesis:victor}. One of the most studied are the integral membrane PIN transporters \cite{plant:Mironova, plant:Alim}; their distribution along the cell membrane has a not fully-known mechanism, but it has been intensively observed that PINs location is correlated with local differences in auxin concentration \cite{farcot:14}. Therefore in previous works and here, we focus the attention on PIN influence on auxin dynamics, neglecting the other possible influential proteins.
+
+As peculiarity of auxin model it has also been observed a feedback of auxin in controlling its PIN carriers expression, both influx and efflux \cite{plant:Mironova}. The reflected flow mechanism relies on the presence of positive and negative regulations between auxin and its carriers. In this way it provides for self-organization of the observed auxin distribution in the root and explains much of the positional information in root patterning \cite{Mironova:25}.
+
+Moreover, concerning the mutual influence between auxin and its carriers, there are two types of models describing the influence of auxin on PIN distribution on cell membrane:
+\begin{itemize}
+    \item Concentration-based models: the rate of accumulation of PIN depends on the local differences of auxin concentration or on the relative level of auxin between neighboring cells \cite{farcot:25}.
+    \item Flux-based models: the accumulation of PIN on cell membranes is function of the flux of auxin through these \cite{farcot:27}.
+\end{itemize}
+
+The model employed in \cite{plant:Farcot} is of the second type and according to it auxin can enter the cells by free diffusion, whereas the intermediate active efflux PIN transporters distributed on cell membrane is necessary to leave the cells. Similarly as ROPs system, a patterns may emerge from a nonpatterned situation and certain parameters setting leads to unsteady not-homogeneous auxin distribution. Analysis and studies regarding this topic were developed in \cite{plant:Farcot}.
+
+We have chosen as model for auxin-PIN dynamics the one developed in \cite{plant:Farcot}. More details and parameters characterizing the model chosen for auxin dynamics are given in Chapter \ref{cap:4}.
+
+% \towrite{ NON SO SE SERVE MOTIVARE LA SCELTA DI QUEL MODELLO RISPETTO AGLI ALTRI VISTI.
+% The first reason is that it gives a good insight on parameter choice for calibrating the system; secondly, it is a good compromise between much simplified model in \cite{plant:Alim} and }
+
+\section{Mathematical background}
+Some studies regarding the dynamics and stability of ROPs localized structures have been carried on through Turing bifurcations analysis, asymptotic analysis and some full time simulations \cite{intra2:14}.
+
+A lot of biological systems, similar to the one we focused on, have few insight on the precise parameters and factors characterizing the model and their precise quantification is not so easy achievable. The benefit of mathematical analysis such as Turing bifurcation analysis is helping to overcome the difficulties in analysing those systems, not being bound to a particular set of parameters. On the other hand, asymptotic analysis helps giving full parametrisation of only qualitative, experimentally observed features.
+
+Regarding ROPS pattern formation previous studies, there have been different points of interest. Payne \& Grierson, who derived the 1d mathematical model of ROPs kinetics, through simulations show that the active ROP variable tends to form patch-like states towards the apical end \cite{payne}. Their results highlight the influence of a gradient on the activation of ROPs, feature known as spots-pinning phenomena, and various patches show similarities with observed distribution of hair cells.
+In \cite{phdthesis:victor} the formation and dynamics of patches of activator have been explored both numerically and analytically, to give more insights of ROPs dynamics. Multiple results are given sustaining the validity of Payne \& Grierson model, particularly in capturing the process by which a patch of active ROP migrates from the apical cell boundary towards its wild-type position, where a RH actually forms. Evidence of instability of some states has been given, more precisely how a boundary patch of active ROP becomes unstable, replaced by an interior patch, in case cell length changes or auxin activation rate increases \cite{intra2:26, phdthesis:victor}.
+
+From previous results, gradient seems to have the role of controlling the location of the localized pattern, through a slow-time scale patch-drift equation. Moreover it was demonstrated that it indirectly plays a role on transverse instability via the location points, specifying also the number of transverse unstable modes.
+
+The 1D analysis of auxin gradient influence on pattern formation was extended into 2 dimensions and in \cite{intra2} it was inspected the stability of patterns to transverse perturbations or what other factors causing instabilities could be. In \cite{intra1_R} this analysis was extended, giving more evidences on how these 2D patterns are influenced by the spatially inhomogeneous auxin distribution; the asymptotic-numerical methodology developed for RD systems with spatially homogeneous coefficients was applied in this dimentionally extended setting.
+
+In general, reaction-diffusion equations with spatially dependent coefficients in nonlinear contributes are not easy to study analytically, therefore pattern formation in presence of spatial inhomogeneity is less well understood.
+
+\section{New model motivations}
+As we are interested in the biochemical processes and geometrical features that participate in RH initiation, the ROP model is derived via a reaction-diffusion approach in a non-homogeneous environment. Various previous studies have underlined the importance of considering this system in a 2D environment \cite{phdthesis:victor, intra2, intra1_R}. To recover precise information on location of patches and gradient influence at sub-cellular level, we decided to keep on solving fields representing active and inactive ROPs inside the cell, using Payne \& Grierson model \cite{payne}.
+
+On the other side, some studies regarding morphogenetic processes and proteins and hormones within cells  developed model for communication between cells. As stated in Section \ref{sec:auxtra}, the concentration- and flux-based models cited in \ref{sec:auxtra} follow a different approach compared with the one for RD system inside root-hair cell. In this kind of models, the unknown variable does not consider spatial dependance inside the singular cell and the resulting problems are simple ODEs.
+
+This approach is the only one studied until now for dealing with communication between cells and moreover it has not been studied yet a model for ROPs intercellular transport.
+
+The goal of our thesis is to find a detailed model for root-hair initiation, taking into consideration a pluricellular system in order to couple ROPs pattern formation system with a transport model for hormone auxin. The idea behind this thesis is to join together intracellular dynamics, preserving the detailed information on the patch locations, and multicellular coupling, to deal with influence from communicating cells.
+
+\section{Thesis outline}
+We started our analysis from the previous cited considerations on parametrization and stability of systems, such as the full set of parameters chosen in \cite{phdthesis:victor} and the model assumed for a single cell and for the auxin steady state distribution. We simulate the model using the Finite Element method and a semi-implicit method for time discretization, to tackle the nonlinearity of the system. We extended the model, taking into account more than 1 cell and developing a completely new model for communication between root-hair cells. Finally, we used our pluricellular model to test ROPs and auxin dynamics together.
+This thesis is structured as follows. In Chapter 2 we develop a full mathematical formulation for the RD system describing ROPs activation model in one single cell. In Chapter 3 we model the interactions between two or more cells, present the new mathematical method to treat a pluricellular system and respective results. In Chapter 4 we describe the biological details for auxin dynamics coupled with PIN-FORMED(PIN) proteins dynamics, join it with ROPs pluricellular model and show numerical results. Some conclusions are finally drawn in the last chapter.
+
+% All previous tests were implemented through \verb|FreeFEM|, an open-source partial differential equations solver written in C++(\cite{freefem}).

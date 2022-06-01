@@ -1,0 +1,123 @@
+\chapter{Codes instructions}
+
+\section{Running codes instructions - 1cell system}\label{sec:1code}
+
+We here give a brief explanation on how to run proper test and simulations with codes provided inside the repository at link \url{https://github.com/danieleavitabile/root-simulator}. Regarding singular cell pattern formation there are implemented two main codes:
+\begin{itemize}
+    \item \verb|1cell_stationaryTest.edp|: contains steps for solving the steady state system through Newton's method described in section \ref{sec:statSys}.
+    \item \verb|1cell_semi_implicit.edp|: contains the semi-implicit solver for the full time-dependent problem described in section \ref{sec:SI method}.
+    \item \verb|Analysis_Semi_implicitDT.edp|: contains main code to estimate the order of convergence of our semi-implicit method used in \ref{sec:conv}.
+\end{itemize}
+
+The first one relies on the separated function \verb|G.edp| computing $G$ function defined in \eqref{eq:G} and function \verb|Jac| computing the corresponding Jacobian matrix defined in \eqref{eq:jac}.The second one include instead a separated piece of code \verb|step_semi_implicit.edp|
+in which are defined \verb|varf|,  corresponding type in \verb|FreeFem++| for bilinear form, matrices and \verb|func int step| in order to solve the singular cell system.
+
+To properly run both codes, one need to write the string identifying under which set of parameters one want to solve the system; three main sets of parameters are defined in \verb|PRM.edp| file and each possible group of parameters correspond to the division found in table \ref{tab:setprm}. The choice of parameter set is done as follows:
+\begin{lstlisting}[firstnumber = 11, language = C++, caption = Choice of set of parameters]
+/// Parameters:
+string prm = "Set B"; // "Set A", "Set B", "Set C"
+include "PRM.edp";
+\end{lstlisting}
+In addition, also the mesh has to be settled correctly according to the choice of problem to solve, commenting the not used definition of variable \verb|Th|:
+\begin{lstlisting}[firstnumber = 16, language = C++, caption = 1cell\_stationaryTest.edp or 1cell\_semi\_implicit.edp: choice of mesh]
+/// Mesh
+mesh Th = square(Nx, Ny, [x, y]);  // "Set A", "Set B"
+// mesh Th = square(Nx, Ny, [Lx * x, Ly * y]); // "Set C"
+\end{lstlisting}
+In case "Set A" and "Set B" mesh refinement is characterized by \verb|N_x = N_y = 60|, whereas in case "Set C" by \verb|N_x = 100| and \verb|N_y = 30|.
+
+Finally one need to properly change $\Tilde{c}_1$ and $\Tilde{c}_2$ according to formulas in \eqref{eq:coeffadim} and \eqref{eq:coeffFM}:
+\begin{lstlisting}[firstnumber = 16, language = C++, caption = PRM.edp: setting of $\Tilde{c}_1$ and $\Tilde{c}_2$]
+// "Set A", "Set B"
+func tildec1 = alpha;
+func tildec2 = - gamma*alpha;
+// "Set C"
+// func tildec1 = alpha;
+// func tildec2 = - alpha;
+\end{lstlisting}
+
+Another important choice for running properly the two solvers is the initialization of the system: in the first case it is the initial guess for the equilibrium to find, in the second case it corresponds to the initial solution at time $t = 0s$ of the ROPs dynamics. Under each result shown is specified which is the initial state from which the solver start; in general one could chose between loading previous solutions setting \verb|ld| parameter equal to 1 or alternatively set custom defined $(u^0, v^0)$:
+\begin{lstlisting}[firstnumber = 8, language = C++, caption = choice for initialization]
+int ld = 0; // 1: load prev. sol. as initial state
+            // 0: use custom initial state
+\end{lstlisting}
+\begin{lstlisting}[language = C++]
+/// Initialization:
+if (ld) {
+  ifstream fU(path + "U" + tload + ".txt");
+  ifstream fV(path + "V" + tload + ".txt");
+
+  fU >> U[];
+  fV >> V[];
+
+  plot(U, fill = 1, value = 1, cmm = "Loaded Active ROPS"/*, wait = 1*/);
+  plot(V, fill = 1, value = 1, cmm = "Loaded Inactive ROPS"/*, wait = 1*/);
+  U[] += pert[];
+  V[] += pert[];
+}
+else
+{
+  U = u0;
+  V = v0;
+  U[] += pert[];
+  V[] += pert[];
+  // srandom(seed);
+  // // ranreal 1 generates a random number in [0,1]
+  //   for(int ii = 0; ii < Xh.ndof; ii++)
+  //   {
+  //     U[][ii] += randreal1() / 3e5;
+  //     V[][ii] += randreal1() / 3e5;
+  //   }
+}
+\end{lstlisting}
+
+Inside \verb|run.sh| bash file, one need to specify the main to run with \verb|FreeFem++| changing properly \verb|EXEC| variable. Executing this file, the script creates a new folder in \verb|results| directory named with the current date and time, it runs the specified main and saves all the output in \verb|output.txt|. This file together with code files in \verb|.edp| format and solutions files in \verb|.ps|,\verb|.vtk|, \verb|.txt| format are moved inside the directory named with the current date and time, in the corresponding directories \verb|code|, \verb|U| and \verb|V|.
+
+
+\section{Running codes instructions - 2 and 4 cells systems}\label{sec:code_RR}
+% intro/sezione con istruzioni per runnare qua -> descrizione file prm channel e altro ecc
+In order to simulate the previously formulated algorithm for a pluricellular system has  been written three main codes:
+\begin{itemize}
+    \item \verb|2cell_RR.edp|: this main code solves a two cells system with a classic Robin-Robin iterative algorithm, as formulated in sec. \ref{sec:RRclassic}.
+    \item \verb|2cell_RRmod.edp|: this main code solves a two cells system with the modified Robin-Robin algorithm described in sec. \ref{sec:RRmodified}.
+    \item \verb|4cell_RRmod.edp|: this main code solves a four cells system with the modified Robin-Robin algorithm.
+\end{itemize}
+
+For pluricellular systems solver the setting rules for parameters described in sec. \eqref{sec:1code} are still true, excepting those regarding mesh initialization. Indeed, depending on the system to solve, the mesh is properly defined. For example, in a two cells pluricellular system can be defined two possible type of mesh:
+\begin{lstlisting}[firstnumber = 24, language = C++, caption = 2cell\_RRmod.edp: choice of mesh]
+// 1st type of mesh
+border o1(t=Ly*2, 0){x=0; y=t; label=outside;}
+border o2(t=0, Lx){x=t; y=0; label=outside;}
+border o3(t=0, 2*Ly){x=Lx; y=t; label=outside;}
+border o4(t=0, Lx){x=Lx-t; y=2*Ly; label=outside;}
+border i1(t=0, Lx){x=Lx - t; y=Ly; label=inside;}
+mesh TH = buildmesh(o1(2*Ny) + o2(Nx) + o3(2*Ny) + o4(Nx) + i1(Nx));
+
+reg(0) = TH(Lx/2, Ly - 2).region;
+reg(1) = TH(Lx/2, Ly + 2).region;
+
+for(int i = 0; i < N; i++) Th[i] = trunc(TH, region==reg(i));
+
+// 2nd type of mesh
+border o1(t=Ly, 0){x=0; y=t; label=outside;}
+border o2(t=0, 2 * Lx){x=t; y=0; label=outside;}
+border o3(t=0, Ly){x=2*Lx; y=t; label=outside;}
+border o4(t=0, 2*Lx){x=2*Lx-t; y=Ly; label=outside;}
+border i1(t=0, Ly){x=Lx; y=Ly-t; label=inside;}
+mesh TH = buildmesh(o1(Ny) + o2(2*Nx) + o3(Ny) + o4(2*Nx) + i1(Ny));
+
+reg(0) = TH(Lx - 2, Ly/2).region;
+reg(1) = TH(Lx + 2, Ly/2).region;
+
+for(int i = 0; i < N; i++) Th[i] = trunc(TH, region==reg(i));
+\end{lstlisting}
+
+Bilinear forms characterizing the mathematical formulation are collected in \verb|varf_2cell.edp| and \verb|varf_ncell.edp| files. Inside \verb| varf duidn| for 2 cells system and \verb|duidnj| for 4 cells system one can pass from original Robin-Robin contribute, to not-parallelizable or parallelizable contribute for Robin-Robin modified commenting the right lines specified. (vd. commenti a lato)
+
+Matrices and vectors reassembling procedures for each sub-domain are defined in \verb|assemble_RR|. Here is necessary to comment the alternatives of \verb|if-else| cycle not used for the pluricellular system under study.
+
+Last important file included in the main for model definition is \verb|channelPRM.edp|, where parameters $\alpha_{u/vRR}$ and $\beta_{u/vRR}$ used in our new model to represents communication channels between cells have to be properly settled, together with convergence criterion parameters for the algorithm used:
+\begin{itemize}
+  \item \verb|toll| represents the tolerance of the normalized residual desired.
+  \item\verb|Niter| represents the maximum number of iterations allowed in case tolerance is not reached.
+\end{itemize}

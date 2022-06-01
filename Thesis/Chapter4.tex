@@ -1,0 +1,832 @@
+\chapter{Auxin-PIN dynamic system contribution to pattern formation}\label{cap:4}
+As stated in the introduction, previous results on root-hair initiation \cite{intra2, intra1_R, phdthesis:victor} discussed the importance of auxin gradient in determining pattern formation. The main assumption consists in assuming a certain, fixed in time, auxin distribution. Similarly, the results we proposed in Section \ref{cap3:results} imply a-priori a hormone auxin concentration.
+
+Auxin hormone actually is governed by a differential problem and various studies regarding auxin evolution in space and time are available in the literature \cite{plant:Alim, plant:Farcot, plant:Mironova}. Concentration-based and flux-based models are used to describe auxin trasport and PIN distribution on cell membrane.
+
+The possibility to couple spatially-extended cellular models for ROPs pattern formation with concentration or flux-based models for auxin dynamics has not been examined yet, as far as we know.
+
+In this chapter we develop a semi-implicit method to solve a particular model chosen for auxin dynamics, taken from \cite{plant:Farcot}, and show on a two cells system how active ROPs spot formation can be affected by this dynamics. The overall results confirm the importance for ROPs dynamics when modelling communication between cells.
+
+% \cite{plant:Alim} inizio There the localized auxin supply yields the successive polarization of PIN distribution
+% along a strand of cells. We model the auxin and PIN dynamics within cells with a minimal canalization
+% model. Solving the model analytically
+
+% \cite{plant:Alim} %
+% A resolution on the origin of bipolar cells is postu-
+% lated by examination of a minimal canalization model for
+% the polarization of PIN distribution due to auxin supply
+% in a one-dimensional strand of cells. ... . The model predicts auxin
+% triggered polarization pulses and fronts as a consequence of a dynamic rearrangement of PIN eﬄux facilitators to-
+% wards the polar state.
+
+\section{Physical model}
+Taking into account a pluricellular system of N cells, the root-hair cells are projected onto a 2D rectangular domain as done in Section \ref{sec:PluriMod}. We define for each cell $\Omega_i$ the set of neighboring cells $\mathcal{N}_i$. Auxin-PIN dynamics is meaningful only when considering a pluricellular system, since auxin model under study in \cite{plant:Farcot} considers the transport and diffusion of auxin driven by a difference in auxin and PIN from one cell to the others. In order to describe the dynamics of auxin transport, the following variables are defined:
+\begin{itemize}
+  \item $a_i [mol \ m^{-3}]$, the auxin concentration in cell $\Omega_i$;
+  \item $\Tilde{P}_{ij} [mol \ m^{-2}]$, the concentration of transporter proteins PIN facilitating transport from cell $\Omega_i$ to cell $\Omega_j$.
+\end{itemize}
+Another important variable in the flux-based model is $\Phi_{ij}$. It represents the flux of auxin from cell $\Omega_i$ to cell $\Omega_j$, supposed to induce the insertion of PIN proteins $\Tilde{P}_{ij}$.
+\begin{figure}
+  \centering
+  \includegraphics[scale=0.5]{cap4/fig_farcot.png}
+  \caption{Two neighboring cells with concentrations of auxin, carriers proteins and flux from $i$ to $j$; figure taken from \cite{plant:Farcot}.}
+  \label{fig:farcot}
+\end{figure}
+The flux is modelled through the combination of two contributions: the free diffusion towards neighboring cells $j \in \mathcal{N}_i$, and the active transport by the transporter (PIN) proteins. Variation of auxin $a_i$ in cell $\Omega_i$ is therefore influenced by fluxes from neighboring cells together with a local production term and a decay term.
+
+On the other hand, PIN variation is due to insertion and removal of PIN $\Tilde{P}_{ij}$ and to insertion induced by flux $\Phi_{ij}$ inside cell $\Omega_i$.
+
+To sum up, the dynamics of auxin and carriers proteins PIN in each cell $\Omega_i$ with $i \in \{ 1, ..., N \}$ can be written as the following system of coupled ordinary differential equations:
+\begin{equation}\begin{aligned}
+\begin{cases}
+  {\displaystyle d a_i\over\displaystyle d t} & = {\displaystyle 1 \over \displaystyle V_i} \sum_{j=1}^{N} A_{ij} \Phi_{ij} +k - \delta a_i \\[8pt]
+  {\displaystyle d \Tilde{P}_{ij}\over\displaystyle d t} & = h\left(\Phi_{ij}\right) + \rho_0 - \mu \Tilde{P}_{ij},
+\end{cases}
+\end{aligned} \end{equation}
+where coefficient $ k [mol m^{-3} s^{-1}]$ is the constant rate auxin is produced, $ \delta [s^{-1}]$ is the decay rate, $\rho_0 [mol m^{-2} s^{-1}]$ is the insertion rate of PIN and $\mu [s^{-1}]$ the corresponding removal rate; $V_i$ is the volume characterizing cell $\Omega_i$ and $A_{ij}[m^{-2}]$ is the exchange surface area between cell $\Omega_i$ and $\Omega_j$. If cell $\Omega_i$ and $\Omega_j$ are not neighbours, $A_{ij = 0}$ and $A_{ij} = A_{ji}$ holds for all cells. On the contrary, it is not necessarily true that $\Tilde{P}_{ij}$  and $\Tilde{P}_{ji}$ are equal \cite{plant:Farcot, plant:Alim}.
+
+Flux from cell $\Omega_i$ to cell $\Omega_j$ is modeled as follows:
+\begin{equation}
+  \Phi_{ij} = \left( T \Tilde{P}_{ij} + \Tilde{D}_a \right) a_i - \left( T \Tilde{P}_{ji} + \Tilde{D}_a \right) a_j,
+\end{equation}
+being $\Tilde{D}_a [ms^{-1}]$ the auxin diffusion coefficient and $T [m^{-3} mol^{-1} s^{-1}]$ the auxin transport efficiency coefficient.
+
+The intensity of PIN insertion due to the feedback of the auxin flux is described by a continuous, increasing function $h: \mathds{R} \rightarrow \mathds{R}_+$. Since the active trasport is directional, when more auxin comes in than goes out, no additional PIN is inserted. This modelling consideration in terms of function $h$ implies that:
+\begin{equation}
+  h\left(\Phi_{ij}\right) = 0 \text{ whenever } \Phi_{ij} \leq 0 \text{ and } h\left(\Phi_{ij}\right) > 0 \text{ for } \Phi_{ij} > 0.
+\end{equation}
+
+The original system of equations can be rescaled and simplified. In particular, under the assumptions of cells having same volume $V =V_i$ and exchange surface areas $A = A_{ij}$, rescaling properly the diffusion coefficient $D_a$ and variables $P_{ij}$, a new system is obtained. Thus, the final system of equations we work on is:
+\begin{equation}\label{eq:Sys_auxPIN}\begin{aligned}
+\begin{cases}
+  {\displaystyle d a_i\over\displaystyle d t} & = \sum_{j \in \mathcal{N}_i} \displaystyle \Phi_{ji} +k - \delta a_i \\[8pt]
+  {\displaystyle d P_{ij}\over\displaystyle d t} & = h\left(\Phi_{ij}\right) - \mu P_{ij},
+\end{cases}
+\end{aligned} \end{equation}
+where flux from cell $\Omega_i$ to cell $\Omega_j$ is redefined as follows:
+\begin{equation}
+  \Phi_{ij} = \left( P_{ij} + D_a \right) a_i - \left( P_{ji} + D_a \right) a_j,
+\end{equation}
+being $P_{ij}$ and $D_a$ dimentionally different from the original quantities $\Tilde{P}_{ij}$ and $\Tilde{D}_a$.
+
+Different sets of parameters, taken from \cite{plant:Farcot}, necessary for a complete simulation of the system \eqref{eq:Sys_auxPIN} are collected in Table \ref{tab:setprm_aux} .
+\begin{table}
+    \caption*{\textbf{Sets of parameters}}
+    \centering
+    \begin{tabular}{| p{5em} |c| c c c c|}
+    \hline
+    \rowcolor{bluepoli!40} % comment this line to remove the color
+    \textbf{Variable} & \textbf{Measure Unit} & \textbf{Value} & & & \T\B \\
+    \hline \hline
+     &  & F4 & F5 & F6 & F7 \T\B \\
+    $k$ & $mol \cdot m^{-3} s^{-1} $ & 0.1 & 10 & 0.5 & 0.5 \\
+    $\delta$ & $s^{-1} $ & 1.0 & 1 & 0.5 & 0.5\\
+    $D_a$ & $m \cdot s^{-1} $ & 1.0 & 0.1 & 0.3 & 7.0\\
+    $\mu$ & $s^{-1}$ & 1.0 & 0.1 & 1.0 & 1.5\\
+    $\rho$ &  &  &  & \{2; 2.3; 2.7 \} & 2.8\\
+    \hline
+    \end{tabular}
+    \\[10pt]
+    \caption{Table with the four sets of parameters used in auxin-PIN model, taken from \cite{plant:Farcot}.}
+    \label{tab:setprm_aux}
+\end{table}
+
+Another important feature for characterizing auxin transport model is the definition of a function to describe the feedback of the auxin flux into PIN insertion $h$. Typical choices of $h$ found in literature are:
+\begin{equation}\begin{aligned}
+    h\left(\Phi \right) & = \rho \frac{\Phi^n}{\theta^n + \Phi^n}, &\text{ with } \theta \text{ saturating coefficient} \\
+    h\left(\Phi \right) & = \rho \Phi^n, &\text{ without saturating coefficient, }
+\end{aligned} \end{equation}
+$\rho$ being a scaling coefficient.
+
+The function $h(x) = \frac{x^5}{5^5 + x^5} \ \mathbb{1}\{x>0 \}$ has been chosen for parameters sets F4 and F5 in Table \ref{tab:setprm_aux} while  $h(x) = \rho x \ \mathbb{1}\{x>0 \}$ has been adopted for sets F6 and F7.
+% \towrite{ Questione aperta: cosa rappresenta l'auxina che calcola Farcot rispetto ai prm usati dentro ROPs system $k_{20}$ e $\alpha$ ? \color{black}Io per ora ho ipotizzato che la concentrazione di auxina che trova Farcot sia l'overall auxin level $k_{20}$ e siccome nel paper auxin è costante in ogni cellula metto $\nu = 0 $ così tolgo la dipendenza spaziale ($\alpha = exp(-\nu *x ecc) = 1$).}
+
+In this chapter, we propose a new coupling between auxin-PIN transport problem and ROPs RD system. In particular, we recover the overall auxin level $k_{20}$ of each cell $\Omega_i$ from the dynamic system \eqref{eq:Sys_auxPIN} and then evaluate ROPs active and inactive concentrations solving the RD system in a pluricellular system. More precisely, we solve in sequence the auxin-PIN problem, we find auxin mean concentration $a_i \ \forall i \in \{1, ..., N\}$, we assemble ROPs system replacing $k_{20}$ parameters with different $a_i$ computed one for each cell. In general, as in \cite{plant:Farcot}, we assume a homogeneous auxin locally in the cell (therefore $\nu$ is set equal to 0 in \eqref{eq:alpha_exp}). We are not considering exponential space distribution, but an auxin gradient only generated by difference in the mean concentration of auxin, from one cell to the neighbours.
+
+\section{Numerical discretization}
+In this section we employ a semi-implicit method to solve the auxin-PIN transport model. For simplicity, we focus the analysis on a two-cells system and therefore rewrite \eqref{eq:Sys_auxPIN} for $N = 2$:
+\begin{equation}\begin{aligned}
+\begin{cases}
+  {\displaystyle d a_{1}(t)\over\displaystyle d t} & = \Phi_{21}(t) + k - \delta a_1(t) \\[6pt]
+  {\displaystyle d a_{2}(t)\over\displaystyle d t} & = \Phi_{12}(t) + k - \delta a_2(t) \\[6pt]
+  {\displaystyle d P_{12}(t)\over\displaystyle d t} & = h\left(\Phi_{12}(t)\right) - \mu P_{12}(t) \\[6pt]
+  {\displaystyle d P_{21}(t)\over\displaystyle d t} & = h\left(\Phi_{21}(t)\right) - \mu P_{21}(t).
+\end{cases}
+\end{aligned} \end{equation}
+
+We divide the time interval $\left[0, T_{max}\right]$ into $N_{max}$ sub-intervals such that $t^n = n \Delta t$ with $\Delta t = T_{max} / N_{max}  $. We define $a_i^n$ and $P_{ij}^n$ as approximations of the solutions evaluated at time $t^n$:
+\begin{equation}
+  a_i\left( t^n \right) \simeq a_i^n, \ \ \ P_{ij}\left( t^n \right) \simeq P_{ij}^n.
+\end{equation}
+For the time derivative, we apply the implicit Euler method as follows:
+\begin{equation}\label{eq:SIEuler}\begin{aligned}
+\begin{cases}
+  {\displaystyle a_1^{n+1} - a_1^n\over\displaystyle \Delta t} & = \Phi_{21}^{n+1} + k - \delta a_1^{n+1} \\[6pt]
+  {\displaystyle a_2^{n+1} - a_2^n \over\displaystyle \Delta t} & = \Phi_{12}^{n+1} + k - \delta a_2^{n+1} \\[6pt]
+  {\displaystyle P_{12}^{n+1} - P_{12}^{n} \over\displaystyle \Delta t} & = h\left(\Phi_{12}^{n+1}\right) - \mu P_{12}^{n+1} \\[6pt]
+  {\displaystyle P_{21}^{n+1} - P_{21}^{n} \over\displaystyle \Delta t} & = h\left(\Phi_{21}^{n+1}\right) - \mu P_{21}^{n+1}.
+\end{cases}
+\end{aligned} \end{equation}
+We explicit the flux in the auxin equations:
+\begin{equation} \label{eq:2cell_auxPIN}\begin{aligned}
+  \begin{cases}
+    {\displaystyle a_1^{n+1} - a_1^n\over\displaystyle \Delta t}  & = \left( P_{21}^{n+1} + D_a \right) a_2^{n+1} - \left( P_{12}^{n+1} + D_a \right) a_1^{n+1} + k - \delta a_1^{n+1} \\[6pt]
+    {\displaystyle a_2^{n+1} - a_2^n \over\displaystyle \Delta t} & = \left( P_{12}^{n+1} + D_a \right) a_1^{n+1} - \left( P_{21}^{n+1} + D_a \right) a_2^{n+1} + k - \delta a_2^{n+1} \\[6pt]
+    {\displaystyle P_{12}^{n+1} - P_{12}^{n} \over\displaystyle \Delta t} & = h\left(\Phi_{12}^{n+1}\right) - \mu P_{12}^{n+1} \\[6pt]
+    {\displaystyle P_{21}^{n+1} - P_{21}^{n} \over\displaystyle \Delta t} & = h\left(\Phi_{21}^{n+1}\right) - \mu P_{21}^{n+1}.
+  \end{cases}
+\end{aligned}\end{equation}
+
+The system is highly non-linear because of the definition of the fluxes of auxin $\Phi_{12}$ and $\Phi_{21}$ and due to the non-linear function $h$. Therefore, we decide to use a semi-implicit method in order to linearize the system. Since we are more interested in auxin concentration rather than the PIN concentration, we keep implicit $a_1$ and $a_2$, while discretize explicitly $P_{12}$ and $P_{21}$ in the first two equations. Regarding PIN equations, function $h$ depends on the sign of the argument and contributes coming from auxin and PIN concentrations cannot linearized as before. Therefore we decide to treat explicitly the flux input inside $h$ function.
+
+The semi-implicit counterpart of \eqref{eq:2cell_auxPIN} is thus given by:
+\begin{equation}\begin{aligned}
+\begin{cases}
+  {\displaystyle a_1^{n+1} - a_1^n\over\displaystyle \Delta t} & = \left( P_{21}^{n} + D_a \right) a_2^{n+1} - \left( P_{12}^{n} + D_a \right) a_1^{n+1} + k - \delta a_1^{n+1} \\[6pt]
+  {\displaystyle a_2^{n+1} - a_2^n \over\displaystyle \Delta t} & = \left( P_{12}^{n} + D_a \right) a_1^{n+1} - \left( P_{21}^{n} + D_a \right) a_2^{n+1} + k - \delta a_2^{n+1} \\[6pt]
+  {\displaystyle P_{12}^{n+1} - P_{12}^{n} \over\displaystyle \Delta t} & = h\left(\Phi_{12}^{n}\right) - \mu P_{12}^{n+1} \\[6pt]
+  {\displaystyle P_{21}^{n+1} - P_{21}^{n} \over\displaystyle \Delta t} & = h\left(\Phi_{21}^{n}\right) - \mu P_{21}^{n+1}.
+\end{cases}
+\end{aligned} \end{equation}
+
+This linearized system can be rewritten in algebraic form as follows:
+\begin{equation}
+  A \mathbf{X} = \mathbf{b},
+\end{equation}
+where
+\begin{equation}\begin{aligned}
+  \mathbf{X} = \begin{bmatrix} a_1^{n+1} \\  a_2^{n+1} \\ P_{12}^{n+1} \\P_{21}^{n+1} \end{bmatrix}  , \ \ \ \mathbf{b} = \begin{bmatrix}  \frac{1}{\Delta t}a_1^{n} + k \\ \frac{1}{\Delta t} a_2^{n+1} + k \\ \frac{1}{\Delta t} P_{12}^{n} + h\left(\Phi_{12}^n \right) \\P_{21}^{n+1} + h\left(\Phi_{21}^n \right)\end{bmatrix}&, \\[6pt]
+ A = \begin{bmatrix} \frac{1}{\Delta t} + P_{12}^n + D_a + \delta & -P_{21}^n - D_a & 0 & 0 \\
+  -P_{12}^n - D_a  & \frac{1}{\Delta t} + P_{21}^n + D_a + \delta & 0 & 0 \\
+  0 & 0 & \frac{1}{\Delta t} + \mu & 0 \\
+  0 & 0 & 0 & \frac{1}{\Delta t} + \mu  \end{bmatrix}&.
+\end{aligned}\end{equation}
+
+The semi-implicit method partially decouples the dynamics between auxin and PIN concentrations. In particular, at each time-step we solve a linear system to find the vector of auxin concentrations $\mathbf{a} = \left[a_1^{n+1}, a_2^{n+1} \right]$, whereas each PIN concentration $P_{12}^{n+1}$, $P_{21}^{n+1}$ is computed with a simple division.
+We define the auxin system matrix $A_a$ and right hand side vector $\mathbf{b}_a$ as
+\begin{equation}
+  A_a = \begin{bmatrix} \frac{1}{\Delta t} + P_{12}^n + D_a + \delta & -P_{21}^n - D_a \\ -P_{12}^n - D_a  & \frac{1}{\Delta t} + P_{21}^n + D_a + \delta   \end{bmatrix}, \ \ \  \mathbf{b}_a =  \begin{bmatrix}  \frac{1}{\Delta t}a_1^{n} + k \\ \frac{1}{\Delta t} a_2^{n+1} + k \end{bmatrix};
+\end{equation}
+then the linear system for auxin concentrations is formulated as follows:
+\begin{equation} \label{eq:aux_linsys}
+  A_a \mathbf{a} = \mathbf{b}_a.
+\end{equation}
+
+Then, for updating PIN $P_{ij}$ concentration for a generic $i,j$ we only compute it as follows:
+\begin{equation}\label{eq:pindiv}
+  P_{ij}^{n+1} = \left(\frac{1}{\Delta t} + \mu \right)^{-1} \left[ \frac{1}{\Delta t} P_{ij}^{n} + h\left(\Phi_{ij}^n \right) \right].
+\end{equation}
+
+To sum up, given an initial state of the system, $\mathbf{a}^0 = \left[a_1^0, a_2^0 \right]$, $P_{12}^0$ and $P_{21}^0$, usually selected randomly from 0 and 1, for $n = 0, ... N_{max}-1$ we find $\mathbf{a}^{n+1} = \left[a_1^{n+1}, a_2^{n+1}\right]$ solving the linear system \eqref{eq:aux_linsys} and the we update $P_{12}^{n+1}$ and $P_{21}^{n+1}$ values with formula \eqref{eq:pindiv}.
+
+After solving the auxin-PIN model applying the semi-implicit method, we replace values of local overall auxin level $k_{20}$ in each cell with the auxin concentration $a_i^{n+1}$ and solve the ROPs system. The complete procedure to solve the auxin-PIN model together with RD involving ROPs proteins is presented synthetically in Algorithm \ref{alg:RRmod_auxPIN}.
+\begin{algorithm}[H]
+    \caption{Pluricellular system solver procedure: RR coupled with auxin-PIN dynamics}
+    \label{alg:RRmod_auxPIN}
+    Given $N \geq 1$ cells, $k_i$
+    \begin{algorithmic}[1]
+    \STATE Initialization: $\forall i = 1, ..., N$
+    \STATE{\verb|[ai]| randomly init}
+    \STATE{\verb|[PINi]| randomly init}
+    \STATE \verb|[U0i, V0i]| $\gets [k_i u_0, k_i v_0]$
+    \STATE \verb|[Uiprec, Viprec]| $\gets$  \verb|[U0i, V0i]|
+    \WHILE{$t < T_{max}$}
+    \STATE{\verb|update ai| and \verb|PINi| matrices and vectors}
+    \STATE{\verb|solve auxin-PIN| problem \eqref{eq:aux_linsys} - \eqref{eq:pindiv}}
+    \STATE{\verb|update| $k_{20}$}
+    \STATE{\verb|assemble| matrix for $\forall i = 1,..., N$}
+    \FOR{$iter < Niter$}
+    \STATE{$\forall i =1, ..., N$}
+    \STATE{compute BC contribute from $j \in \mathcal{N}_i$}
+    \STATE{\verb|interpolate| on $i$}
+    \STATE{update \verb|rhs|}
+    \STATE{\verb|solve| $\Omega_i$ problem \eqref{eq:pluriModel}}
+    \STATE{update residual, check tolerance, update \verb|iter|}
+    \STATE \verb|[Uiprec, Viprec]| $\gets$  \verb|[Ui, Vi]|
+    \ENDFOR
+    \STATE \verb|[U0i, V0i]| $\gets$  \verb|[Ui, Vi]|
+    \ENDWHILE
+    \end{algorithmic}
+\end{algorithm}
+
+\section{Numerical Results}
+In this section we present some of the results obtained by resorting to Algorithm \ref{alg:RRmod_auxPIN} in order to couple auxin-PIN transport model and ROPs multi-cellular system. In the majority of works about auxin dynamics, auxin distribution has been modelled within a strand of cells. Thus, the multi-cellular systems to solve is composed by two cells attached along the short side, as the scheme in Figure \ref{fig:farcot} illustrates. In particular, $\Omega_1$ corresponds to the left cell and $\Omega_2$ to the right one.
+
+In the first subsection we present an intermediate result, applying the RR solver on a strand of two cells without considering auxin-PIN dynamics. Then, we test Algorithm \ref{alg:RRmod_auxPIN} under different sets of parameters and we validate the multi-cellular model changing channel characterization.
+% There the localized auxin supply yields the successive polarization of PIN distribution
+% along a strand of cells. We model the auxin and PIN dynamics within cells with a minimal canalization model
+
+% \subsection{auxina-PIN on 2 cells system}
+% PROBLEMI SOLO AUXINA E PIN per 2 cellule
+%
+% \towrite{NON LI METTEREI. COSA NE DITE?
+% Non so se vogliamo metterli, di per sè i problemi di auxina e pin vengono risolto allo stesso modo dopo (non sono influenzati dal ROP system). Qua si nota che per delta t diversi vengono soluzioni diverse, ma non ci poniamo prblemi e usiamo come per gli altri un delta t fisso 0.5?}
+
+% Questi hanno $\Delta t = 1$ (per ora tolti)
+% 2022-02-22_16-44-08 F4 2022-02-24_10-24-19 con img csv
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[auxin on $\Omega_1$ and $\Omega_2$.\label{fig:auxF4_dt1}]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_10-24-19/auxina.png}
+%     }
+%     \quad
+%     \subfloat[PIN on $\Omega_1$ and $\Omega_2$.\label{fig:pinF4_dt1}]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_10-24-19/pin.png}
+%     }
+%     \caption[auxin-PIN - with F4 prm]{auxin-PIN dynamics on 2 cells system with F4 parameters set.}
+%     \label{fig:F4_dt1}
+% \end{figure}
+% % 2022-02-22_16-50-49 F5 2022-02-24_10-14-28 con img csv
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[auxin on $\Omega_1$ and $\Omega_2$.\label{fig:auxF5_dt1}]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_10-14-28/auxina.png}
+%     }
+%     \quad
+%     \subfloat[PIN on $\Omega_1$ and $\Omega_2$.\label{fig:pinF5_dt1}]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_10-14-28/pin.png}
+%     }
+%     \caption[auxin-PIN - with F5 prm]{auxin-PIN dynamics on 2 cells system with F5 parameters set.}
+%     \label{fig:F5_dt1}
+% \end{figure}
+% % 2022-02-22_17-07-25 F6 rho 2 2022-02-24_10-14-51 con img csv
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[auxin on $\Omega_1$ and $\Omega_2$.\label{fig:auxF62_dt1}]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_10-14-51/auxina.png}
+%     }
+%     \quad
+%     \subfloat[PIN on $\Omega_1$ and $\Omega_2$.\label{fig:pinF62_dt1}]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_10-14-51/pin.png}
+%     }
+%     \caption[auxin-PIN - with F6 $\rho = 2$ prm]{auxin-PIN dynamics on 2 cells system with F6 $\rho = 2$ parameters set.}
+%     \label{fig:F62_dt1}
+% \end{figure}
+% % 2022-02-22_18-18-58 F6 rho 2.7 2022-02-24_10-15-10 con img csv
+% % 2022-02-22_19-09-25 F7 rho 2.8 2022-02-24_10-15-24 con img csv
+%
+% % 2022-02-24_10-15-02 F6 rho 2.3 e delta t 1
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[auxin on $\Omega_1$ and $\Omega_2$.\label{fig:auxF623_dt1}]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_10-15-02/auxina.png}
+%     }
+%     \quad
+%     \subfloat[PIN on $\Omega_1$ and $\Omega_2$.\label{fig:pinF623_dt1}]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_10-15-02/pin.png}
+%     }
+%     \caption[auxin-PIN - with F6 $\rho = 2$ prm, $\Delta t = 1$]{auxin-PIN dynamics on 2 cells system with F6 $\rho = 2.3$ parameters set and $\Delta t = 1$.}
+%     \label{fig:F623_dt1}
+% \end{figure}
+
+
+% Questi hanno $\Delta t = 0.5$ come pb ROPs però se aumento dt cambiano ... sono poi identici dopo. per me non necessari.
+% % 2022-02-24_11-33-54 F6 F6 rho 2
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[auxin on $\Omega_1$ and $\Omega_2$.\label{fig:auxF62}]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_11-33-54/auxina.png}
+%     }
+%     \quad
+%     \subfloat[PIN on $\Omega_1$ and $\Omega_2$.\label{fig:pinF62}]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_11-33-54/pin.png}
+%     }
+%     \caption[auxin-PIN - with F6 $\rho = 2$ prm, $\Delta t = 0.5$]{auxin-PIN dynamics on 2 cells system with F6 $\rho = 2$ parameters set and $\Delta t = 0.5$.}
+%     \label{fig:F62}
+% \end{figure}
+%
+% % 2022-02-24_11-34-18 F6 rho 2.3
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[auxin on $\Omega_1$ and $\Omega_2$.]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_11-34-18/auxina.png}}
+%     \quad
+%     \subfloat[PIN on $\Omega_1$ and $\Omega_2$.]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_11-34-18/pin.png}}
+%     % \quad
+%     % \subfloat[confront with $\Delta t= 1$.\label{fig:1vs05}]{
+%     %     \includegraphics[scale=0.15]{cap4/2022-02-24_11-34-18/confronto_dt0.5.png}}
+%     \caption[auxin-PIN - with F6 $\rho = 2$ prm, $\Delta t = 0.5$]{auxin-PIN dynamics on 2 cells system with F6 $\rho = 2.3$ parameters set and $\Delta t = 0.5$.}
+%     \label{fig:F623}
+% \end{figure}
+% % 2022-02-24_11-34-32 F6 rho 2.7
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[auxin on $\Omega_1$ and $\Omega_2$.\label{fig:auxF627}]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_11-34-32/auxina.png}}
+%     \quad
+%     \subfloat[PIN on $\Omega_1$ and $\Omega_2$.\label{fig:pinF627}]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_11-34-32/pin.png}}
+%     \caption[auxin-PIN - with F6 $\rho = 2$ prm, $\Delta t = 0.5$]{auxin-PIN dynamics on 2 cells system with F6 $\rho = 2.7$ parameters set and $\Delta t = 0.5$.}
+%     \label{fig:F627}
+% \end{figure}
+% % 2022-02-24_11-34-54 F7 rho 2.8
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[auxin on $\Omega_1$ and $\Omega_2$.\label{fig:auxF7}]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_11-34-54/auxina.png}}
+%     \quad
+%     \subfloat[PIN on $\Omega_1$ and $\Omega_2$.\label{fig:pinF7}]{
+%         \includegraphics[scale=0.15]{cap4/2022-02-24_11-34-54/pin.png}}
+%     \caption[auxin-PIN - with F7 $\rho = 2.8$ prm, $\Delta t = 0.5$]{auxin-PIN dynamics on 2 cells system with F7 $\rho = 2.8$ parameters set and $\Delta t = 0.5$.}
+%     \label{fig:F7}
+% \end{figure}
+
+\subsection{ROPs system in a strand of two cells}
+% \towrite{ROPs system di 2 cellule però con mesh diversa, senza aux pin dynamics ma solito auxin esponenziale.
+% SERVE? toglierei, posso tenere come unico confronto quello con lo stesso canale che si usa dopo ovvero figura \ref{fig:UH5} e basta. Qua ci sono canali e gradiente di auxina dato da alpha esponenziale solito con $\nu = 1.5$, quindi non mi verrebbe da fare commenti tanto più diversi di quelli nel cap 3; cioè non mi sembra dia informazioni in più}
+% 2022-03-08_10-14-21 canale
+% $a_y = 10 , \epsilon_y = 1$
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 100s  $\label{1UH1}]{\includegraphics[scale=0.15]{cap4/2022-03-08_10-14-21/img.0050.png}}
+%     \quad
+%     \subfloat[$t = 200s$ .\label{2UH1}]{\includegraphics[scale=0.15]{cap4/2022-03-08_10-14-21/img.0100.png}}
+%     \quad
+%     \subfloat[$t = 400s$ .\label{3UH1}]{\includegraphics[scale=0.15]{cap4/2022-03-08_10-14-21/img.0200.png}}
+%     \quad
+%     \subfloat[$t = 1000s$ .\label{4UH1}]{\includegraphics[scale=0.15]{cap4/2022-03-08_10-14-21/img.0499.png}}
+%     \quad
+%     \subfloat[]{\includegraphics[scale=0.4]{cap4/2022-03-08_10-14-21/legenda.png}}
+%     \caption[2cell RRmod Active ROPs - with $a_y = 10 , \epsilon_y = 1$]{Active ROPs $u$ evolution with RRmod algo solver on 2 cells system with $a_y = 10 , \epsilon_y = 1$.}
+%     \label{fig:UH1}
+% \end{figure}
+% \towrite{giusto molto simile ai casi di beta nullo con 1 cellula da sola ... quasi stagnanti perchè è zero il flusso, troppo piccoli i canali forse}
+% % 2022-03-08_10-18-08 canale
+% $a_y = 10 , \epsilon_y = 3$
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 100s  $\label{1UH3}]{\includegraphics[scale=0.15]{cap4/2022-03-08_10-18-08/img.0050.png}}
+%     \quad
+%     \subfloat[$t = 200s$ .\label{2UH3}]{\includegraphics[scale=0.15]{cap4/2022-03-08_10-18-08/img.0100.png}}
+%     \quad
+%     \subfloat[$t = 400s$ .\label{3UH3}]{\includegraphics[scale=0.15]{cap4/2022-03-08_10-18-08/img.0200.png}}
+%     \quad
+%     \subfloat[$t = 1000s$ .\label{4UH3}]{\includegraphics[scale=0.15]{cap4/2022-03-08_10-18-08/img.0499.png}}
+%     \quad
+%     \subfloat[]{\includegraphics[scale=0.4]{cap4/2022-03-08_10-18-08/legenda.png}}
+%     \caption[2cell RRmod Active ROPs - with $a_y = 10 , \epsilon_y = 3$]{Active ROPs $u$ evolution with RRmod algo solver on 2 cells system with $a_y = 10 , \epsilon_y = 3$.}
+%     \label{fig:UH3}
+% \end{figure}
+% \towrite{fino a qua toglierei}
+% 2022-03-08_10-16-01 canale
+We test the array of two cells under exponential auxin distribution as in equation \eqref{eq:alpha_exp} and choosing as initial state:
+\begin{equation}
+  \left[ U_1^0, V_1^0 \right] = 1.5 \left[u^0,v^0 \right], \ \ \ \left[ U_2^0, V_2^0 \right] = \left[u^0,v^0 \right].
+\end{equation}
+The two cells have channel functions defined as follows:
+\begin{equation}\label{eq:betaY}\begin{aligned}
+    \beta_{uRR} & = \mathbb{1} \Big\{ \frac{L_y}{2} - a_y - \epsilon_y \leq y \leq \frac{L_y}{2} - a_y \Big\}
+    + \mathbb{1} \Big\{\frac{L_y}{2} + a_y \leq y \leq \frac{L_y}{2} + a_y + \epsilon_y \Big\} \\
+    \beta_{vRR} & = \mathbb{1} \Big\{ \frac{L_y}{2} - a_y - \epsilon_y \leq y \leq \frac{L_y}{2} - a_y \Big\}
+    + \mathbb{1} \Big\{\frac{L_y}{2} + a_y \leq y \leq \frac{L_y}{2} + a_y + \epsilon_y \Big\}.
+\end{aligned}\end{equation}
+In the majority of tests, we set $a_y = 5$ and $\epsilon_y = 5$.
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 100s  $\label{1UH5}]{\includegraphics[scale=0.14]{cap4/2022-03-08_10-16-01/frame.0050.png}}
+    \quad
+    \subfloat[$t = 200s$ .\label{2UH5}]{\includegraphics[scale=0.14]{cap4/2022-03-08_10-16-01/frame.0100.png}}
+    \quad
+    \subfloat[$t = 300s$ \label{3UH5}]{\includegraphics[scale=0.14]{cap4/2022-03-08_10-16-01/frame.0150.png}}
+    \quad
+    \subfloat[$t = 400s$ \label{4UH5}]{\includegraphics[scale=0.14]{cap4/2022-03-08_10-16-01/frame.0200.png}}
+    \quad
+    \subfloat[$t = 600s$ .\label{5UH5}]{\includegraphics[scale=0.14]{cap4/2022-03-08_10-16-01/frame.0300.png}}
+    \quad
+    \subfloat[$t = 1000s$ \label{6UH5}]{\includegraphics[scale=0.14]{cap4/2022-03-08_10-16-01/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.35]{cap4/2022-03-08_10-16-01/legenda.png}}
+    \caption[2cell RR Active ROPs - with $a_y = 5 , \epsilon_y = 5$]{Active ROPs $u$ evolution with RR algorithm solver on 2 cells system with $a_y = 5 , \epsilon_y = 5$.}
+    \label{fig:UH5}
+\end{figure}
+Figure \ref{fig:UH5} shows results obtained still taking auxin distribution defined a priori and not considering the dynamic system with PIN carriers. This simulation shows a behaviour similar to the results in Section \ref{cap3:results}. A front is formed at the border where auxin maximum is located and it breaks into spots, subsequent travelling towards minimum of auxin. It confirms that auxin gradient guarantees pattern formation.
+
+\subsection{Coupled ROPs model with auxin-PIN dynamics}
+We present some relevant results of the multi-cellular system for ROP pattern formation under chemical dynamics between auxin and PIN. In particular, we aim at observing the generation and evolution of active spots of ROPs in the system, under different types of auxin dynamics.
+
+Sets of parameters F4 and F5 in Table \ref{tab:setprm_aux}, depending on the number of cells in the strand, leads to alternating sources and sinks of auxin. Sinks are cells with high auxin and incoming flux, whereas sources are groups of cells with low auxin and outgoing flux.
+
+Auxin-PIN system under the F4 set of parameters converges after few seconds to a homogeneus auxin distribution, with $a_1 = a_2 = 1$. Therefore the system is characterized by no gradient of auxin (see Figure \ref{fig:Uaux_F4}). We observe a considerable spot formation in Figure \ref{fig:U_F4}. Firstly a homoclinic stripe is formed at the right of the common interface, then it breaks into multiple spots. After some seconds, another stripe is formed in the left cell and simultaneously the spots formed in the right part start travelling towards the exterior. A plausible responsible for this self-generated pattern is the gradient of ROPs generated by the initial difference in initial states and the open channels, as it happens in Figure \ref{fig:4c_gradD_diffI}.
+
+
+Auxin-PIN system under the set F5 of parameters shows a different behaviour. As can be seen in Figure \ref{fig:Uaux_F5}, auxin concentration in the first and second cell converges to the same low value $a_1 = a_2 = 0.1$ and, as for the F4 set of parameters, there is no auxin gradient characterizing the system after few time steps.
+
+Differently from Figure \ref{fig:U_F4}, the numerical output in Figure \ref{fig:U_F5} is characterized by active ROPs concentration converging to a null homogeneous state. The possible reason is that the overall auxin level is too low to sustain spot formation. The gradient of ROPs generated by open channels may not be enough and it still need a sufficient high, even if constant, concentration of auxin to form hotspots, coherently with Figure \ref{fig:U_F4}.
+% 2022-03-28_10-37-40 con F4
+\begin{figure}[H]
+    \centering
+    \subfloat[auxin on $\Omega_1$ and $\Omega_2$. \label{Uaux_F4}]{\includegraphics[scale=0.25]{cap4/2022-03-28_10-37-40/auxF.png}}
+    \quad
+    \subfloat[PIN on $\Omega_1$ and $\Omega_2$. \label{Upin_F4}]{\includegraphics[scale=0.25]{cap4/2022-03-28_10-37-40/pin.png}}
+    \caption[auxin-PIN - with the F4 set]{auxin-PIN dynamics on 2 cells system with the F4 parameters set.}
+    \label{fig:Uaux_F4}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 50s $\label{1U_F4}]{\includegraphics[scale=0.15]{cap4/2022-03-28_10-37-40/frame.0050.png}}
+    \quad
+    \subfloat[$t = 250s$\label{3U_F4}]{\includegraphics[scale=0.15]{cap4/2022-03-28_10-37-40/frame.0250.png}}
+    \quad
+    \subfloat[$t = 300s$\label{2U_F4}]{\includegraphics[scale=0.15]{cap4/2022-03-28_10-37-40/frame.0300.png}}
+    \quad
+    \subfloat[$t = 400s$\label{4U_F4}]{\includegraphics[scale=0.15]{cap4/2022-03-28_10-37-40/frame.0400.png}}
+    \quad
+    \subfloat[$t = 450s$\label{7U_F4}]{\includegraphics[scale=0.15]{cap4/2022-03-28_10-37-40/frame.0450.png}}
+    \quad
+    \subfloat[$t = 500$\label{8U_F4}]{\includegraphics[scale=0.15]{cap4/2022-03-28_10-37-40/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.4]{cap4/2022-03-01_10-13-10/legenda.png}}
+    \caption[2cell RR Active ROPs coupled auxin-PIN - with the F5 prm]{Active ROPs $u$ evolution with RR algorithm solver on 2 cells system coupled with auxin-PIN dynamics, with the F4 parameters set.}
+    \label{fig:U_F4}
+\end{figure}
+
+% 2022-03-01_10-13-10 F5
+\begin{figure}[H]
+    \centering
+    \subfloat[auxin on $\Omega_1$ and $\Omega_2$. \label{Uaux_F5}]{\includegraphics[scale=0.25]{cap4/2022-03-01_10-13-10/auxF.png}}
+    \quad
+    \subfloat[PIN on $\Omega_1$ and $\Omega_2$. \label{Upin_F5}]{\includegraphics[scale=0.25]{cap4/2022-03-01_10-13-10/pinF.png}}
+    \caption[auxin-PIN - with the F5 prm]{auxin-PIN dynamics on 2 cells system with the F5 parameters set.}
+    \label{fig:Uaux_F5}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 4s $\label{1U_F5}]{\includegraphics[scale=0.15]{cap4/2022-03-01_10-13-10/frame.0002.png}}
+    \quad
+    \subfloat[$t = 10s$\label{3U_F5}]{\includegraphics[scale=0.15]{cap4/2022-03-01_10-13-10/frame.0005.png}}
+    \quad
+    \subfloat[$t = 20s$\label{2U_F5}]{\includegraphics[scale=0.15]{cap4/2022-03-01_10-13-10/frame.0010.png}}
+    \quad
+    \subfloat[$t = 30s$\label{4U_F5}]{\includegraphics[scale=0.15]{cap4/2022-03-01_10-13-10/frame.0015.png}}
+    \quad
+    \subfloat[$t = 40s$\label{7U_F5}]{\includegraphics[scale=0.15]{cap4/2022-03-01_10-13-10/frame.0020.png}}
+    \quad
+    \subfloat[$t = 1000s$\label{8U_F5}]{\includegraphics[scale=0.15]{cap4/2022-03-01_10-13-10/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.4]{cap4/2022-03-01_10-13-10/legenda.png}}
+    \caption[2cell RR Active ROPs coupled auxin-PIN - with the F5 set]{Active ROPs $u$ evolution with RR algorithm solver on 2 cells system coupled with auxin-PIN dynamics, with the F5 parameters set.}
+    \label{fig:U_F5}
+\end{figure}
+
+We then set the system to solve auxin-PIN dynamics under the set F6 of parameters, which is characterized by a not smooth function $h$. As reported in \cite{plant:Farcot}, under these conditions the system shows oscillating values of auxin concentration in each cell.
+
+% 2022-02-28_17-21-17 F6 rho 2 - lost vtk files -> 2022-03-21_10-46-16
+\begin{figure}[H]
+    \centering
+    \subfloat[auxin on $\Omega_1$ and $\Omega_2$. \label{Uaux_F62}]{\includegraphics[scale=0.25]{cap4/2022-02-28_17-21-17/auxF.png}}
+    \quad
+    \subfloat[PIN on $\Omega_1$ and $\Omega_2$. \label{Upin_F62}]{\includegraphics[scale=0.25]{cap4/2022-02-28_17-21-17/pinF.png}}
+    \caption[auxinPIN - with the F6 $\rho = 2$ set]{auxin-PIN dynamics on 2 cells system with the F6 $\rho = 2$ parameters set.}
+    \label{fig:Uaux_F62}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 0s  $\label{1U_F62}]{\includegraphics[scale=0.15]{cap4/2022-03-21_10-46-16/frame.0000.png}}
+    \quad
+    \subfloat[$t = 250s$ .\label{4U_F62}]{\includegraphics[scale=0.15]{cap4/2022-03-21_10-46-16/frame.0125.png}}
+    \quad
+    \subfloat[$t = 260s$ .\label{5U_F62}]{\includegraphics[scale=0.15]{cap4/2022-03-21_10-46-16/frame.0130.png}}
+    \quad
+    \subfloat[$t = 300s$ .\label{6U_F62}]{\includegraphics[scale=0.15]{cap4/2022-03-21_10-46-16/frame.0150.png}}
+    \quad
+    \subfloat[$t = 350s$ .\label{7U_F62}]{\includegraphics[scale=0.15]{cap4/2022-03-21_10-46-16/frame.0175.png}}
+    \quad
+    \subfloat[$t = 500s$ .\label{8U_F62}]{\includegraphics[scale=0.15]{cap4/2022-03-21_10-46-16/frame.0250.png}}
+    \quad
+    \subfloat[$t = 750s$ .\label{9U_F62}]{\includegraphics[scale=0.15]{cap4/2022-03-21_10-46-16/frame.0375.png}}
+    \quad
+    \subfloat[$t = 1000s$ .\label{10U_F62}]{\includegraphics[scale=0.15]{cap4/2022-03-21_10-46-16/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.4]{cap4/2022-03-21_10-46-16/legenda.png}}
+    \caption[2cell RR Active ROPs coupled auxin-PIN - with the F6 $\rho = 2$ set]{Active ROPs $u$ evolution with RR algorithm solver on 2 cells system coupled with auxin-PIN dynamics, with the F6 $\rho = 2$ parameters set.}
+    \label{fig:U_F62}
+\end{figure}
+
+In Figure \ref{fig:Uaux_F62}, we can show results for $\rho = 2$: auxin values in the first and second cell oscillate around a common mean value, alternating with different values up to a steady state with $a_1 = a_2 = 1$. The continuous changing in auxin levels between the two cells at the beginning and the subsequent convergence to a sufficient high value lead to an interesting pattern formation.
+
+As Figure \ref{fig:U_F62} shows, two stripes arise close to the interface, one inside each cell, which then break into multiple spots, then slowly travel away from the common interface. Since the pattern formation takes place near the boundary dividing the two cells, the possible responsibles of patches are either the gradient of auxin induced by the jump in concentrations or the gradient of ROPs generated by openend channels. Moreover, the jump in auxin levels at each time step generates a too soft gradient in auxin distribution in the two cells system, because the oscillations are rapid and have small amplitude.
+% 2022-03-01_09-31-44 F6 rho 2 con Tmax = 3000
+% 2022-03-08_16-03-34 F6 rho 2.3
+% We give more results sostaining that ROPs spots can be self-generated by its gradient under a sufficient high value of auxin.
+
+Using parameter $\rho = 2.3$, the oscillations of auxin concentration beocome periodic, as illustrated in Figure \ref{fig:Uaux_F623}, and the overall auxin levels in each cell range around $1$ taking values approximately in the interval $\left[0.8; 1.2\right]$.
+
+This high fequence oscillations in auxin dynamics are not replicated by the ROPs system, which is instead characterized by a slower evolution and inertia in changing conformation.
+We can clearly recognize from the simulation frames in Figure \ref{fig:U_F623} that active ROPs flow from the left cell to the right one through the open channels and then two symmetric spots are formed one in each cell moving towards the exterior.
+
+\begin{figure}[p]
+    \centering
+    \subfloat[auxin on $\Omega_1$ and $\Omega_2$. \label{Uaux_F623}]{\includegraphics[scale=0.3]{cap4/2022-03-08_16-03-34/auxF.png}}
+    \quad
+    \subfloat[PIN on $\Omega_1$ and $\Omega_2$. \label{Upin_F623}]{\includegraphics[scale=0.3]{cap4/2022-03-08_16-03-34/pinF.png}}
+    \caption[auxin-PIN - with the F6 $\rho = 2.3$ set]{auxin-PIN dynamics on 2 cells system with the F6 $\rho = 2.3$ parameters set.}
+    \label{fig:Uaux_F623}
+\end{figure}
+\begin{figure}[hp]
+    \centering
+    \subfloat[$t = 236s$]{\includegraphics[scale=0.15]{cap4/2022-03-08_16-03-34/frame.0118.png}}
+    \quad
+    \subfloat[$t = 250s$]{\includegraphics[scale=0.15]{cap4/2022-03-08_16-03-34/frame.0125.png}}
+    \quad
+    \subfloat[$t = 270s$ \label{fig:1U_F623}]{\includegraphics[scale=0.15]{cap4/2022-03-08_16-03-34/frame.0135.png}}
+    \quad
+    \subfloat[$t = 300s$ \label{fig:2U_F623}]{\includegraphics[scale=0.15]{cap4/2022-03-08_16-03-34/frame.0150.png}}
+    \quad
+    \subfloat[$t = 350s$]{\includegraphics[scale=0.15]{cap4/2022-03-08_16-03-34/frame.0175.png}}
+    \quad
+    % \subfloat[$t = 400s$]{\includegraphics[scale=0.15]{cap4/2022-03-08_16-03-34/frame.0200.png}}
+    % \quad
+    \subfloat[$t = 500s$]{\includegraphics[scale=0.15]{cap4/2022-03-08_16-03-34/frame.0250.png}}
+    \quad
+    \subfloat[$t = 700s$]{\includegraphics[scale=0.15]{cap4/2022-03-08_16-03-34/frame.0350.png}}
+    \quad
+    \subfloat[$t = 1000s$ ]{\includegraphics[scale=0.15]{cap4/2022-03-08_16-03-34/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.4]{cap4/2022-03-08_16-03-34/legenda.png}}
+    \caption[2cell RR Active ROPs coupled auxin-PIN - with the F6 $\rho = 2.3$ set]{Active ROPs $u$ evolution with RR algorithm solver on 2 cells system coupled with auxin-PIN dynamics, with the F6 $\rho = 2.3$ parameters set.}
+    \label{fig:U_F623}
+\end{figure}
+
+% 2022-03-02_08-46-01 F6 rho 2.7
+\begin{figure}[p]
+    \centering
+    \subfloat[auxin on $\Omega_1$ and $\Omega_2$. \label{Uaux_F627}]{\includegraphics[scale=0.3]{cap4/2022-03-02_08-46-01/auxF.png}}
+    \quad
+    \subfloat[PIN on $\Omega_1$ and $\Omega_2$. \label{Upin_F627}]{\includegraphics[scale=0.3]{cap4/2022-03-02_08-46-01/pinF.png}}
+    \caption[auxin-PIN - with the F6 $\rho = 2.7$ set]{auxin-PIN dynamics on 2 cells system with the F6 $\rho = 2.7$ parameters set.}
+    \label{fig:Uaux_F627}
+\end{figure}
+\begin{figure}[hp]
+    \centering
+    \subfloat[$t = 0s  $\label{1U_F627}]{\includegraphics[scale=0.15]{cap4/2022-03-02_08-46-01/frame.0000.png}}
+    \quad
+    \subfloat[$t = 100s$\label{2U_F627}]{\includegraphics[scale=0.15]{cap4/2022-03-02_08-46-01/frame.0050.png}}
+    \quad
+    \subfloat[$t = 130s$\label{3U_F627}]{\includegraphics[scale=0.15]{cap4/2022-03-02_08-46-01/frame.0075.png}}
+    \quad
+    \subfloat[$t = 200s$\label{4U_F627}]{\includegraphics[scale=0.15]{cap4/2022-03-02_08-46-01/frame.0100.png}}
+    \quad
+    \subfloat[$t = 250s$\label{7U_F627}]{\includegraphics[scale=0.15]{cap4/2022-03-02_08-46-01/frame.0125.png}}
+    \quad
+    \subfloat[$t = 300s$\label{8U_F627}]{\includegraphics[scale=0.15]{cap4/2022-03-02_08-46-01/frame.0150.png}}
+    \quad
+    \subfloat[$t = 500s$\label{9U_F627}]{\includegraphics[scale=0.15]{cap4/2022-03-02_08-46-01/frame.0250.png}}
+    \quad
+    \subfloat[$t = 1000s$\label{10U_F627}]{\includegraphics[scale=0.15]{cap4/2022-03-02_08-46-01/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.4]{cap4/2022-03-02_08-46-01/legenda.png}}
+    \caption[2cell RR Active ROPs coupled auxin-PIN - with the F6 $\rho = 2.7$ set]{Active ROPs $u$ evolution with RR algorithm solver on 2 cells system coupled with auxin-PIN dynamics, with the F6 $\rho = 2.7$ parameters set.}
+    \label{fig:U_F627}
+\end{figure}
+
+% 2022-04-06_18-46-10 questa simulazione conferma che in realtà le oscillazioni sono così velocit che è come se fosse a rop costante 1 da un certo t in poi (inizio no, vedi 2022-04-06_15-39-08
+
+A similar behaviour can be observed  in Figure \ref{fig:U_F627} for a system under the F6 set of parameter with $\rho = 2.7$. Oscillations in Figure \ref{fig:Uaux_F627} have a higher frequence and amplitude then the ones obtained with $\rho = 2 $ or $\rho = 2.3 $ (compare Figure \ref{fig:Uaux_F627} with Figures \ref{fig:Uaux_F62} and \ref{fig:Uaux_F623}). The local auxin concentrations change in a slightly bigger range, approximately taking values in $\left[0.6; 1.4\right]$ around $1$. Since we do not observe sensible difference in pattern location we assume that the main responsible for it is again the ROPs gradient between channels.
+
+We present other simulations, in order to validate the idea that in the new multi-cellular system the responsible for ROPs pattern formation can be also the channels of communication and not only the imposed auxin gradient.
+
+We test if ROPs system is sensitive to high frequence auxin concentrations as those in Figure \ref{fig:Uaux_F623}, in order to verify if auxin gradient generated is detected by ROPs patterning. We modify algorithm in \ref{alg:RRmod_auxPIN}. The ROPs system is solved updating $k_{20}$ parameter with auxin concentrations found with auxin-PIN system only up to $t = 500s$. After this time, we set a constant value for the overall auxin level such that it is equal to the mean value auxin concentrations oscillate around. To sum up, $k_{20}$ is chosen as follows:
+\begin{equation*}\begin{aligned}
+  k_{20} = a_i \ \forall i = 1,2 \ \ \ &\text{if } \ t < 500 s \\[6pt]
+  k_{20} = \bar{a}_1 = \bar{a}_2 = 1 \ \ \ &\text{if } \ t > 500 s.
+\end{aligned}\end{equation*}
+In Figure \ref{fig:U_F623_auxinconst} the results of this test are shown. We do not observe a sensible difference with respect to the frames in Figure \ref{fig:U_F623}. As a consequence, we can assume that auxin concentrations in the two cells oscillate too rapidly to be considered as a gradient responsible for hotspots generation.
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 236s$]{\includegraphics[scale=0.15]{cap4/2022-04-06_18-46-10/frame.0118.png}}
+    \quad
+    \subfloat[$t = 250s$]{\includegraphics[scale=0.15]{cap4/2022-04-06_18-46-10/frame.0125.png}}
+    \quad
+    \subfloat[$t = 270s$ ]{\includegraphics[scale=0.15]{cap4/2022-04-06_18-46-10/frame.0135.png}}
+    \quad
+    \subfloat[$t = 300s$]{\includegraphics[scale=0.15]{cap4/2022-04-06_18-46-10/frame.0150.png}}
+    \quad
+    \subfloat[$t = 350s$]{\includegraphics[scale=0.15]{cap4/2022-04-06_18-46-10/frame.0175.png}}
+    % \quad
+    % \subfloat[$t = 400s$]{\includegraphics[scale=0.15]{cap4/2022-04-06_18-46-10/frame.0200.png}}
+    \quad
+    \subfloat[$t = 500s$]{\includegraphics[scale=0.15]{cap4/2022-04-06_18-46-10/frame.0250.png}}
+    \quad
+    \subfloat[$t = 700s$]{\includegraphics[scale=0.15]{cap4/2022-04-06_18-46-10/frame.0350.png}}
+    \quad
+    \subfloat[$t = 1000s$ ]{\includegraphics[scale=0.15]{cap4/2022-04-06_18-46-10/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.4]{cap4/2022-04-06_18-46-10/legenda.png}}
+    \caption[2cell RR Active ROPs coupled auxin-PIN - with the F6 $\rho = 2.3$ set up to $t = 500s$]{Active ROPs $u$ evolution with RR algorithm solver on 2 cells system coupled with auxin-PIN dynamics, with the F6 $\rho = 2.3$ parameters set up to $t = 500s$, then auxin constan.}
+    \label{fig:U_F623_auxinconst}
+\end{figure}
+
+% 2022-03-02_08-47-02 F7 rho 2.8
+\begin{figure}[H]
+    \centering
+    \subfloat[auxin on $\Omega_1$ and $\Omega_2$. \label{Uaux_F7}]{\includegraphics[scale=0.25]{cap4/2022-03-02_08-47-02/auxF2.png}}
+    \quad
+    \subfloat[PIN on $\Omega_1$ and $\Omega_2$. \label{Upin_F7}]{\includegraphics[scale=0.25]{cap4/2022-03-02_08-47-02/pinF2.png}}
+    \caption[auxin-PIN - with the F7 $\rho = 2.8$ set]{auxin-PIN dynamics on 2 cells system with the F7 $\rho = 2.8$ parameters set.}
+    \label{fig:Uaux_F7}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 0s  $\label{1U_F7}]{\includegraphics[scale=0.13]{cap4/2022-03-02_08-47-02/img.0000.png}}
+    \quad
+    \subfloat[$t = 230s$\label{2U_F7}]{\includegraphics[scale=0.13]{cap4/2022-03-02_08-47-02/frame.0115.png}}
+    \quad
+    \subfloat[$t = 250s$\label{3U_F7}]{\includegraphics[scale=0.13]{cap4/2022-03-02_08-47-02/frame.0125.png}}
+    \quad
+    \subfloat[$t = 260s$\label{4U_F7}]{\includegraphics[scale=0.13]{cap4/2022-03-02_08-47-02/frame.0130.png}}
+    \quad
+    \subfloat[$t = 280s$\label{5U_F7}]{\includegraphics[scale=0.13]{cap4/2022-03-02_08-47-02/frame.0140.png}}
+    \quad
+    \subfloat[$t = 300s$\label{6U_F7}]{\includegraphics[scale=0.13]{cap4/2022-03-02_08-47-02/frame.0150.png}}
+    \quad
+    \subfloat[$t = 500s$\label{7U_F7}]{\includegraphics[scale=0.13]{cap4/2022-03-02_08-47-02/frame.0250.png}}
+    \quad
+    \subfloat[$t = 1000s$\label{10U_F7}]{\includegraphics[scale=0.13]{cap4/2022-03-02_08-47-02/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.4]{cap4/2022-03-02_08-47-02/legenda.png}}
+    \caption[2cell RR Active ROPs coupled auxin-PIN - with the F7 $\rho = 2.8$ set]{Active ROPs $u$ evolution with RR algorithm solver on 2 cells system coupled with auxin-PIN dynamics, with the F7 $\rho = 2.8$ parameters set.}
+    \label{fig:U_F7}
+\end{figure}
+For the F6 set of parameters, ROPs system behaves as if auxin dynamics and therefore auxin gradient is absent. Too frequent changes in auxin are not registered by ROPs slow evolution because the time-scale characterizing pattern formation of ROPs belongs to a different order than auxin frequence.
+The results using the F6 parameters set prove that ROPs spots can be self-generated by ROPs' flux through cells under sufficient high values of auxin.
+
+The auxin-PIN transport dynamics under set the F7 of parameters shows almost no oscillations in the values of auxin concentrations from the beginning (see Figure \ref{Uaux_F7}).
+
+Results in Figure \ref{fig:U_F7} represent another example substaining that patches can be generated as a consequence of the structural coupling, modelled through common membrane between cells with open channels, consistently with \cite{phdthesis:victor, intra1_R}. As in Figures \ref{fig:U_F4} and \ref{fig:U_F5}, the system is characterized by no auxin gradient because auxin concentrations in the two cells soon converge to the same values. The spots therefore are self-generated by the considered multi-cellular model.
+
+% Sto facendo questo tentativo con $\Delta t = 0.01$ per vedere cosa succede,
+% come cambia ...  % 2022-03-12_21-27-46 % \begin{figure}[H] \centering
+% \subfloat[auxin on $\Omega_1$ and $\Omega_2$.
+% \label{Uaux_F623_dt001}]{\includegraphics[scale=0.3]{cap4/2022-03-12_21-27-46/aux.png}}
+% \quad \subfloat[PIN on $\Omega_1$ and $\Omega_2$.
+% \label{Upin_F623_dt001}]{\includegraphics[scale=0.3]{cap4/2022-03-12_21-27-46/pin.png}}
+% \caption[auxin-PIN - with F6 $\rho = 2.3$ prm]{auxin-PIN dynamics on 2 cells
+% system with F6 $\rho = 2.3$ parameters set.} \label{fig:Uaux_F623_dt001}
+% \end{figure}
+
+% 2022-03-08_21-59-54_tesi
+\textbf{Auxin with exponential distribution}
+
+Auxin distribution is now taken space-dependent similarly as done in Section \ref{cap3:results}. The overall auxin level $k_{20}$ is set equal to the auxin concentration computed with auxin-PIN system and then inside ROPs system auxin distribution is still taken exponential as follows:
+\begin{equation*}
+  \alpha(x) = k_{20} exp\left(-\nu \frac{x}{L_x}\right), \ \text{with} \ \nu = 1.5.
+\end{equation*}
+We present in Figure \ref{fig:U_F623_exp} results obtained under the set F6 of parameters and $\rho = 2.3$.
+
+Numerical illustrations in Figure \ref{fig:U_F623_exp} visualize a double location of active ROPs because of the double source of gradient in auxin distribution. Indeed, on the left side of cell 1 we recognize the influence of the exponential distribution: a homoclinic stripe is formed, then it breaks into two spots that after a longer time unify in an unique one moving towards the right. Focusing instead on the interface, spots are formed and we observe a different evolution of patches with respect to the ones in Figure \ref{fig:U_F623} is observed. There, the jump in $k_{20}$ occurs and the difference in auxin concentration between cells is increased by the exponential distribution. Moreover, channels are open and ROPs flux cooperates in the pattern formation.
+\begin{figure}[H]
+    \centering
+    \subfloat[$t = 30s$ \label{1U_F623_exp}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54_tesi/frame.0015.png}}
+    \quad
+    \subfloat[$t = 60s$ \label{2U_F623_exp}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54_tesi/frame.0030.png}}
+    \quad
+    \subfloat[$t = 120s$ \label{3U_F623_exp}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54_tesi/frame.0060.png}}
+    \quad
+    \subfloat[$t = 180s$ \label{4U_F623_exp}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54_tesi/frame.0090.png}}
+    \quad
+    \subfloat[$t = 200s $ \label{5U_F623_exp}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54_tesi/frame.0100.png}}
+    \quad
+    \subfloat[$t = 250s$ \label{6U_F623_exp}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54_tesi/frame.0125.png}}
+    \quad
+    \subfloat[$t = 270s$ \label{7U_F623_exp}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54_tesi/frame.0135.png}}
+    \quad
+    \subfloat[$t = 300s$ \label{8U_F623_exp}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54_tesi/frame.0150.png}}
+    \quad
+    \subfloat[$t = 500s$ \label{9U_F623_exp}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54_tesi/frame.0250.png}}
+    \quad
+    \subfloat[$t = 1000s$ \label{10U_F623_exp}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54_tesi/frame.0499.png}}
+    \quad
+    \subfloat[]{\includegraphics[scale=0.5]{cap4/2022-03-08_21-59-54_tesi/legenda.png}}
+    \caption[2cell RR Active ROPs coupled auxin-PIN - with the F6 $\rho = 2.3$ set and exponential distribution]{Active ROPs $u$ evolution with RR algorithm solver on 2 cells system coupled with auxin-PIN dynamics, with the F6 $\rho = 2.3$ parameters set and exponential auxin distribution.}
+    \label{fig:U_F623_exp}
+\end{figure}
+
+% 2022-03-08_21-59-54
+% \towrite{Try with $\Delta t = 1$ to see if in the coupled problem we see "sensitive" difference (per la dinamica auxin-PIN per alcuni prm vedevi differenze nelle oscillazioni \ref{fig:U_F623}). here used homogeneous auxin ($\nu = 0$), set of prm F6 with $\rho = 2.3$. PER ORA LO TOLGO, però era venuto diverso ....}
+
+% frame to confront with \ref{fig:U_F623} ... diversissimo ...
+% \begin{figure}[H]
+%     \centering
+%     \subfloat[$t = 236s  $\label{1U_F623_dt1}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54/frame.0118.png}}
+%     \quad
+%     \subfloat[$t = 250s$ .\label{2U_F623_dt1}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54/frame.0125.png}}
+%     \quad
+%     \subfloat[$t = 270s$ .\label{3U_F623_dt1}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54/frame.0135.png}}
+%     \quad
+%     \subfloat[$t = 300s$ .\label{4U_F623_dt1}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54/frame.0150.png}}
+%     \quad
+%     \subfloat[$t = 350s$ .\label{5U_F623_dt1}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54/frame.0175.png}}
+%     \quad
+%     \subfloat[$t = 400s$ .\label{6U_F623_dt1}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54/frame.0200.png}}
+%     \quad
+%     \subfloat[$t = 500s$ .\label{7U_F623_dt1}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54/frame.0250.png}}
+%     \quad
+%     \subfloat[$t = 1000s$ .\label{8U_F623_dt1}]{\includegraphics[scale=0.15]{cap4/2022-03-08_21-59-54/frame.0499.png}}
+%     \caption[2cell RR Active ROPs coupled auxin-PIN - with F6 $\rho = 2.3$ prm and and $\Delta  t = 1$]{Active ROPs $u$ evolution with RR algorithm solver on 2 cells system coupled with auxin-PIN dynamics, with F6 $\rho = 2.3$ parameters set and $\Delta  t = 1$.}
+%     \label{fig:U_F623_dt1}
+% \end{figure}
+
+% 2022-03-18_16-40-47
+\textbf{Change channel characterization}
+
+We here present an interesting result sustaining the modelling assumptions made on channels functions. We set the system under the set F6 of parameters and $\rho = 2$, using a bigger transport efficiency coefficient $\alpha_{u,vRR} = 5$. In Figure \ref{fig:U_alpha5} different frames of the numerical simulation obtained are shown.
+ \begin{figure}[H]
+     \centering
+     \subfloat[$t = 10s  $\label{1U_alpha5}]{\includegraphics[scale=0.15]{cap4/2022-03-18_16-40-47/frame.0010.png}}
+     \quad
+     \subfloat[$t = 50s$ \label{2U_alpha5}]{\includegraphics[scale=0.15]{cap4/2022-03-18_16-40-47/frame.0050.png}}
+     \quad
+     \subfloat[$t = 100s$ \label{3U_alpha5}]{\includegraphics[scale=0.15]{cap4/2022-03-18_16-40-47/frame.0100.png}}
+     \quad
+     \subfloat[$t = 150s$ \label{4U_alpha5}]{\includegraphics[scale=0.15]{cap4/2022-03-18_16-40-47/frame.0150.png}}
+     \quad
+     \subfloat[$t = 175s$ \label{5U_alpha5}]{\includegraphics[scale=0.15]{cap4/2022-03-18_16-40-47/frame.0175.png}}
+     \quad
+     \subfloat[$t = 200s$ \label{6U_alpha5}]{\includegraphics[scale=0.15]{cap4/2022-03-18_16-40-47/frame.0200.png}}
+     \quad
+     \subfloat[$t = 250s$ \label{7U_alpha5}]{\includegraphics[scale=0.15]{cap4/2022-03-18_16-40-47/frame.0250.png}}
+     \quad
+     \subfloat[$t = 500s$ \label{8U_alpha5}]{\includegraphics[scale=0.15]{cap4/2022-03-18_16-40-47/frame.0499.png}}
+     \quad
+     \subfloat[\label{legU_alpha5}]{\includegraphics[scale=0.4]{cap4/2022-03-18_16-40-47/legenda.png}}
+     \caption[2cell RR Active ROPs coupled auxin-PIN - with the F6 $\rho = 2$ set and and $\alpha_{u,vRR} = 5$]{Active ROPs $u$ evolution with RR algorithm solver on 2 cells system coupled with auxin-PIN dynamics, with the F6 $\rho = 2$ parameters set and $\alpha_{u,vRR} = 5$.}
+     \label{fig:U_alpha5}
+ \end{figure}
+ % \begin{figure}[H]
+ %     \centering
+ %     \subfloat[auxin on $\Omega_1$ and $\Omega_2$. \label{Uaux_a5}]{\includegraphics[scale=0.3]{cap4/2022-03-18_16-40-47/aux.png}}
+ %     \quad
+ %     \subfloat[PIN on $\Omega_1$ and $\Omega_2$. \label{Upin_a5}]{\includegraphics[scale=0.3]{cap4/2022-03-18_16-40-47/pin.png}}
+ %     \caption[auxin-PIN - with F6 $\rho = 2$ prm and $\alpha_{u,vRR} = 5$]{auxin-PIN dynamics on 2 cells system with F6 $\rho = 2$ parameters set and $\alpha_{u,vRR} = 5$.}
+ %     \label{fig:Uaux_alpha5}
+ % \end{figure}
+The increase in the transport efficiency yields a unique thicker stripe, in contrast to the two stripes in Figure \ref{fig:U_F62} obtained for $\alpha_{u,vRR} = 1$, and more symmetric spots with respect to the common interface.
+
+% 2022-03-18_14-49-41
+The result we finally show is obtained with no open communication channels, i.e., setting functions $\beta_{uRR} = \beta_{vRR} = 0$.
+\begin{figure}[H]
+    \centering
+    \subfloat[auxin on $\Omega_1$ and $\Omega_2$. \label{Uaux_b0}]{\includegraphics[scale=0.3]{cap4/2022-03-18_14-49-41/aux.png}}
+    \quad
+    \subfloat[PIN on $\Omega_1$ and $\Omega_2$. \label{Upin_b0}]{\includegraphics[scale=0.3]{cap4/2022-03-18_14-49-41/pin.png}}
+    \caption[auxin-PIN - with the F6 $\rho = 2$ set and $\beta_{uRR} = \beta_{vRR} = 0$]{auxin-PIN dynamics on 2 cells system with the F7 $\rho = 2$ parameters set and $\beta_{uRR} = \beta_{vRR} = 0$.}
+    \label{fig:Uaux_beta0}
+\end{figure}
+ \begin{figure}[H]
+     \centering
+     \subfloat[$t = 0s  $\label{1U_beta0}]{\includegraphics[scale=0.15]{cap4/2022-03-18_14-49-41/frame.0000.png}}
+     \quad
+     \subfloat[$t = 10s$ \label{2U_beta0}]{\includegraphics[scale=0.15]{cap4/2022-03-18_14-49-41/frame.0010.png}}
+     \quad
+     \subfloat[$t = 20s$ \label{3U_beta0}]{\includegraphics[scale=0.15]{cap4/2022-03-18_14-49-41/frame.0020.png}}
+     \quad
+     \subfloat[$t = 50s$ \label{4U_beta0}]{\includegraphics[scale=0.15]{cap4/2022-03-18_14-49-41/frame.0050.png}}
+     \quad
+     \subfloat[$t =100s$ \label{5U_beta0}]{\includegraphics[scale=0.15]{cap4/2022-03-18_14-49-41/frame.0100.png}}
+     \quad
+     \subfloat[$t = 500s$ \label{6U_beta0}]{\includegraphics[scale=0.15]{cap4/2022-03-18_14-49-41/frame.0499.png}}
+     \quad
+     \subfloat[\label{legU_beta0}]{\includegraphics[scale=0.4]{cap4/2022-03-18_14-49-41/legenda.png}}
+     \caption[2cell RR Active ROPs coupled auxin-PIN - with the F6 $\rho = 2$ set and and $\beta_{uRR} = \beta_{vRR} = 0$]{Active ROPs $u$ evolution with RR algorithm solver on 2 cells system coupled with auxin-PIN dynamics, with the F6 $\rho = 2$ parameters set and no communicating channels ($\beta_{uRR} = \beta_{vRR} = 0)$.}
+     \label{fig:U_F62_beta0}
+ \end{figure}
+
+Though under initially oscillating values of auxin concentration and then constant high auxin level as shown in Figure \ref{fig:Uaux_beta0}, no pattern in active ROPs is formed. Jumps of auxin levels generates a gradient in the distribution in the two cell system, but locally inside each cell auxin is still constant and no-flux boundary conditions between the cells correspond to solve the two cells separately, as if they do not belong to the same multi-cellular system.
+
+The comparison between the pattern in Figure \ref{fig:U_F62_beta0} and the ones obtained with open channels in Figure \ref{fig:U_F62} is one of the most interesting result of the multi-cellular system coupled with auxin-PIN dynamics. Indeed, it confirms that responsible for spot generation can be not only auxin distribution but also the strucutral communication between cells. Setting no-flux boundary condition between cells, the system evolves to a null homogeneus active ROPs distribution. Therefore, this test validate that the main responsible for pattern formation in simulation presented in Figure \ref{fig:U_F62} is the modelled open channels between cells.
+
+Oscillations of auxin concentrations in a row of cells are not a bad approximation of the organization of root tissues \cite{plant:Farcot} and the plot in Figure \ref{fig:Uaux_beta0} present a physically reasonable behaviour of auxin distribution in a multi-cellular system. A null homogeneous active ROPs concentration as in Figure \ref{fig:U_F62_beta0} is not what is expected from a physical intra-cellular model of ROPs dynamics under sufficiently high values of auxin. As a consequence, in order to have a complete, reliable spatially-extended model for root-hair initiation, it is necessary to consider structural communication between cells. The first attempt of communication modelling developed in this thesis is an interesting and valuable approach because of similarities between pattern observed in previously presented results and those in other works \cite{phdthesis:victor}.
+
+We present in Table \ref{table:aux_summaryRes} a scheme of the results in order to give to the reader an overview of the motivations and main conclusions of each test presented in Chapter \ref{cap:4}.
+% in coda una simulazione che da t 500 in poi tiene auxina fisso a 1
+% fatta una che tiene auxina fisso a 1 fino a 5oo e poi considera la dinamica; per sbaglio in 2022-04-06_15-39-08
+
+ \begin{table}[H]
+   \caption*{\textbf{Table summarizing presented results}}
+     \begin{tabular}{|p{3cm} |p{4cm} p{4cm} p{3cm}|}
+     \hline
+ %    \rowcolor{bluepoli!40}
+     \textbf{Experiment} & \textbf{Motivations} & \textbf{Main conclusions} & \textbf{Figures} \T\B \\
+     \hline \hline
+     \textbf{E1} & Simulate auxin-PIN transport with different set of parameters & Confirm reliability of the semi-implicit method & \ref{fig:Uaux_F4} - \ref{fig:Uaux_F5} - \ref{fig:Uaux_F62} - \ref{fig:Uaux_F623} - \ref{fig:Uaux_F627} - \ref{fig:Uaux_F7} \T\B\\
+     \hline
+     \textbf{E2} & Simulate ROPs system with 2 cells array & Confirm gradient and channels influence & \ref{fig:UH5} \T\B\\
+     \hline
+     \textbf{E3} - ROPs \& auxin-PIN & Simulated different parameters sets F4, F5 and F7 & Responsible for spot fomation is the structural multi-cellular modeling & \ref{fig:U_F4} - \ref{fig:U_F5} - \ref{fig:U_F7}\T\B\\
+     \hline
+     \textbf{E4} - ROPs \& auxin-PIN & Simulated parameters set F6 under different $\rho$ & Too rapid oscillations do not generate an auxin gradient relevant for spot fomation & \ref{fig:U_F62} - \ref{fig:U_F623} - \ref{fig:U_F627} - \ref{fig:U_F623_auxinconst} \T\B\\
+     \hline
+     \textbf{E5} - ROPs \& auxin-PIN & Simulated parameters set F6 da capire se mettere & Too rapid oscillations do not generate an auxin gradient relevant for spot fomation & \ref{fig:U_F62} - .... \T\B\\
+     \hline
+     \textbf{E6} - ROPs \& auxin-PIN & Consider exponential distribution of auxin inside the cells & Double gradient influence in spot formation & \ref{fig:U_F623_exp} \T\B\\
+     \hline
+     \textbf{E7} - ROPs \& auxin-PIN & Simulate with bigger coefficient $\alpha_{RR}$  & Channel influence on spot appearence & \ref{fig:U_alpha5} \T\B\\
+     \hline
+     \textbf{E8} - ROPs \& auxin-PIN & Simulate oscillating auxin with closed channels for ROP & No spot formation confirm importance of communication model & \ref{fig:U_F62_beta0} \T\B\\
+     \hline
+     \end{tabular}
+     \\[10pt]
+     \caption[Table summarizing auxin-PIN and RR results on two cells system]{}
+     \label{table:aux_summaryRes}
+ \end{table}
