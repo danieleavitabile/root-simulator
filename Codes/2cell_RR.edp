@@ -196,7 +196,7 @@ while(t < Tmax){
     }
   }
   residual();
-  checktol = (resU1 < 1e-2 && resV1 < 1e-2 && resU2 < 1e-2 && resV2 < 1e-2);
+  checktol = (resU1 < toll && resV1 < toll && resU2 < toll && resV2 < toll);
   if(checktol){
     iter = Niter+1;
   }

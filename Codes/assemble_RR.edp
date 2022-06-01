@@ -1,4 +1,4 @@
-//matrices for RR algos: original and modified
+//matrices for RR algos: classic and modified
 matrix Au;
 matrix Av;
 matrix Bu;
@@ -8,7 +8,8 @@ matrix tmpu, tmpv;
 matrix Cu, Cv; // nedd to be updated at every time step
 
 // comment not used alternatives in the if-else instructions
-// (ex: comment "else if (i == 3) {...}" if you have 2 cells only)
+// (ex: comment from "else if (i == 3) {...}" if you have 2 cells only)
+
 /// function | (input) index i of the cell
 //  assemble | (output) update matrices, set solver
 func int assemble(int i){

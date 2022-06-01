@@ -32,5 +32,6 @@ func betavRR = // [1 / \mu m^2]
 
 /// Iterative method prms
 int Niter = 50; // maximun number of iterations allowed
+real toll = 1e-2; // tolerance for residual check
 bool checktol = false; //true if tolerance reached
 real Ubar = 1.5 * u0, Vbar = 1.5 * v0 ;
