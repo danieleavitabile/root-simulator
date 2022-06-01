@@ -122,7 +122,6 @@ whereas in case we are referring to the rescaled system we have:
     \Tilde{c_1} & = \alpha(x), \ \ & \Tilde{c_2} & =  - \gamma \alpha(x), \\
     &  & f_2 & = \frac{1}{\tau}.
 \end{aligned}\end{equation}
-% - specificare le BC usate fino a dora, sottolineando che fino ad ora tutti gli altri si sono occupati di modellare una sola singola cellula
 
 We complete system of spot formation model regarding 1 cell with homogeneus Neumann boundary conditions, in order to consider no-flux of ROPs outside the cell:
 \begin{equation*}
@@ -130,14 +129,10 @@ We complete system of spot formation model regarding 1 cell with homogeneus Neum
 \end{equation*}
 
 \section{Numerical treatment}\label{sec:num_cap2}
-% METTO SOLO IL MODELLO CHE ABBIAMO POI USATO SEMI IMPLICITO? NON STO A DIRE ALTRI ...NO?
-% - formulazione mate quindi: space discretizaione (dentro vh e riscrivi ecc)
+
 Regarding the numerical approximation of the RD system, we choose to solve the two partial differential equations using the Finite Element method for the space discretization and a semi-implicit scheme for time discretization. Before applying the time-discretization scheme, we test whether the system is stable under homogeneous distribution of auxin and a chosen set of parameters. Indeed, in previous works the instability of this kind of RD system and sensitivity with respect to the parameters and general setting used has been investigated \cite{intra1_R, phdthesis:victor}.
 
 In the following sections we detail the discretization of the stationary system, used to find steady states of the set of parameters, as well as the full formulation of the semi-implicit method for the time-dependent problem.
-
-% \color{blue}Subsequently, our semi-implicit scheme was validated, testing if starting from small perturbation of the found steady state it converged back to the equilibrium and then it was used to simulate the spot formation in 1 cell under one particular set of parameters. NON LO DIREI QUA
-% \color{black}
 
 \subsection{Stationary system} \label{sec:statSys}
 Model system in \eqref{eq:final} can be synthetically rewritten as:
@@ -260,7 +255,6 @@ Given $(u_h^0, v_h^0)$, find $(u_h^{k+1}, v_h^{k+1}) \in V_h \times V_h$ such th
 \end{equation}
 $\forall \ k = 0, \ 1, \ 2,...$ up to convergence.
 
-% finite algebrical formulation
 We can pass to the algebraic formulation of \eqref{eq:wf}. The two solutions of the problem can be written as linear combination of the basis functions as follows:
 \begin{equation}
     \delta u_h(x,y) = \sum_{j=i}^{N_h} du_j \ \phi_j(x,y) \ , \ \delta v_h(x,y) = \sum_{j=i}^{N_h} dv_j \ \phi_j(x,y).
@@ -388,7 +382,7 @@ where we have redefined the bilinear forms as:
     \item $f_u = \int_{\Omega} \frac{1}{\Delta t} u^n \ w$
     \item $f_v = \int_{\Omega} \frac{1}{\Delta t} v^n \ w + f_2 w$
 \end{itemize}
-% - assemblaggio del sistema -> nei codici a cosa corrisponde cose. metodo risolutivo
+
 We then write the solutions as linear combinations of the finite dimensional space scalar basis function $\{ \phi \}_{j=1}^{N_h}$:
 \begin{equation}
         u_h^n(x,y) = \sum_{j=i}^{N_h} u_j^n \phi_j(x,y) \ , \ v_h^n(x,y) = \sum_{j=i}^{N_h} v_j^n \phi_j(x,y),
@@ -426,11 +420,6 @@ The system obtained is linear and therefore we overcome the computational cost o
 We report here some results obtained using the 1 cell solver implemented using methods detailed in the previous section. In the first subsection we validate the implementation of Newton's method, solving the stationary system under set B of parameters (Table \ref{tab:setprm}). The second section provides the result of the dynamics obtained perturbing the steady state solution of the stationary problem found under set C of parameters (Section \ref{sec:statSys}), in order to verify if the semi-implicit method \eqref{eq:LinSys} converges back to the stable steady solution. This validation has been performed because of the numerous analysis found in other works on ROPs systems stressing the instability and sensitivity to parameters settings of this kind of systems \cite{intra2:14, intra2:7}. In Section \ref{sec:conv} the order of convergence of our semi-implicit method to the exact solution with respect to time is empirically computed. Then, one particular spot formation is shown, obtained solving the ROPs system using set C of parameters in Table \ref{tab:setprm}, corresponding therefore to the original set of the physical model.
 
 All the tests were implemented through \verb|FreeFEM|, an open-source partial differential equations solver written in C++ \cite{freefem}. The linear system defined in \eqref{eq:LinSys} is not symmetric, therefore we choose \verb|UMFPACK| solver, predefined inside \verb|FreeFem++| library and recommended for non symmetric systems.
-
-% \color{blue}Subsequently, our semi-implicit scheme was validated, testing if starting from small perturbation of the found steady state it converged back to the equilibrium and then it was used to simulate the spot formation in 1 cell under one particular set of parameters. NON LO DIREI QUA
-% \color{black}
-
-% In every problem solved the mesh was refined using for the rectangular domain a grid with \verb|Nx = 100| intervals on the x axis and \verb|Ny = 30| intervals on the y axis. QUESTO VA DETTO IN OGNI SEZIONE DEI RESULTS PERCHÈ CAMBIA CON SET C LA MESH E REFINEMENTS
 
 \subsection{Validation of steady state under homogeneous regime}\label{sec:ValidationNewton}
 The problem under investigation is characterized by a homogeneous auxin distribution, having $\nu = 0$, and the equilibrium of this particular system has been recovered analytically, specified in parameters \verb|u0| and \verb|v0| \eqref{eq:u0v0} and visualized in Figure \ref{fig:u0v0}.
@@ -482,17 +471,6 @@ The bigger the perturbation, the higher number of iterations are necessary to go
 %     \caption[Validation of theoretical equilibrium - $\tilde{\epsilon} = 10^{-1}$ ]{Newton's method solution for constant homogeneous auxin distribution $\alpha = 1$, with parameter Set B and $\tilde{\epsilon} = 10^{-1}$.}
 %     \label{fig:Uhom_1e-1}
 % \end{figure}
-
-% \towrite{- riporto i residui che calano?(newton.csv)
-%
-%  - sto improvvisando una verifica di convergenza del metodo di newton ... ma non viene convergenza quadratica del residuo -> DECISO DI NON METTERLO, OK?
-%  % vd 2022-03-10_11-21-17 ( o 2022-03-10_11-17-12) in newton_hom dir
-%
-% - problema: la simulazione SI time dep con auxina = 1 non converge allo steady state ... è un problema che richiedo tolleranza troppo bassa? o perturbo troppo? Oppure si potrebbe spiegare dicendo ce lo Jacobiano del sistema calcolato nell'equilibrio ha autovalori con parte reale positiva 1960 e altri con modulo >1 3259 (si veda \verb|check_singularity.edp|)  semnbra corretto perchè equilibrio instabile}
-% di fatto con stessa pert e tol funziona (ovvio ...), per pert maggiore della tolleranza invece tende a un altro equilibrio che ogni volta cambia
-% ANCHE CON EPS = 1E-12 non va (si fermerebbe subito ... ma poi cambia totalmente con Tmax = 500)
-
-% - check eventuali su Jac ecc. da non mettere no? era un controllo sul calcolo del Jacobiano (ovver che || rhs -jac * du ||_inf fosse dell'ordine epsilon^2, non del metodo di newton)
 
 \subsection{Validation of semi-implicit method with a steady state under not homogeneous regime}\label{sec:ValidationSS_nothom}
 We set the parameters as in Table \ref{tab:setprm} - Set C. The auxin distribution is chosen not homogeneous as in \eqref{eq:alpha_exp}. The system was initialized using as starting guess for Newton's method, namely the homogeneous constant solution:
@@ -556,16 +534,6 @@ We compare the four solutions obtained at $t = 200s$ with the equilibrium found 
     \caption{Errors computed with normalized $L^{\infty}\left(\Omega\right)$ norm of the difference between equilibrium of the system and the converged solution at $t = 200s$.}
     \label{tab:error_conv}
 \end{table}
-% \footnotesize
-% \begin{verbatim}
-% +----------------------------+-------------+-------------+-------------+------------+
-% |                            | eps = 1e-3  | eps = 1e-2  | eps = 1e-1  | eps = 1e-0 |
-% +----------------------------+-------------+-------------+-------------+------------+
-% |  Normalized ||diffU||_inf  | 4.59967e-07 | 0.00019993  | 0.00199633  | 0.0205963  |
-% |  Normalized ||diffV||_inf  | 8.23218e-08 | 3.57118e-05 | 0.000356417 | 0.00365996 |
-% +----------------------------+-------------+-------------+-------------+------------+
-% \end{verbatim}
-% \normalsize
 
 \subsection{Single cell solver convergence analysis}\label{sec:conv}
 % -> analisi convergenze ... terrei solo quella L2 tempo e L1 spazio, con integrazione metood trapezio
@@ -611,7 +579,6 @@ Norms in \eqref{eq:norm2} - \eqref{eq:norm3} are approximated with composite tra
     \alpha \simeq \frac{log(err(\Delta t_i) / err(\Delta t_{i+1}))}{log(\Delta t_i/\Delta t_{i+1})} =: \alpha_{i,i+1}
 \end{equation}
 where $err(\Delta t_i)$ has to be replaced with the different kind of errors computed with $\Delta t = \Delta t _i$. This estimation gets more exact for decreasing values of time-step length, i.e., for $\Delta t \rightarrow 0$.
-% //number of nodes (non so se dire che è il refinement max che siamo riuscit ad avere della mesh ...)
 
 Defining the order estimation $ \alpha_{i,i+1}$ as in formula \eqref{eq:order_est}, Table \ref{tab:res_conv} reports the results that we obtain with $\Delta t \in [0.2, 0.125, 0.1, 0.05, 0.025, 0.01, 0.005]$:
 \begin{table}
@@ -683,51 +650,3 @@ The dynamical system for the spots was simulated up to final time $T_{max} = 300
     \caption[1cell Active ROPs]{Active ROPs $u$ evolution for 1cell solver.}
     \label{fig:1cellUevolution}
 \end{figure}
-
-% -> simulazione 1 cella con prm e set tutto di v2 matlab:  2021-11-29_11-37-42 v2 matlab prm semi impliciti slide 2 buono!!!
-% - focus codice:file prm da descrivere, mesh, fespace, schema quindi del main per risolvere il problema (non so se qua breve descrizione quindi su come runnare le cose, forse meglio nella sezione dopo coi test in cui spiego come eseguire tutto)
-
-
-% RICORDATI DI DIRE COMMENTI SUL GRADIENTE DI AUXINA!
-
-% TUTTO QUELLO CHE C'ENTRA IN PARTE CON 1 CELL fatto circa
-% ripercorriamo come abbiamo usato il risolutore per 1 cell (elenco tutto)
-% - verifica che Newton convergesse per alpha = 1 a quel UO, V0 famoso (ma con set prm vecchio, del paper intra quindi delpde adimensionalizzato) "ok newton" -> li c'è poii anche una sorta di grafico dell'errore ma mh ...
-% - tantissimi test in cui per alpha exp si cercava U* (i vari disegni di spot diversi ...) slide "risultati Newton stability" però con prm vecchi di intra (fino a 27_11 direi che ho usato i vecchi prm, NEWTON OK MA LE TEMPO DEP FINO AL 27_11 SONO SBAGLIATE! in teoria eliminate ) quindi non servono cartelle "time dep old", "tempo dep" che hanno vecchi prm + forse sbagliate
-% - risultati test vs matlab ci sono i primi time dep con prm victor phd (anche se diversi ...) deliri dei tentativi da ritrovare
-% - cartella 1cell ha cose varie
-
-% -> ?? (altri set di prm ha senso? e altre F ecc? ANCHE DA CAPIRE SE VOGLIAMO DIRLO NEI CODICI ... DIREI NO)
-
-
-% FRASI VARIE PER DESCRIVERE LE FIGURE ...
-% localized spots can be generated by the breakup of a straight ho-
-% moclinic stripe
-
-% illustrate how small spots are formed from the breakup of an interior homoclinic
-% stripe and how they evolve slowly in time to a steady-state two-spot pattern aligned
-% with the direction of the auxin gradient.
-
-% Our realizations of the asymptotic
-% theory shown below in Figure 7 confirm the numerical results in Figure 4(d) that the
-% spots become aligned with the direction of the auxin gradient.
-
-% In other words, when an RH cell is modeled as
-% a 2D flat and oblong cell, certain pattern formation attributes become relevant that
-% are not present in a 1D setting o cmq idea dell'importanza del 2d rispetto a 1d boh
-
-% Our numerical results show that the spots drift in the direction of the auxin gradient
-% and can undergo a secondary instability of spot self-replication.
-
-% Although some aspects of the spatiotemporal
-% scales are inherited from the 1D case analyzed in [4], the 1D theory cannot capture
-% the stripe break-up or the formation, drift, and pinning of the localized spot
-
-% a stripe-like state is formed at the boundary,
-% with a second stripe quickly emerging further toward the interior. Then, as these
-% structures move away from each other, both stripes break up into two half-spots
-
-%  we run a time-step simulation upon taking an unstable boundary stripe
-% solution (labeled b) as the initial condition. This computation shows the triggering
-% of a break-up instability, which then gives rise to two spots moving toward the do% main interior. In Figure 5 we give pertinent snapshots where the boundary stripe
-% disintegrating into spots can be seen, as well as spot dynamics for short times.

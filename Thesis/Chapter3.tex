@@ -4,9 +4,7 @@
  In the first section we give a physical interpretation of the model under consideration, paying particular attention to the communication between neighboring cells and providing a physical meaning to the new parameters added to the ROPs system. We detail the numerical methods applied to the pluricellular model, developing an iterative algorithm inspired by a Robin-Robin Domain Decomposition (DD) method. To justify our implementation strategy, we also present a Robin-Robin DD method applied to a two cells system. Finally, we provide an extensive numerical assessment by applying the proposed model to different contexts in the result section. The first simulations serve as benchmark to tune all the new parameters added to the system, characterizing the communication channels between cells. Then, after the selection of a proper set of parameters, we validate the new method changing parameteres the ROPs activation and deactivation processes.
 
 \section{Physical model}\label{sec:PluriMod}
-% - big novità: più cellule insieme quindi nuove BC;
-% ->idea di prendere flusso proporzionale alla differenza delle soluzioni circostanti le cellule, per riequilibrare il sistema
-%  -> signiificato dei vari termini delle bc e idea fisica dietro ciascuno (beta alpha ecc) e bisogno di tunnarli ... quindi poi risultati sono giustificati per questo
+
 \begin{figure}
   \centering
   % \includegraphics[scale = 0.3]{cap3/4cellscheme.jpeg}
@@ -30,7 +28,7 @@ We recall the single cellular model, namely:
 \right.
 \end{equation}
 No-flux on $\partial \Omega$, namely Neumann homogeneous boundary conditions, characterizes the system behaviour along the cell boundary.
-% prima spieghiamo il significato fisico, poi come rappresentarlo matematicamente
+
 In the multi-cellular model, communication between cells is represented by allowed flux of ROPs, active and inactive, through localized channels along boundaries between neighboring cells.
 
 We define as neighbor of cell $\Omega_i$ the set of cells with index in $\mathcal{N}_i = \{ j : \partial \Omega_j  \cap \partial \Omega_i \neq \emptyset \}$. The flux of concentration of active and inactive ROPs $(u_i, v_i)$ is proportional to the difference of concentration $(u_j, v_j)$ in neighbouring cells for $j \ \in \ \mathcal{N}_i$.
@@ -63,8 +61,6 @@ These channel parameters aim at representing the average active transport along 
 
 We have no physical insight on previously cited functions modeling open channels for ROPs. A whole set of simulations for the proper tuning of parameters is required, in order to find a sufficiently plausible setting of the system.
 \section{Numerical treatment}
-% brutto mettere gli stessi titoli?
-% -> prima questione: trattarlo con uno schema iterativo simile robin robin algorithm of domain decomposition, in modo da accoppiare le soluzioni; quindi descrivere bene lo schema (dalla strong formulation); già partendo dalo schema semi implicit nel tempo
 The communication between cells requires a proper iterative algorithm in order to deal with the mutual interplay between confining cells.
 
 Every subdomain $\Omega_i$ of the pluricellular system $\Omega$ represents the single cell and the original system of equations in \eqref{eq:final} is solved in $\Omega_i$ for all $i = 1, ..., N$. We solve such systems by means of the semi-implicit method described in Section \ref{sec:SI method}. Let us consider the weak formulation restricted to $\Omega_i$, defining the functional space $V_i = \{ w_i \in \ H^1\left(\Omega_i\right)\}$, the finite element subspace $V_{i,h} \subset V_i $ and the time interval discretization used in Section \ref{sec:SI method}. In particular, we divide the time interval $\left[0, T_{max}\right]$ in $N_{max}$ time steps such that $t^n = n \Delta t$ with $\Delta t = T_{max} / N_{max}  $. We rewrite the full discretized formulation, identifying $u_{i,h}$ with $u_h|_{\Omega_i}$, as:
@@ -128,8 +124,6 @@ In order to guarantee the exact equivalence with \eqref{eq:mono}, we need to enf
 with normal derivative in \eqref{eq:NBC} defined by the differential problem under analysis.
 
 Then, one may solve the multi-domain problem by iterative procedures. To this aim, we introduce a sequence of subproblems in $\Omega_1$ and $\Omega_2$ so that the two transmission conditions provide a Dirichlet \eqref{eq:DBC} or a Neumann \eqref{eq:NBC} boundary condition to impose on the internal boundary $\Gamma$. The assignment of the coupling conditions at the common interface is the key part of the domain decomposition method used. Indeed, for example, we distinguish Dirichlet-Neumann (DN) method, where continuity of solutions \eqref{eq:DBC} is imposed in the subproblem on $\Omega_1$ and continuity of fluxes \eqref{eq:NBC} on $\Omega_2$, while Neumann-Dirichlet (ND) method consists in the opposite impositions. In general, two sequence of functions $ \{u_1^k\}, \{u_2^k\}$ are generated starting from a initial guess $ \{u_1^0\}, \{u_2^0\}$ which will converge to $u_1$ and $u_2$, respectively. At convergence the solution is equivalent to the one obtained solving the monolithic system, with guaranteed continuity of solutions and normal stress at the common interface.
-
-% \towrite{in realtà pooi i DD method sono anche interpretabili coome dei precodizionatori su problemi monolitici ... ma secondo me va ancora più fuori tema tesi quindi non lo citerei. INoltre on so quanto vogliamo entrare in dettaglio, chiaramente si potrebbero "formulare" molto più nel dettaglio i metodi}
 
 One class of iterative procedures among domain decompostion methods which is of big interest for the model we are interested in is the Robin-Robin (RR) method. It is based on the Robin transmission conditions and generalizes the Dirichlet-Neumann approach. Robin boundary conditon is a linear combination of interface conditions \eqref{eq:DBC} and \eqref{eq:NBC}, with positive coefficients $\alpha_1, \alpha_2$ characterizing the RR scheme as follows:
 \begin{equation}\begin{aligned}
@@ -262,12 +256,7 @@ Each sub-domain block matrix depends on the previous time-step solution, therefo
 % \end{equation}
 
 Some contributions at the right-hand side come from solution variables and test functions not belonging to the same functional space of the correlated solution. Therefore we properly interpolate such terms from one space to the other.
- % those are actually multiplied for a interpolation matrix, corresponding to the algebraic form of the extension operator $\mathcal{I}_{1,2}$ and $\mathcal{I}_{2,1}$ cited before, going from space $V_{1,h}$ to $V_{2,h}$ and viceversa respectively.
-% \towrite{ se lo si vuole srivere più nel dettaglio si dovrebbero specificare i due contributi separati (quello base normale e quello dalla BC) }
 
-% This Robin-Robin iterative method applied to our time-dependent scheme was implemented in \verb|2cell_RR.edp| file.
-
-% -> allora da schema iterativo con già schem semi implicit, costruire la copleta galerkinf formulation e quindi sistemi da risolvere
 \subsection{A new iterative modeling algorithm}\label{sec:RRmodified}
 The model that we propose to make cells communicate can be regarded as a simplification of the classical domain decomposition scheme with Robin boundary conditions. We start for simplicity from a two cells problem and rewrite the common interface boundary conditions in \eqref{eq:RR} to recover the modelled open channels in \eqref{eq:pluriModel}. In the spirit of a block-Gauss-Seidel algorithm, we solve in sequence:
 \begin{equation} \label{eq:RR_final}
@@ -365,10 +354,7 @@ Matrices and vectors used are defined in the following way:
 \end{equation}
 being $\{\phi_l\}_{l = 1}^{N_h}$ the functional basis of $V_{i,h}$ finite dimensional space defined on each cell $\Omega_i$ with $i =1,2$.
 
-A sketch of the procedure to be adopted to deal with a generic N cells pluricellular system using Robin-Robin modifed algorithm is schematically given in Algorithm \ref{alg:RRmod};
-% The Robin-Robin modified algorithm for a 2 cell system is implemented in \verb|2cell_RRmod.edp| and in \ref{alg:RRmod} is schematically given an overview of the sequence of element to solve and update for a generic N cells pluricellular system.
-% -> descrizione finale schematica della sequenza di cose da risolvere (aggiornare ecc. stile algo) non so se ha senso fare un mini schemino tipo algoritmo della sequenza di cose risolte sggiornate (che è poi quello che segue il codice)
-$r_i$ are different coefficients characterizing initial state of concentrations, necessary for having flux between communicating cells. For physical reasons, we choose same initial guesses in the direction of the auxin gradient.
+A sketch of the procedure to be adopted to deal with a generic N cells pluricellular system using Robin-Robin modifed algorithm is schematically given in Algorithm \ref{alg:RRmod}; $r_i$ are different coefficients characterizing initial state of concentrations, necessary for having flux between communicating cells. For physical reasons, we choose same initial guesses in the direction of the auxin gradient.
 
 We have implemented a solver for a system of four cells.
 
@@ -398,10 +384,7 @@ As expressed in \eqref{eq::RRmod}, the iterative procedure is formulated such th
     \ENDWHILE
     \end{algorithmic}
 \end{algorithm}
-% , as follows:
-% \begin{equation}\label{eq:Pmode}
-%     \text{BC: } U_i^{k+1} = f(U_j^{k})_{j \in \mathcal{N}_i} \ \forall i \in \{1, ..., N\}.
-% \end{equation}
+
 In case we are solving a two cells system, when solving the boundary value problem in $\Omega_2$ at the new iteration $k+1$, we use data on common interface $\Gamma$ generated by $[U_1^k, V_1^k]$. Therefore two cells system problem \eqref{eq::RRmod} is reformulated in a block-Jacobi fashion as:
 
 starting from $(u_2^{k = 0}, v_2^{k = 0}) = (u_2^n, v_2^n)$, find $(u_1^{k+1}, v_1^{k+1}) \ \in V_{1,h}$ and $(u_2^{k+1}, v_2^{k+1}) \ \in V_{2,h}$:
@@ -424,11 +407,6 @@ starting from $(u_2^{k = 0}, v_2^{k = 0}) = (u_2^n, v_2^n)$, find $(u_1^{k+1}, v
 \end{cases}
 \end{aligned}\end{equation}
  for $k \geq 0$ up to convergence.
-% Nota: differenza not parallel mode e parallel mode (o meglio not parallelizable e parallelizable). Nel primo caso ogni volta che si è trovata una nuova soluzione la si usa per calcolare le condizioni al bordo del problema successivo risolto (es: se ricolvo il problema su cella 1 e quindi trovo $U_1^{k+1}$, quando poi risolvo il problema sulla cella 2 nella BC uso $U_1^{k+1}$ e non quella alla iterazione precedente).
-% Invece in parallelizable mode, anche se ho già trovato la nuova soluzione, uso sempre quella dell'iterazione precedente. In sintesi
-% \begin{equation}
-%     \text{BC: } U_1^{k+1} = f(U_2^{k}) , U_2^{k+1} = f(U_1^{k})
-% \end{equation}
 
 \section{Numerical assessment}\label{cap3:results}
 We here show some of the results obtained applying the iterative procedures in Section \ref{sec:RRmodified}. At first we properly tune the parameteres $\beta_{uRR}, \beta_{vRR}$ and $\alpha_{uRR}, \alpha_{vRR}$ characterizing the channels. Then, we underline the importance of a communication model to suitably simulate pluricellular systems through various results.
@@ -516,26 +494,6 @@ We observe the formation of small spots from the breakup of an interior homoclin
 
 It is important to notice, as in previous works on singular cell system (see e.g.,\cite{intra2}), that even if the problem is homogeneous along $y$ direction, the system is not able to maintain the stability. The stripe formed is sensitive to a transverse instability since it is located close to the left-hand boundary, where the influence of the auxin gradient is stronger \cite{intra2}.
 
-% although a homoclinic-type transverse interior stripe is formed, it quickly
-% collapses
-
-% interior stripe is more sensitive
-% to a transverse instability if it is located closer to the left-hand boundary, where the
-% inﬂuence of the auxin gradient is the strongest.
-
-% with a second stripe quickly emerging further toward the interior. Then, as these
-% structures move away from each other, both stripes break up into two half-spots
-
-% \begin{figure}[H]
-%     \centering
-%     \subfloat[$t = 25s$\label{1a5}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-17-25/screen25.png}}
-%     \quad
-%     \subfloat[$t = 100s$ .\label{2a5}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-17-25/frame.0050.png}}
-%     \quad
-%     \subfloat[$t = 1000s$ .\label{3a5}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-17-25/frame.0499.png}}
-%     \caption[Tuning channel prm - $a = 5 $]{Active ROPs $u$ evolution obtained with RRmod algorithm solver with $a = 5 $.}
-%     \label{fig:a5}
-% \end{figure}
 \begin{figure}[H]
     \centering
     \subfloat[$t = 25s$\label{1a5}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-17-25/screen25.png}}
@@ -548,18 +506,7 @@ It is important to notice, as in previous works on singular cell system (see e.g
     \caption[Tuning channel prm - $a_x = 5 $]{Active ROPs $u$ evolution obtained with RR algorithm solver with $a_x = 5 $.}
     \label{fig:a5}
 \end{figure}
-% 2022-01-17_15-13-10 a = 20
-% $a_x = 20$ e initial state $U_1^0 = 1.5 u^0, U_2^0 = u^0$
-% \begin{figure}[H]
-%     \centering
-%     \subfloat[$t = 25s$\label{1a20}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-13-10/screen25.png}}
-%     \quad
-%     \subfloat[$t = 100s$ .\label{2a20}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-13-10/frame.0050.png}}
-%     \quad
-%     \subfloat[$t = 1000s$ .\label{3a20}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-13-10/frame.0499.png}}
-%     \caption[Tuning channel prm - $a = 20 $]{Active ROPs $u$ evolution obtained with RRmod algorithm solver with $a = 20 $.}
-%     \label{fig:a20}
-% \end{figure}
+
 \begin{figure}[H]
     \centering
     \subfloat[$t = 25s$\label{1a20}]{\includegraphics[scale=0.15]{cap3/2022-01-17_15-13-10/screen25.png}}
@@ -615,19 +562,6 @@ As a secon test, we tested the sensitivity of the model with respect to the chan
   \item $\epsilon_x = 5$, $a_x = 5$.
 \end{itemize}
 
-% 2022-01-16_09-51-08 ε = 5 a = 5 alpha_RR = 1 (anche aumentando epsilon cmq a più influente, troppo vicino al centro)
-% $\epsilon = 5, a_x = 5, \alpha_{RR} = 1$  e initial state $U_1^0 = 1.5 u^0, U_2^0 = u^0$
-% \begin{figure}[H]
-%     \centering
-%     % \subfloat[$t = 25s$\label{1a5epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-51-08/frame.0025.png}}
-%     \subfloat[$t = 25s$\label{1a5epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-51-08/screen25.png}}
-%     \quad
-%     \subfloat[$t = 100s$ .\label{2a5epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-51-08/frame.0050.png}}
-%     \quad
-%     \subfloat[$t = 1000s$ .\label{3a5epsi5}]{\includegraphics[scale=0.15]{cap3/2022-01-16_09-51-08/frame.0499.png}}
-%     \caption[Tuning channel prm - $a_x = 5, \epsilon_x = 5$]{Active ROPs $u$ evolution obtained with RR algorithm solver with $a_x = 5, \epsilon_x = 5$.}
-%     \label{fig:a5epsi5}
-% \end{figure}
 % 2022-03-18_14-50-57 NP mode
 \begin{figure}[H]
     \centering
@@ -1674,14 +1608,3 @@ We present in Tables \ref{table:summaryRes} and \ref{table:4c_summaryRes} a sche
 % - grad auxina diverso 2 cell: slide 61 vedi che viene uguale nella'ltro verso -> prova importanza grad ?
 % - auxina tempo dep: ? slide 62-64 periodici non chiara però se sensati e interpretazione (periodo ...); corrisponderebbero a formazioni periodiche di spot
 % - auxina tempo dep con max che si sposta -> giustificati da paper veronica e altro? slide 65  slide 68 carino che poi si vede formarsi spot dove prima sembrava non ci fosse più ROP, slide 69 ha canali diversi bah su y
-
-
-% COMMENTI IMPO
-% the role of the gradient seems just to be that of controlling the location of the
-% localised pattern, through a slow-time-scale patch-drift equation. The method we have applied
-% shows that the gradient indirectly plays a role on transverse instability via the location points.
-% In addition, the role of the gradient seems just to be that of controlling the location of the
-% localised pattern, through a slow-time-scale patch-drift equation. The method we have applied
-% shows that the gradient indirectly plays a role on transverse instability via the location points.
-% That is, the gradient controls location and is also strongly involved in specifying then number
-% of transverse unstable modes. (già messo in cap1)

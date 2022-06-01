@@ -1,35 +1,13 @@
 \chapter{Conclusions and future developments}%
 \label{ch:conclusions}
 In this thesis we developed a multi-cellular model accounting for a spatially-extended intra-cellular system for ROPs pattern formation. In the proposed framework, we solved ROPs pattern formation in a system composed by multiple cells, together with a transport model for hormone auxin. The RD model explains the auxin-mediated action of ROPs in an Arabidopsis root hair cell leading to formation of the localized patches of activated ROPs.
-% Payne \& Grierson postulate that gradient of auxin modulates the autocatalytic step, through a non linear relation between active and inactive state of ROPs. Other previous works and our numerical results presented confirmed the influence of auxin ditribution,in particular of auxin maximum location and auxin gradient, in determining pattern formation.
 
-% dico che conferma cose già viste tipo spot impo del 2d ecc
 Our simulations support conclusions reached in other works regarding ROPs dynamics under a-priori defined auxin distribution \cite{phdthesis:victor, intra1_R, intra2}. We have analyzed various scenarios such that a stripe-like patch forms where auxin concentration is higher. Then, instability of stripe into spot-like states occurs and multiple spots align with auxin gradient or travel towards auxin minimum. Several results confirm that, for a transversally independent gradient, lateral stripes become unstable states.
 
-% da intra2
-% In reality, softening cell wall patches always occur along the
-% midline of the cell. It seems then that a more complete mathematical model of the
-% root hair patterning process would require some nontrivial y-dependence in order
-% to pin spots transversly.
-% poi importanza dell'estendere a modello con BC nuov epiù cellule, influeza
 Successively as a new contribution, we extended the intra-cellular dynamics for root-hair initiation model to a multi-cellular system, developing a new model taking into account communication between cells. In order to do so, we have defined a boundary value problem which assumes new boundary conditions between neighboring cells. Subsequently, we develop an iterative procedure to solve it. We take as reference scheme a Robin-Robin domain decomposition method. We impose fluxes of ROPs betweeen neighboring cells, depending on the difference of the ROPs concentrations, through localised open channels. Such connections are tuned in order to visualize considerably different results with respect to a configuration characterized by stagnant cells. In addition,we aim at preserving all previous analyses over important parameters characterizing the system. We numerically assessed the robustness of the proposed model in cooperating with auxin distribution in influencing ROPs pattern formation.
 
-% e infine che accounting for auxin trasnport può essere fatto nel modo fiisicamente migliore se si considera flux tra cellule per ROP anche, qua forse dire di più, transition
 Having defined a reliable multi-cellular model, we have taken into account also auxin concentration dynamics. Hormone auxin is regulated by carriers PIN following a non-linear ODEs system. We implement a semi-implicit method to solve such as a system on a two cells setting. The simulations we carried out show oscillating values of auxin concentration for specific sets of parameters, as expected from previous studies. A further confirmation of the robustness of pattern formation according to the proposed new multi-cellular model, when considering channel communication between cells, is given in Chapter \ref{cap:4}. It is shown that even if the system is under steady homogeneous auxin concentrations, the model robustly forms hotspots when considering open channels under a sufficiently high overall auxin level.
 
 The results show two ways spots of active ROPs can be generated. The first factor is the auxin gradient, which still guarantees and influence stripe to spot evolution. The second factor is the structural coupling between cells. Even if not characterized by variation in space but with a sufficiently high value of the auxin concentrations, the multi-cellular model leads the system to multiple spots.
-% non so se dire delle oscillazioni, cmq è sensibile alle oscillazioni ma non è la cosa boom principale
 
-% Coupling the auxin-PIN problem with ROPs multicellular system
-% future developments cose
 In conclusion, this thesis provides a first attempt in modeling communication between root-hair cells in pattern formation. Future developments include to study the structural model or to deeply analyze channels characterization. Moreover, the iterative procedure implemented could be applied to a multi-cellular system composed by more than four cells and eventually try to increase the computational performance through parallel computing. Another possible road to follow is to approach the problem through homogenization techniques. The cited method may increase the efficiency in solving the model, particularly when the number of cells involved becomes large. Finally, one could assume other auxin transport models, less simplified or accounting for spatial dependence inside the cells.
-
-% conclusioni phd aaaa
-% In addition, the model only considers a single RH cell, considering the auxin in a single
-% cell rather than a set of cells. In such a scenario, the auxin transport should not be modelled
-% simply by a spatially dependent coefficient. This however may represent a challenge because of
-% the gap between ROP and auxin diffusion rates. Upon pursuing a reaction-diffusion approach,
-% instead of studying a two-component system, an extra equation for the auxin would be needed,
-% where cell curvature and 3D effects may become more important and boundary conditions would presumably be of Robin type. To analyse a three-component system with homogeneous Neumann
-% conditions for active and inactive ROP components and Robin conditions for the auxin component
-% would become more complex
