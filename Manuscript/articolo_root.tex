@@ -1,4 +1,4 @@
-\documentclass[a4paper]{siamart190516}
+\documentclass[a4paper]{siamonline220329}
 
 \usepackage{damacros}
 
@@ -43,7 +43,13 @@
 \maketitle
 
 \begin{abstract}
-This thesis deals with novel models and numerical approximations of spatially-extended multi-cellular models of Rho Of Plants (ROPs), that is, a family of proteins responsible for root-hair initiation in the plant cell Arabidopsis thaliana. The study of this dynamical system is of great relevance in the so-called agriculture 4.0, since it is instrumental to optimise plant uptake. In particular, ascertaining how intra-cellular protein distributions and extra-cellular coupling influence root-hair initiation is a challenging but pressing problem.
+This thesis deals with novel models and numerical approximations of
+spatially-extended multi-cellular models of Rho Of Plants (ROPs), that is, a family
+of proteins responsible for root-hair initiation in the plant cell Arabidopsis
+thaliana. The study of this dynamical system is of great relevance in the so-called
+agriculture 4.0, since it is instrumental to optimise plant uptake. In particular,
+ascertaining how intra-cellular protein distributions and extra-cellular coupling
+influence root-hair initiation is a challenging but pressing problem.
 
 Current studies have focussed on two separate model types: on the one hand, ROPs dynamics is studied in single-cell models, which resolve patterns at sub cellular level; on the other, multi- cellular models with realistic geometries neglect intra-cellular patterning. In this thesis we make progress on coupling these two
 model descriptions.
@@ -52,6 +58,62 @@ We initially focus on a well-established single-cell, nonlinear reaction-diffusi
 
 Finally, we consider a novel model in which the auxin dynamics are not prescribed, but derive from the interaction between this hormone and other membranals proteins (PIN). We show that self-sustained auxin oscillations influence ROP intracellular patterning.
 \end{abstract}
+
+\da[inline]{Daniele's rewrite begins}
+\section{Single cell model}\label{sec:singleCell} 
+
+We shall denote by $\Omega \subset \RSet^3$ the cell interior, which is assumed to be
+open and bounded, and by $\Gamma = \partial \Omega$ its boundary. \da[]{technical
+assumption on smoothness of $\Omega$} Importantly, we will model the evolution of
+reactants within the cell on timescales that are short compared with timescales for
+cellular growth and division, therefore $\Omega$ and $\Gamma$ are assumed to be
+time-independent.
+
+As an exemplary setup for intracellular dynamics, we consider a model of root-hair
+initiation which describes the evolution of two concentrations, namely $u(x,t)$, and
+$v(x,t)$, describing the density of active and inactive Rho-Of-Plants (ROPs), at
+position $x \in \Omega$ and $t \in [0,T] \subset \RSet$, respectively. \da[]{Cite} 
+
+In addition, to the unknown fields $u,v \colon \overline{\Omega} \times [0,T] \to
+\RSet_{ \geq  0}$, the model involves a prescribed, exhogenous, spatio-temporal auxin
+field, $\alpha \colon \overline{\Omega} \times [0,T] \to \RSet_{ \geq  0}$. As a
+first modelling assumption, we will assume that the auxin dynamics be assigned, and
+decoupled from the ROP dynamic. As we will see later, this hypothesis can be relaxed.
+
+Following XXX\da[]{Cite}, we model the evolution of active and inactive ROPs using a
+heterogeneous reaction-diffusion system which, in dimensionless form, is written
+as
+  \begin{align}
+    & \partial_t u = d_u \Delta u + f(u,v,\alpha), 
+      && \partial_t v = d_v \Delta v + g(u,v,\alpha), 
+      && \text{on $\Omega\times (0,T]$,} \label{eq:RDEs}\\
+    & d_u \nabla u \cdot n = \psi_u, 
+      && d_v \nabla v \cdot n = \psi_v, 
+      && \text{on $\Gamma \times [0,T]$,} \label{eq:BCs}\\
+    & u = u_0,  && v = v_0, && \text{on $\Omega \times \{0\}$.} \label{eq:ICs}
+  \end{align}
+where $d_u, d_v \in \RSet_{ \geq 0}$ are diffusion constants, $f$ and $g$ \da[]{Maybe
+$f_u,f_v$?} denote the auxin-dependent, nonlinear
+reaction terms
+\[
+  \begin{aligned}
+   & f(u,v,\alpha) = \alpha u^2 v - \beta_u u + \gamma v, \\
+   & g(u,v,\alpha) = -\alpha u^2 v + \beta_v u - \gamma v + \delta,
+  \end{aligned}
+\]
+and where $\beta_u, \beta_v, \gamma, \delta$ are scalar control parameters. ROPs
+activate (resp. inactivate) at a rate proportional to the local auxin concentration,
+and with a cubic polynomial nonlinearity; in passing, we note that, while the
+linear $v$-dependent production and depletion terms are identical and with opposite signs,
+the lineear $u$-dependent production and depletion rate differ, as $\beta_u \neq
+\beta_v$; further, there is a constant production rate term in the function $g$,
+which is absent in $f$. \da[]{Must be better explained after talking to Teresa.}
+
+The evolution equations \cref{eq:RDEs} are complemented by heterogeneous Neumann
+boundary conditions with fluxes $\psi_u$, $\psi_v$, and initial
+conditions $u_0$, $v_0$ in \cref{eq:BCs} and \cref{eq:ICs}, respectively.
+
+\da[inline]{Daniele's rewrite ends}
 
 \section{Introduction (Daniele+Teresa+Simona)}
 
