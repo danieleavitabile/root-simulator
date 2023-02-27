@@ -1,0 +1,6 @@
+# FreeFem++ 1cell_semi_implicit.edp 
+# FreeFem++ 1cell_stationaryTest.edp 
+# FreeFem++ 1cell_stationaryTest_explicit.edp  
+# FreeFem++ 2cell_auxina.edp # ODE for Auxin? 
+# FreeFem++ 2cell_auxina_ROP.edp
+FreeFem++ 4cell_RRmod.edp
